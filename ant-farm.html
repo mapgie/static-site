@@ -1,0 +1,98 @@
+ 
+<!DOCTYPE html><html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ant Farm Simulator</title>
+<style>
+  body {
+    background: #222;
+    overflow: hidden;
+    margin: 0;
+    height: 100vh;
+    position: relative;
+  }.ant { position: absolute; width: 5px; height: 5px; background: white; border-radius: 50%; }
+
+.food { position: absolute; width: 10px; height: 10px; background: yellow; border-radius: 50%; } </style>
+
+</head>
+<body><script>
+ 
+<div id="header-placeholder"></div>
+<script>
+  fetch('header.html')
+    .then(response => response.text())
+    .then(data => {
+      document.getElementById('header-placeholder').innerHTML = data;
+    });
+</script>
+const ants = [];
+const foods = [];
+const NUM_ANTS = 50;
+const SPEED = 1;
+
+function createAnt() {
+  const ant = document.createElement('div');
+  ant.className = 'ant';
+  document.body.appendChild(ant);
+  return {
+    el: ant,
+    x: Math.random() * window.innerWidth,
+    y: Math.random() * window.innerHeight,
+    angle: Math.random() * Math.PI * 2
+  };
+}
+
+function createFood(x, y) {
+  const food = document.createElement('div');
+  food.className = 'food';
+  food.style.left = (x - 5) + 'px';
+  food.style.top = (y - 5) + 'px';
+  document.body.appendChild(food);
+  foods.push({x: x, y: y, el: food});
+}
+
+function moveAnt(ant) {
+  // Random wiggle
+  ant.angle += (Math.random() - 0.5) * 0.5;
+
+  // Bias toward nearest food if any
+  if (foods.length > 0) {
+    let nearest = foods.reduce((a, b) => {
+      let da = (a.x - ant.x) ** 2 + (a.y - ant.y) ** 2;
+      let db = (b.x - ant.x) ** 2 + (b.y - ant.y) ** 2;
+      return da < db ? a : b;
+    });
+    let angleToFood = Math.atan2(nearest.y - ant.y, nearest.x - ant.x);
+    ant.angle += (angleToFood - ant.angle) * 0.05;
+  }
+
+  ant.x += Math.cos(ant.angle) * SPEED;
+  ant.y += Math.sin(ant.angle) * SPEED;
+
+  // Wrap around edges
+  if (ant.x < 0) ant.x = window.innerWidth;
+  if (ant.x > window.innerWidth) ant.x = 0;
+  if (ant.y < 0) ant.y = window.innerHeight;
+  if (ant.y > window.innerHeight) ant.y = 0;
+
+  ant.el.style.left = ant.x + 'px';
+  ant.el.style.top = ant.y + 'px';
+}
+
+for (let i = 0; i < NUM_ANTS; i++) {
+  ants.push(createAnt());
+}
+
+function animate() {
+  ants.forEach(moveAnt);
+  requestAnimationFrame(animate);
+}
+
+animate();
+
+document.addEventListener('click', (e) => {
+  createFood(e.clientX, e.clientY);
+});
+</script></body>
+</html>

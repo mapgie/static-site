@@ -54,6 +54,15 @@
   </style>
 </head>
 <body>
+ 
+<div id="header-placeholder"></div>
+<script>
+  fetch('header.html')
+    .then(response => response.text())
+    .then(data => {
+      document.getElementById('header-placeholder').innerHTML = data;
+    });
+</script>
 <canvas id="maze"></canvas>
 <div id="message"></div>
 <div id="controls">
