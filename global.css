@@ -5,7 +5,7 @@
   box-sizing: border-box;
 }
 
-/* Body */
+/* Base */
 body {
   font-family: 'Inter', 'Arial', sans-serif;
   background: #f9fafb;
@@ -17,10 +17,18 @@ body {
 
 /* Header */
 #site-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+  padding: 1rem;
   background: #111;
   color: #eee;
-  padding: 1rem;
-  text-align: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.5);
   font-size: 1.1rem;
 }
 
@@ -32,6 +40,41 @@ body {
 
 #site-header a:hover {
   text-decoration: underline;
+}
+
+/* Navigation Links */
+#nav-links {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+#hamburger {
+  display: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  #nav-links {
+    display: none;
+    flex-direction: column;
+    background: #111;
+    position: absolute;
+    top: 60px;
+    right: 10px;
+    padding: 1rem;
+    border: 1px solid #444;
+  }
+
+  #nav-links.show {
+    display: flex;
+  }
+
+  #hamburger {
+    display: block;
+  }
 }
 
 /* Main Layout */
@@ -70,8 +113,8 @@ button:hover {
 .tab {
   padding: 0.5rem 1rem;
   cursor: pointer;
-  border: none;
   background: none;
+  border: none;
   font-weight: bold;
   color: #555;
   transition: color 0.3s;
@@ -96,7 +139,7 @@ button:hover {
   border: 2px solid #ccc;
 }
 
-/* Controls layout */
+/* Controls */
 .controls-right {
   display: flex;
   flex-direction: column;
