@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paranoia Simulator</title>
+<link rel="stylesheet" href="global.css">
+<style>
+  body {
+    background: #111;
+    color: #eee;
+    font-family: monospace;
+    overflow: hidden;
+    height: 100vh;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+  .warning { color: red; font-size: 1.5em; margin-top: 20px; opacity: 0; transition: opacity 0.5s; }
+  .error-message { position: absolute; top: 10%; left: 50%; transform: translateX(-50%); background: rgba(255,0,0,0.8); padding: 10px 20px; border-radius: 5px; font-size: 1.2em; opacity: 0; transition: opacity 0.3s; }
+  .ghost-cursor { position: absolute; width: 10px; height: 10px; background: white; border-radius: 50%; pointer-events: none; opacity: 0.5; }
+</style>
+</head>
+<body>
+<div id="header-placeholder"></div>
+
+<h1>Analyzing Session...</h1>
+<div class="warning" id="warning">Session Integrity: UNSTABLE</div>
+<div class="error-message" id="error">AUTHORIZATION LEVEL: UNKNOWN</div>
+<div class="ghost-cursor" id="ghost"></div>
+
+<script>
+fetch('header.html').then(response => response.text()).then(data => {
+  document.getElementById('header-placeholder').innerHTML = data;
+});
+
+const warning = document.getElementById('warning');
+const error = document.getElementById('error');
+const ghost = document.getElementById('ghost');
+let idleTime = 0, typoCount = 0, fakeInput = '', scrollEvents = 0, mouseMoves = 0;
+
+setInterval(() => {
+  idleTime++;
+  if (idleTime > 5) warning.style.opacity = 1;
+  if (idleTime > 10) showError();
+}, 1000);
+
+function resetIdle() { idleTime = 0; }
+document.onmousemove = function(e) { resetIdle(); mouseMoves++; moveGhost(e); };
+document.onkeydown = function(e) { resetIdle(); if (Math.random() < 0.3) typoCount++; fakeInput += e.key; };
+document.onscroll = function() { resetIdle(); scrollEvents++; };
+
+setInterval(() => {
+  document.body.style.transform = `translate(${Math.random()*2-1}px, ${Math.random()*2-1}px)`;
+}, 500);
+
+function showError() { error.style.opacity = 1; setTimeout(() => { error.style.opacity = 0; }, 1500); }
+function moveGhost(e) { if (Math.random() < 0.05) { ghost.style.top = (e.clientY + Math.random()*100 - 50) + 'px'; ghost.style.left = (e.clientX + Math.random()*100 - 50) + 'px'; ghost.style.opacity = 0.5; }}
+
+setInterval(() => {
+  if (mouseMoves > 200 || typoCount > 50 || scrollEvents > 100) {
+    document.body.innerHTML = '<h1>SESSION TERMINATED</h1><p>Goodbye.</p>';
+  }
+}, 3000);
+</script>
+</body>
+</html>
