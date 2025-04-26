@@ -1,9 +1,10 @@
- 
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ant Farm Simulator</title>
+<link rel="stylesheet" href="global.css">
 <style>
   body {
     background: #222;
@@ -11,66 +12,152 @@
     margin: 0;
     height: 100vh;
     position: relative;
-  }.ant { position: absolute; width: 5px; height: 5px; background: white; border-radius: 50%; }
-
-.food { position: absolute; width: 10px; height: 10px; background: yellow; border-radius: 50%; } </style>
-
+    font-family: 'Inter', sans-serif;
+  }
+  .ant, .red-ant {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: white;
+    border-radius: 50%;
+    text-align: center;
+    font-size: 0.6rem;
+    color: black;
+    user-select: none;
+    pointer-events: auto;
+  }
+  .red-ant {
+    background: red;
+  }
+  .food {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: yellow;
+    border-radius: 50%;
+  }
+  #controls {
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    z-index: 10;
+  }
+  #controls button {
+    padding: 10px 15px;
+    font-size: 1rem;
+    background: #444;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+</style>
 </head>
-<body><script>
- 
+<body>
+
 <div id="header-placeholder"></div>
+
+<div id="controls">
+  <button id="add-red-ant">Release Red Ant</button>
+  <button id="add-named-ant">Add Named Ant</button>
+</div>
+
 <script>
-  fetch('header.html')
-    .then(response => response.text())
-    .then(data => {
-      document.getElementById('header-placeholder').innerHTML = data;
-    });
-</script>
+// Load header
+fetch('header.html')
+  .then(response => response.text())
+  .then(data => {
+    document.getElementById('header-placeholder').innerHTML = data;
+  });
+
 const ants = [];
 const foods = [];
-const NUM_ANTS = 50;
-const SPEED = 1;
+const RED_SPEED = 2;
+const NORMAL_SPEED = 1;
+const BREEDING_DISTANCE = 20;
+const BREEDING_TIME = 2000;
 
-function createAnt() {
+function createAnt(name = '', isRed = false) {
   const ant = document.createElement('div');
-  ant.className = 'ant';
+  ant.className = isRed ? 'red-ant' : 'ant';
+  ant.title = name;
   document.body.appendChild(ant);
   return {
     el: ant,
     x: Math.random() * window.innerWidth,
     y: Math.random() * window.innerHeight,
-    angle: Math.random() * Math.PI * 2
+    angle: Math.random() * Math.PI * 2,
+    isRed: isRed,
+    speed: isRed ? RED_SPEED : NORMAL_SPEED,
+    name: name,
+    breedingTimer: 0
   };
 }
 
 function createFood(x, y) {
   const food = document.createElement('div');
+  const colorChance = Math.random();
+  if (colorChance < 0.33) {
+    food.style.background = 'yellow'; // normal
+  } else if (colorChance < 0.66) {
+    food.style.background = 'green'; // super food
+  } else {
+    food.style.background = 'blue'; // confused food
+  }
   food.className = 'food';
   food.style.left = (x - 5) + 'px';
   food.style.top = (y - 5) + 'px';
   document.body.appendChild(food);
-  foods.push({x: x, y: y, el: food});
+  foods.push({x: x, y: y, el: food, type: food.style.background});
 }
 
 function moveAnt(ant) {
-  // Random wiggle
-  ant.angle += (Math.random() - 0.5) * 0.5;
+  ant.angle += (Math.random() - 0.5) * 0.3;
 
-  // Bias toward nearest food if any
-  if (foods.length > 0) {
-    let nearest = foods.reduce((a, b) => {
-      let da = (a.x - ant.x) ** 2 + (a.y - ant.y) ** 2;
-      let db = (b.x - ant.x) ** 2 + (b.y - ant.y) ** 2;
-      return da < db ? a : b;
-    });
-    let angleToFood = Math.atan2(nearest.y - ant.y, nearest.x - ant.x);
-    ant.angle += (angleToFood - ant.angle) * 0.05;
+  if (ant.isRed) {
+    // Hunt
+    let targets = ants.filter(a => !a.isRed);
+    if (targets.length > 0) {
+      let nearest = targets.reduce((a, b) => {
+        let da = (a.x - ant.x) ** 2 + (a.y - ant.y) ** 2;
+        let db = (b.x - ant.x) ** 2 + (b.y - ant.y) ** 2;
+        return da < db ? a : b;
+      });
+      let angleToAnt = Math.atan2(nearest.y - ant.y, nearest.x - ant.x);
+      ant.angle += (angleToAnt - ant.angle) * 0.2;
+
+      if (Math.hypot(ant.x - nearest.x, ant.y - nearest.y) < 10) {
+        document.body.removeChild(nearest.el);
+        ants.splice(ants.indexOf(nearest), 1);
+      }
+    }
+  } else {
+    // Normal ant seeks food
+    if (foods.length > 0) {
+      let nearest = foods.reduce((a, b) => {
+        let da = (a.x - ant.x) ** 2 + (a.y - ant.y) ** 2;
+        let db = (b.x - ant.x) ** 2 + (b.y - ant.y) ** 2;
+        return da < db ? a : b;
+      });
+      let angleToFood = Math.atan2(nearest.y - ant.y, nearest.x - ant.x);
+      ant.angle += (angleToFood - ant.angle) * 0.1;
+
+      if (Math.hypot(ant.x - nearest.x, ant.y - nearest.y) < 10) {
+        if (nearest.type === 'green') ant.speed = NORMAL_SPEED * 2;
+        else if (nearest.type === 'blue') ant.angle += Math.random() * Math.PI * 2;
+        document.body.removeChild(nearest.el);
+        foods.splice(foods.indexOf(nearest), 1);
+      }
+    }
   }
 
-  ant.x += Math.cos(ant.angle) * SPEED;
-  ant.y += Math.sin(ant.angle) * SPEED;
+  ant.x += Math.cos(ant.angle) * ant.speed;
+  ant.y += Math.sin(ant.angle) * ant.speed;
 
-  // Wrap around edges
+  // Wrap
   if (ant.x < 0) ant.x = window.innerWidth;
   if (ant.x > window.innerWidth) ant.x = 0;
   if (ant.y < 0) ant.y = window.innerHeight;
@@ -80,19 +167,59 @@ function moveAnt(ant) {
   ant.el.style.top = ant.y + 'px';
 }
 
-for (let i = 0; i < NUM_ANTS; i++) {
-  ants.push(createAnt());
-}
-
 function animate() {
   ants.forEach(moveAnt);
+
+  // Breeding
+  let normals = ants.filter(a => !a.isRed);
+  for (let i = 0; i < normals.length; i++) {
+    for (let j = i + 1; j < normals.length; j++) {
+      let a = normals[i], b = normals[j];
+      if (Math.hypot(a.x - b.x, a.y - b.y) < BREEDING_DISTANCE) {
+        a.breedingTimer += 16;
+        b.breedingTimer += 16;
+        if (a.breedingTimer > BREEDING_TIME && b.breedingTimer > BREEDING_TIME) {
+          ants.push(createAnt());
+          a.breedingTimer = 0;
+          b.breedingTimer = 0;
+        }
+      } else {
+        a.breedingTimer = 0;
+        b.breedingTimer = 0;
+      }
+    }
+  }
+
   requestAnimationFrame(animate);
 }
 
-animate();
+function handleSpawnNamedAnt() {
+  const name = prompt("Enter the ant's name:");
+  if (name) {
+    ants.push(createAnt(name));
+  }
+}
 
+function handleAddRedAnt() {
+  ants.push(createAnt('RED', true));
+}
+
+document.getElementById('add-named-ant').addEventListener('click', handleSpawnNamedAnt);
+document.getElementById('add-red-ant').addEventListener('click', handleAddRedAnt);
+
+// Touch/Click for food
 document.addEventListener('click', (e) => {
-  createFood(e.clientX, e.clientY);
+  if (e.target.tagName !== 'BUTTON') {
+    createFood(e.clientX, e.clientY);
+  }
 });
-</script></body>
+
+// Start with two ants
+ants.push(createAnt());
+ants.push(createAnt());
+
+animate();
+</script>
+
+</body>
 </html>
