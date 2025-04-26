@@ -1,0 +1,80 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rock Paper Scissors</title>
+  <link rel="stylesheet" href="global.css">
+</head>
+<body>
+  <div id="header-placeholder"></div>
+  <main>
+    <div class="button-group">
+      <button class="choice" data-choice="Rock">Rock</button>
+      <button class="choice" data-choice="Paper">Paper</button>
+      <button class="choice" data-choice="Scissors">Scissors</button>
+    </div>
+    <div id="results">
+      <p>You chose: <span id="user-choice"></span></p>
+      <p>Computer chose: <span id="computer-choice"></span></p>
+      <p>Result: <span id="result"></span></p>
+    </div>
+    <button id="play-again">Play Again</button>
+  </main>
+  <script>
+    fetch('header.html')
+      .then(response => response.text())
+      .then(data => {
+        document.getElementById('header-placeholder').innerHTML = data;
+      });
+
+    const buttons = document.querySelectorAll('.choice');
+    const userChoiceSpan = document.getElementById('user-choice');
+    const computerChoiceSpan = document.getElementById('computer-choice');
+    const resultSpan = document.getElementById('result');
+    const playAgainButton = document.getElementById('play-again');
+    const choices = ['Rock', 'Paper', 'Scissors'];
+
+    buttons.forEach(button => {
+      button.addEventListener('click', () => {
+        if (button.classList.contains('disabled')) return;
+
+        const userChoice = button.dataset.choice;
+        const computerChoice = getComputerChoice();
+        const result = determineWinner(userChoice, computerChoice);
+
+        userChoiceSpan.textContent = userChoice;
+        computerChoiceSpan.textContent = computerChoice;
+        resultSpan.textContent = result;
+
+        buttons.forEach(b => b.classList.add('disabled'));
+        button.classList.remove('disabled');
+      });
+    });
+
+    playAgainButton.addEventListener('click', () => {
+      userChoiceSpan.textContent = '';
+      computerChoiceSpan.textContent = '';
+      resultSpan.textContent = '';
+      buttons.forEach(button => button.classList.remove('disabled'));
+    });
+
+    function getComputerChoice() {
+      const index = Math.floor(Math.random() * choices.length);
+      return choices[index];
+    }
+
+    function determineWinner(user, computer) {
+      if (user === computer) return "It's a Draw!";
+      if ((user === 'Rock' && computer === 'Scissors') ||
+          (user === 'Paper' && computer === 'Rock') ||
+          (user === 'Scissors' && computer === 'Paper')) {
+        return "You Win!";
+      } else {
+        return "You Lose!";
+      }
+    }
+  </script>
+</body>
+</html>
