@@ -2,10 +2,23 @@
   <h2>Ant Controls</h2>
   <button id="add-ant">Add Ant</button>
   <button id="add-red-ant">Add Red Ant</button>
+
   <div id="mating-conditions">
     <label for="mating-slider">Mating Conditions:</label>
     <input type="range" id="mating-slider" min="1" max="100" value="50">
     <span id="mating-label">Moderate</span>
+  </div>
+
+  <div id="lifespan-conditions">
+    <label for="lifespan-slider-normal">Normal Ant Lifespan:</label>
+    <input type="range" id="lifespan-slider-normal" min="30" max="300" value="120">
+    <span id="lifespan-label-normal">2 minutes</span>
+  </div>
+
+  <div id="lifespan-conditions-red">
+    <label for="lifespan-slider-red">Red Ant Lifespan:</label>
+    <input type="range" id="lifespan-slider-red" min="30" max="300" value="120">
+    <span id="lifespan-label-red">2 minutes</span>
   </div>
 
   <div id="food-selector">
@@ -28,10 +41,4 @@
 
   <h2>Stats</h2>
   <div id="stats">Ants Alive: 0 | Born: 0 | Dead: 0</div>
-
-  <div id="lifespan-conditions">
-    <label for="lifespan-slider">Ant Lifespan:</label>
-    <input type="range" id="lifespan-slider" min="30" max="300" value="120">
-    <span id="lifespan-label">2 minutes</span>
-  </div>
 </div>
