@@ -11,10 +11,14 @@ let canvas, ctx;
 let normalAntLifespan = 120000;
 let redAntLifespan = 120000;
 
+// LocalStorage key
+const SAVE_KEY = 'antFarmSave';
+
 // Setup when DOM is ready
 window.addEventListener('DOMContentLoaded', () => {
   canvas = document.getElementById('antCanvas');
   ctx = canvas.getContext('2d');
+  loadFarm();  // Load saved farm data from localStorage
   setupUI();
   animate();
 });
@@ -24,12 +28,14 @@ function setupUI() {
     ants.push(createAnt(false));
     totalBorn++;
     updateStats();
+    saveFarm();
   });
 
   document.getElementById('add-red-ant').addEventListener('click', () => {
     ants.push(createAnt(true));
     totalBorn++;
     updateStats();
+    saveFarm();
   });
 
   document.getElementById('pause-resume').addEventListener('click', () => {
@@ -37,33 +43,34 @@ function setupUI() {
     document.getElementById('pause-resume').innerText = animationPaused ? 'Resume' : 'Pause';
   });
 
-  document.getElementById('mute-toggle').addEventListener('click', () => {
-    // Future-proof, no sound now
-  });
-
   document.getElementById('allow-red-breeding').addEventListener('change', (e) => {
     allowRedBreeding = e.target.checked;
+    saveFarm();
   });
 
   document.getElementById('kill-red-ants').addEventListener('click', () => {
     ants = ants.filter(a => !a.isRed);
     updateStats();
+    saveFarm();
   });
 
   document.getElementById('mating-slider').addEventListener('input', (e) => {
     const value = e.target.value;
     matingSpeed = 10000 - (value * 90);
     updateMatingLabel(value);
+    saveFarm();
   });
 
   document.getElementById('lifespan-slider-normal').addEventListener('input', (e) => {
     normalAntLifespan = e.target.value * 1000;
     updateLifespanLabelNormal(e.target.value);
+    saveFarm();
   });
 
   document.getElementById('lifespan-slider-red').addEventListener('input', (e) => {
     redAntLifespan = e.target.value * 1000;
     updateLifespanLabelRed(e.target.value);
+    saveFarm();
   });
 
   document.getElementById('antCanvas').addEventListener('click', (e) => {
@@ -72,6 +79,7 @@ function setupUI() {
     const y = e.clientY - rect.top;
     const foodType = document.getElementById('food-type').value;
     createFood(x, y, foodType);
+    saveFarm();
   });
 }
 
@@ -207,4 +215,36 @@ function tryBreeding(ant) {
       updateStats();
     }
   });
+}
+
+// Save farm data to localStorage
+function saveFarm() {
+  const data = {
+    ants,
+    foods,
+    totalBorn,
+    totalDead,
+    matingSpeed,
+    normalAntLifespan,
+    redAntLifespan,
+    allowRedBreeding
+  };
+  localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+}
+
+// Load farm data from localStorage
+function loadFarm() {
+  const saved = localStorage.getItem(SAVE_KEY);
+  if (saved) {
+    const data = JSON.parse(saved);
+    ants = data.ants || [];
+    foods = data.foods || [];
+    totalBorn = data.totalBorn || 0;
+    totalDead = data.totalDead || 0;
+    matingSpeed = data.matingSpeed || matingSpeed;
+    normalAntLifespan = data.normalAntLifespan || normalAntLifespan;
+    redAntLifespan = data.redAntLifespan || redAntLifespan;
+    allowRedBreeding = data.allowRedBreeding !== undefined ? data.allowRedBreeding : allowRedBreeding;
+    updateStats();
+  }
 }
