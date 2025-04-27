@@ -14,13 +14,26 @@ let redAntLifespan = 120000;
 // LocalStorage key
 const SAVE_KEY = 'antFarmSave';
 
-// Setup when DOM is ready
+// Load header, controls, then initialize
 window.addEventListener('DOMContentLoaded', () => {
-  canvas = document.getElementById('antCanvas');
-  ctx = canvas.getContext('2d');
-  loadFarm();  // Load saved farm data from localStorage
-  setupUI();
-  animate();
+  // 1. Load header
+  fetch('header.html')
+    .then(response => response.text())
+    .then(html => {
+      document.getElementById('header-placeholder').innerHTML = html;
+      // 2. Load controls panel
+      return fetch('ant-controls-panel.html');
+    })
+    .then(response => response.text())
+    .then(html => {
+      document.getElementById('controls-placeholder').innerHTML = html;
+      // 3. Now initialize game state
+      loadFarm();
+      setupUI();
+      updateStats();
+      animate();
+    })
+    .catch(err => console.error('Failed to load UI components:', err));
 });
 
 function setupUI() {
