@@ -1,26 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ant Farm Simulator</title>
-<link rel="stylesheet" href="global.css">
-<link rel="stylesheet" href="ant-farm.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ant Farm Simulator</title>
+  <link rel="stylesheet" href="global.css">
+  <link rel="stylesheet" href="ant-farm.css">
+  <script defer src="ant-farm.js"></script>
 </head>
 <body>
 
 <div id="header-placeholder"></div>
 
-<div id="controls">
-  <button id="pause-resume">Pause</button>
-  <button id="mute-toggle">Mute</button>
-  <button id="add-red-ant">Release Red Ant</button>
-  <button id="add-named-ant">Add Named Ant</button>
+<div id="main-container">
+  <div id="controls-placeholder"></div>
+  <canvas id="antCanvas" width="1000" height="600"></canvas>
 </div>
-
-<div id="stats">Ants Alive: 2 | Born: 2 | Dead: 0</div>
-
-<canvas id="antCanvas" width="1000" height="600" style="background:#222; display:block; margin:0 auto;"></canvas>
 
 <script>
 // Load header
@@ -30,144 +25,12 @@ fetch('header.html')
     document.getElementById('header-placeholder').innerHTML = data;
   });
 
-const ants = [];
-const foods = [];
-let totalBorn = 2;
-let totalDead = 0;
-let animationPaused = false;
-let muted = false;
-let ctx;
-
-window.onload = () => {
-  const canvas = document.getElementById('antCanvas');
-  ctx = canvas.getContext('2d');
-  ants.push(createAnt());
-  ants.push(createAnt());
-  updateStats();
-  animate();
-};
-
-function createAnt(name = '', isRed = false) {
-  return {
-    x: Math.random() * 1000,
-    y: Math.random() * 600,
-    angle: Math.random() * Math.PI * 2,
-    isRed: isRed,
-    speed: isRed ? 2 : 1,
-    name: name,
-    breedingTimer: 0
-  };
-}
-
-function createFood(x, y) {
-  const colorChance = Math.random();
-  let type = 'yellow';
-  if (colorChance < 0.33) type = 'yellow';
-  else if (colorChance < 0.66) type = 'green';
-  else type = 'blue';
-  foods.push({x, y, type});
-}
-
-function moveAnt(ant) {
-  ctx.beginPath();
-  ctx.fillStyle = ant.isRed ? 'red' : 'white';
-  ctx.arc(ant.x, ant.y, 5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.closePath();
-
-  if (ant.isRed) {
-    const targets = ants.filter(a => !a.isRed);
-    if (targets.length > 0) {
-      const nearest = targets.reduce((a, b) => {
-        const da = (a.x - ant.x) ** 2 + (a.y - ant.y) ** 2;
-        const db = (b.x - ant.x) ** 2 + (b.y - ant.y) ** 2;
-        return da < db ? a : b;
-      });
-      const angleToAnt = Math.atan2(nearest.y - ant.y, nearest.x - ant.x);
-      ant.angle += (angleToAnt - ant.angle) * 0.2;
-
-      if (Math.hypot(ant.x - nearest.x, ant.y - nearest.y) < 10) {
-        ants.splice(ants.indexOf(nearest), 1);
-        totalDead++;
-        updateStats();
-      }
-    }
-  } else {
-    if (foods.length > 0) {
-      const nearest = foods.reduce((a, b) => {
-        const da = (a.x - ant.x) ** 2 + (a.y - ant.y) ** 2;
-        const db = (b.x - ant.x) ** 2 + (b.y - ant.y) ** 2;
-        return da < db ? a : b;
-      });
-      const angleToFood = Math.atan2(nearest.y - ant.y, nearest.x - ant.x);
-      ant.angle += (angleToFood - ant.angle) * 0.1;
-
-      if (Math.hypot(ant.x - nearest.x, ant.y - nearest.y) < 10) {
-        if (nearest.type === 'green') ant.speed = 2;
-        else if (nearest.type === 'blue') ant.angle += Math.random() * Math.PI * 2;
-        foods.splice(foods.indexOf(nearest), 1);
-      }
-    }
-  }
-
-  ant.x += Math.cos(ant.angle) * ant.speed;
-  ant.y += Math.sin(ant.angle) * ant.speed;
-
-  if (ant.x < 0) ant.x = 1000;
-  if (ant.x > 1000) ant.x = 0;
-  if (ant.y < 0) ant.y = 600;
-  if (ant.y > 600) ant.y = 0;
-}
-
-function animate() {
-  if (!animationPaused) {
-    ctx.clearRect(0, 0, 1000, 600);
-    foods.forEach(food => {
-      ctx.beginPath();
-      ctx.fillStyle = food.type;
-      ctx.arc(food.x, food.y, 5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.closePath();
-    });
-    ants.forEach(moveAnt);
-  }
-  requestAnimationFrame(animate);
-}
-
-function updateStats() {
-  document.getElementById('stats').innerText =
-    `Ants Alive: ${ants.length} | Born: ${totalBorn} | Dead: ${totalDead}`;
-}
-
-document.getElementById('pause-resume').addEventListener('click', () => {
-  animationPaused = !animationPaused;
-  document.getElementById('pause-resume').innerText = animationPaused ? "Resume" : "Pause";
-});
-
-document.getElementById('mute-toggle').addEventListener('click', () => {
-  muted = !muted;
-  document.getElementById('mute-toggle').innerText = muted ? "Unmute" : "Mute";
-});
-
-document.getElementById('add-named-ant').addEventListener('click', () => {
-  const name = prompt("Enter the ant's name:");
-  if (name) {
-    ants.push(createAnt(name));
-    totalBorn++;
-    updateStats();
-  }
-});
-
-document.getElementById('add-red-ant').addEventListener('click', () => {
-  ants.push(createAnt('RED', true));
-});
-
-document.getElementById('antCanvas').addEventListener('click', (e) => {
-  const rect = e.target.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-  createFood(x, y);
-});
+// Load controls
+fetch('controls-panel.html')
+  .then(response => response.text())
+  .then(data => {
+    document.getElementById('controls-placeholder').innerHTML = data;
+  });
 </script>
 
 </body>
