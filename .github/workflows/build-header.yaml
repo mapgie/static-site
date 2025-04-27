@@ -21,7 +21,7 @@ jobs:
 
       - name: Commit and push changes
         run: |
-          git config --global user.name "${{ secrets.USER_NAME }}"
+          git config --global user.name "${{ vars.USER_NAME }}"
           git config --global user.email "${{ secrets.USER_EMAIL }}"
           git add header.html
           git commit -m "Auto-update header [skip ci]" || echo "No changes to commit"
