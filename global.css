@@ -5,7 +5,7 @@
   box-sizing: border-box;
 }
 
-/* Base */
+/* Base Styles */
 body {
   font-family: 'Inter', 'Arial', sans-serif;
   background: #f9fafb;
@@ -26,7 +26,7 @@ body {
   background: #111;
   color: #eee;
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
   box-shadow: 0 2px 5px rgba(0,0,0,0.5);
   font-size: 1.2rem;
@@ -47,27 +47,18 @@ body {
   display: flex;
   gap: 1rem;
   align-items: center;
+  overflow: hidden;
+  max-height: none;
+  transition: max-height 0.3s ease;
 }
 
 #hamburger {
   display: none;
-  font-size: 1.5rem;
+  font-size: 1.8rem;
   cursor: pointer;
 }
 
-#nav-links {
-  transition: max-height 0.3s ease, padding 0.3s ease;
-  overflow: hidden;
-  max-height: 0;
-}
-
-#nav-links.show {
-  display: flex;
-  max-height: 500px; /* plenty of room for the links */
-  padding: 1rem;
-}
-
-/* Responsive */
+/* Hamburger Behavior (Mobile) */
 @media (max-width: 600px) {
   #nav-links {
     flex-direction: column;
@@ -76,6 +67,13 @@ body {
     top: 60px;
     right: 10px;
     border: 1px solid #444;
+    padding: 0;
+    max-height: 0;
+  }
+
+  #nav-links.show {
+    max-height: 500px; /* or enough for all links */
+    padding: 1rem;
   }
 
   #hamburger {

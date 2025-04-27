@@ -5,8 +5,9 @@ set -euo pipefail
 # Output file
 HEADER_FILE="header.html"
 TMP_HEADER_FILE="$(mktemp)"
+CHECKSUM_FILE=".header_checksum"
 
-# Helper to capitalize words properly
+# Helper to capitalize each word properly
 capitalize() {
   awk '
   BEGIN {
@@ -20,59 +21,68 @@ capitalize() {
   }' "$1"
 }
 
-# Begin building header
-output='
-<div id="site-header">
-  <a href="https://github.com/mapgie/static-site/" target="_blank" class="site-icon">👾</a>
-  <div id="nav-links">
-'
-
-# Find all .html files excluding header.html itself
+# Find matching files
 mapfile -d '' files < <(
   find . -maxdepth 1 -type f -name "*.html" \
     ! -name "header.html" \
-    ! \( -name "ant-*.html" ! -name "ant-farm.html" \) \
+    ! -name "ant-*.html" ! -name "ant-farm.html" \
     -print0 | sort -z
 )
 
-# Loop over files and build the links
+# Compute checksum of file list
+current_checksum="$(printf '%s\0' "${files[@]}" | sha256sum | awk '{print $1}')"
+
+# If checksum matches previous run, skip regeneration
+if [[ -f "$CHECKSUM_FILE" ]] && grep -q "$current_checksum" "$CHECKSUM_FILE"; then
+  echo "No changes made."
+  exit 0
+fi
+
+# Start building header
+{
+  echo '<div id="site-header">'
+  echo '  <a href="https://github.com/mapgie/static-site/" target="_blank" class="site-icon">👾</a>'
+  echo '  <div id="hamburger">☰</div>'
+  echo '  <div id="nav-links">'
+} > "$TMP_HEADER_FILE"
+
+# Build nav links
 for file in "${files[@]}"; do
   base="$(basename "$file" .html)"
 
   if [[ "$base" == "index" ]]; then
     display_name="Home"
+  elif [[ "$base" == "ant-farm" ]]; then
+    display_name="Ant Farm"
   else
     display_name=$(capitalize "$base")
   fi
 
-  output+="    <a href=\"${base}.html\">$display_name</a>\n"
+  echo "    <a href=\"${base}.html\">$display_name</a>" >> "$TMP_HEADER_FILE"
 done
 
-# Close the nav and add hamburger button
-output+='
-  </div>
-  <div id="hamburger">☰</div>
-</div>
+# Finish header
+{
+  echo '  </div>'
+  echo '</div>'
+  echo ''
+  echo '<script>'
+  echo '  const hamburger = document.getElementById("hamburger");'
+  echo '  const navLinks = document.getElementById("nav-links");'
+  echo '  hamburger.addEventListener("click", () => {'
+  echo '    navLinks.classList.toggle("show");'
+  echo '  });'
+  echo '</script>'
+} >> "$TMP_HEADER_FILE"
 
-<script>
-  const hamburger = document.getElementById("hamburger");
-  const navLinks = document.getElementById("nav-links");
-
-  hamburger.addEventListener("click", () => {
-    navLinks.classList.toggle("show");
-  });
-</script>
-'
-
-# Write to temp file first
-echo -e "$output" > "$TMP_HEADER_FILE"
-
-# Compare with existing HEADER_FILE if it exists
+# Compare and move if different
 if [[ -f "$HEADER_FILE" ]] && cmp -s "$TMP_HEADER_FILE" "$HEADER_FILE"; then
-  echo "No changes made to header."
-  rm -f "$TMP_HEADER_FILE"
-  exit 0
+  echo "No changes made."
 else
   mv "$TMP_HEADER_FILE" "$HEADER_FILE"
-  echo "✅ Header regenerated successfully."
+  echo "$current_checksum" > "$CHECKSUM_FILE"
+  echo "Header regenerated successfully."
 fi
+
+# Clean up
+[[ -f "$TMP_HEADER_FILE" ]] && rm -f "$TMP_HEADER_FILE"

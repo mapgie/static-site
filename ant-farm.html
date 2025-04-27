@@ -1,37 +1,14 @@
-<!DOCTYPE html>
-<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ant Farm Simulator</title>
   <link rel="stylesheet" href="global.css">
   <link rel="stylesheet" href="ant-farm.css">
-  <script defer src="ant-farm.js"></script>
+  
+  <!-- Load JS modules in order -->
+  <script defer src="js/ant-constants.js"></script>
+  <script defer src="js/ant-utils.js"></script>
+  <script defer src="js/ant-storage.js"></script>
+  <script defer src="js/ant-core.js"></script>
+  <script defer src="js/ant-ui.js"></script>
 </head>
-<body>
-
-<div id="header-placeholder"></div>
-
-<div id="main-container">
-  <div id="controls-placeholder"></div>
-  <canvas id="antCanvas" width="1000" height="600"></canvas>
-</div>
-
-<script>
-// Load header
-fetch('header.html')
-  .then(response => response.text())
-  .then(data => {
-    document.getElementById('header-placeholder').innerHTML = data;
-  });
-
-// Load controls
-fetch('ant-control-panel.html')
-  .then(response => response.text())
-  .then(data => {
-    document.getElementById('controls-placeholder').innerHTML = data;
-  });
-</script>
-
-</body>
-</html>

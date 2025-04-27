@@ -1,25 +1,20 @@
-
 <div id="site-header">
   <a href="https://github.com/mapgie/static-site/" target="_blank" class="site-icon">👾</a>
+  <div id="hamburger">☰</div>
   <div id="nav-links">
     <a href="Human-Test.html">Human Test</a>
-    <a href="ant-farm.html">Ant Farm</a>
     <a href="art.html">Art</a>
     <a href="header-snippet.html">Header Snippet</a>
     <a href="index.html">Home</a>
     <a href="memory-maze.html">Memory Maze</a>
     <a href="rps.html">Rps</a>
-
   </div>
-  <div id="hamburger">☰</div>
 </div>
 
 <script>
   const hamburger = document.getElementById("hamburger");
   const navLinks = document.getElementById("nav-links");
-
   hamburger.addEventListener("click", () => {
     navLinks.classList.toggle("show");
   });
 </script>
-
