@@ -22,15 +22,31 @@ capitalize() {
 }
 
 # Find matching files
-mapfile -d '' files < <(
+mapfile -d '' all_files < <(
   find . -maxdepth 1 -type f -name "*.html" \
     ! -name "header.html" \
     ! -name "ant-*.html" ! -name "ant-farm.html" \
     -print0 | sort -z
 )
 
+# Manually extract Home and Ant Farm
+home_file=""
+ant_farm_file=""
+other_files=()
+
+for file in "${all_files[@]}"; do
+  base="$(basename "$file" .html)"
+  if [[ "$base" == "index" ]]; then
+    home_file="$file"
+  elif [[ "$base" == "ant-farm" ]]; then
+    ant_farm_file="$file"
+  else
+    other_files+=("$file")
+  fi
+done
+
 # Compute checksum of file list
-current_checksum="$(printf '%s\0' "${files[@]}" | sha256sum | awk '{print $1}')"
+current_checksum="$(printf '%s\0' "${all_files[@]}" | sha256sum | awk '{print $1}')"
 
 # If checksum matches previous run, skip regeneration
 if [[ -f "$CHECKSUM_FILE" ]] && grep -q "$current_checksum" "$CHECKSUM_FILE"; then
@@ -46,18 +62,20 @@ fi
   echo '  <div id="nav-links">'
 } > "$TMP_HEADER_FILE"
 
-# Build nav links
-for file in "${files[@]}"; do
+# Always add Home first (even if missing file will just be missing link)
+if [[ -n "$home_file" ]]; then
+  echo '    <a href="index.html">Home</a>' >> "$TMP_HEADER_FILE"
+fi
+
+# Always add Ant Farm second (even if missing file will just be missing link)
+if [[ -n "$ant_farm_file" ]]; then
+  echo '    <a href="ant-farm.html">Ant Farm</a>' >> "$TMP_HEADER_FILE"
+fi
+
+# Add other files (alphabetically)
+for file in "${other_files[@]}"; do
   base="$(basename "$file" .html)"
-
-  if [[ "$base" == "index" ]]; then
-    display_name="Home"
-  elif [[ "$base" == "ant-farm" ]]; then
-    display_name="Ant Farm"
-  else
-    display_name=$(capitalize "$base")
-  fi
-
+  display_name=$(capitalize "$base")
   echo "    <a href=\"${base}.html\">$display_name</a>" >> "$TMP_HEADER_FILE"
 done
 
