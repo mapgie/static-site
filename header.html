@@ -1,28 +1,25 @@
+
 <div id="site-header">
-  <!-- Left icon -->
-  <a href="https://github.com/mapgie/static-site/" target="_blank" style="color: #eee; text-decoration: none; font-size: 1.5rem;">
-    👾 <!-- little alien emoji as an example icon -->
-  </a>
-
-  <!-- Center links -->
+  <a href="https://github.com/mapgie/static-site/" target="_blank" class="site-icon">👾</a>
   <div id="nav-links">
-    <a href="index.html">Home</a>
     <a href="Human-Test.html">Human Test</a>
-    <a href="ant-farm.html">\2nt\2arm</a>
-    <a href="art.html">\2rt</a>
-    <a href="memory-maze.html">\2emory\2aze</a>
-    <a href="rps.html">\2ps</a>
-  </div>
+    <a href="ant-farm.html">Ant Farm</a>
+    <a href="art.html">Art</a>
+    <a href="header-snippet.html">Header Snippet</a>
+    <a href="index.html">Home</a>
+    <a href="memory-maze.html">Memory Maze</a>
+    <a href="rps.html">Rps</a>
 
-  <!-- Hamburger button -->
+  </div>
   <div id="hamburger">☰</div>
 </div>
 
 <script>
-  const hamburger = document.getElementById('hamburger');
-  const navLinks = document.getElementById('nav-links');
+  const hamburger = document.getElementById("hamburger");
+  const navLinks = document.getElementById("nav-links");
 
-  hamburger.addEventListener('click', () => {
-    navLinks.classList.toggle('show');
+  hamburger.addEventListener("click", () => {
+    navLinks.classList.toggle("show");
   });
 </script>
+
