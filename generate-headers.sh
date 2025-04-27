@@ -4,6 +4,7 @@ set -euo pipefail
 
 # Output file
 HEADER_FILE="header.html"
+TMP_HEADER_FILE="$(mktemp)"
 
 # Helper to capitalize words properly
 capitalize() {
@@ -63,7 +64,15 @@ output+='
 </script>
 '
 
-# Write to file
-echo -e "$output" > "$HEADER_FILE"
+# Write to temp file first
+echo -e "$output" > "$TMP_HEADER_FILE"
 
-echo "✅ Header regenerated successfully."
+# Compare with existing HEADER_FILE if it exists
+if [[ -f "$HEADER_FILE" ]] && cmp -s "$TMP_HEADER_FILE" "$HEADER_FILE"; then
+  echo "No changes made to header."
+  rm -f "$TMP_HEADER_FILE"
+  exit 0
+else
+  mv "$TMP_HEADER_FILE" "$HEADER_FILE"
+  echo "✅ Header regenerated successfully."
+fi
