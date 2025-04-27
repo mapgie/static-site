@@ -5,10 +5,7 @@ set -euo pipefail
 # Output file
 HEADER_FILE="header.html"
 
-# Temp file to compare
-TMP_HEADER_FILE="$(mktemp)"
-
-# Helper to capitalize each word properly
+# Helper to capitalize words properly
 capitalize() {
   awk '
   BEGIN {
@@ -22,10 +19,14 @@ capitalize() {
   }' "$1"
 }
 
-# Begin building header in memory
-output='<div id="site-header" style="padding: 1rem; background: #111; color: #eee; text-align: center; font-family: Inter, sans-serif;">'
+# Begin building header
+output='
+<div id="site-header">
+  <a href="https://github.com/mapgie/static-site/" target="_blank" class="site-icon">👾</a>
+  <div id="nav-links">
+'
 
-# Prepare array safely
+# Find all .html files excluding header.html itself
 mapfile -d '' files < <(
   find . -maxdepth 1 -type f -name "*.html" \
     ! -name "header.html" \
@@ -33,7 +34,7 @@ mapfile -d '' files < <(
     -print0 | sort -z
 )
 
-# Loop and build the links
+# Loop over files and build the links
 for file in "${files[@]}"; do
   base="$(basename "$file" .html)"
 
@@ -43,25 +44,26 @@ for file in "${files[@]}"; do
     display_name=$(capitalize "$base")
   fi
 
-  output+=" <a href=\"${base}.html\" style=\"margin: 0 1rem; color: #eee; text-decoration: none;\">$display_name</a> |"
+  output+="    <a href=\"${base}.html\">$display_name</a>\n"
 done
 
-# Remove the final trailing " |"
-output="${output% |}"
+# Close the nav and add hamburger button
+output+='
+  </div>
+  <div id="hamburger">☰</div>
+</div>
 
-# Close div
-output+="</div>"
+<script>
+  const hamburger = document.getElementById("hamburger");
+  const navLinks = document.getElementById("nav-links");
 
-# Write the output to a temp file first
-echo "$output" > "$TMP_HEADER_FILE"
+  hamburger.addEventListener("click", () => {
+    navLinks.classList.toggle("show");
+  });
+</script>
+'
 
-# Compare with existing HEADER_FILE if it exists
-if [[ -f "$HEADER_FILE" ]] && cmp -s "$TMP_HEADER_FILE" "$HEADER_FILE"; then
-  echo "No changes made."
-else
-  mv "$TMP_HEADER_FILE" "$HEADER_FILE"
-  echo "Header regenerated successfully."
-fi
+# Write to file
+echo -e "$output" > "$HEADER_FILE"
 
-# Clean up temp file if still around
-[[ -f "$TMP_HEADER_FILE" ]] && rm -f "$TMP_HEADER_FILE"
+echo "✅ Header regenerated successfully."
