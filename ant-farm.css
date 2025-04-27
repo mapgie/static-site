@@ -1,0 +1,66 @@
+body {
+  background: #222;
+  overflow: hidden;
+  margin: 0;
+  height: 100vh;
+  position: relative;
+  font-family: 'Inter', sans-serif;
+}
+
+.ant, .red-ant {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: white;
+  border-radius: 50%;
+  text-align: center;
+  font-size: 0.6rem;
+  color: black;
+  user-select: none;
+  pointer-events: auto;
+}
+
+.red-ant {
+  background: red;
+}
+
+.food {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: yellow;
+  border-radius: 50%;
+}
+
+#controls {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  z-index: 10;
+  justify-content: center;
+}
+
+#controls button {
+  padding: 10px 15px;
+  font-size: 1rem;
+  background: #444;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+#stats {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #eee;
+  font-size: 1rem;
+  text-align: center;
+  z-index: 10;
+}
