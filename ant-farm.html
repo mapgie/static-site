@@ -26,7 +26,7 @@ fetch('header.html')
   });
 
 // Load controls
-fetch('controls-panel.html')
+fetch('ant-controls-panel.html')
   .then(response => response.text())
   .then(data => {
     document.getElementById('controls-placeholder').innerHTML = data;
