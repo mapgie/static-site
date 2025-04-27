@@ -7,7 +7,11 @@ let totalBorn = 0;
 let totalDead = 0;
 let canvas, ctx;
 
-// Initialize when DOM is ready
+// Lifespan settings
+let normalAntLifespan = 120000;
+let redAntLifespan = 120000;
+
+// Setup when DOM is ready
 window.addEventListener('DOMContentLoaded', () => {
   canvas = document.getElementById('antCanvas');
   ctx = canvas.getContext('2d');
@@ -17,7 +21,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 function setupUI() {
   document.getElementById('add-ant').addEventListener('click', () => {
-    ants.push(createAnt());
+    ants.push(createAnt(false));
     totalBorn++;
     updateStats();
   });
@@ -34,7 +38,7 @@ function setupUI() {
   });
 
   document.getElementById('mute-toggle').addEventListener('click', () => {
-    // Mute button kept for future (no sound currently)
+    // Future-proof, no sound now
   });
 
   document.getElementById('allow-red-breeding').addEventListener('change', (e) => {
@@ -48,8 +52,18 @@ function setupUI() {
 
   document.getElementById('mating-slider').addEventListener('input', (e) => {
     const value = e.target.value;
-    matingSpeed = 10000 - (value * 90); // Mating conditions from awful (slow) to optimal (fast)
+    matingSpeed = 10000 - (value * 90);
     updateMatingLabel(value);
+  });
+
+  document.getElementById('lifespan-slider-normal').addEventListener('input', (e) => {
+    normalAntLifespan = e.target.value * 1000;
+    updateLifespanLabelNormal(e.target.value);
+  });
+
+  document.getElementById('lifespan-slider-red').addEventListener('input', (e) => {
+    redAntLifespan = e.target.value * 1000;
+    updateLifespanLabelRed(e.target.value);
   });
 
   document.getElementById('antCanvas').addEventListener('click', (e) => {
@@ -68,14 +82,27 @@ function updateMatingLabel(value) {
   else label.innerText = "Optimal";
 }
 
+function updateLifespanLabelNormal(value) {
+  document.getElementById('lifespan-label-normal').innerText = `${Math.round(value/60)} min`;
+}
+
+function updateLifespanLabelRed(value) {
+  document.getElementById('lifespan-label-red').innerText = `${Math.round(value/60)} min`;
+}
+
 function createAnt(isRed = false) {
+  const baseLife = isRed ? redAntLifespan : normalAntLifespan;
+  const jitter = (Math.random() * 0.2 - 0.1); // ±10%
+  const lifespan = baseLife * (1 + jitter);
+
   return {
     x: Math.random() * canvas.width,
     y: Math.random() * canvas.height,
     angle: Math.random() * Math.PI * 2,
     isRed: isRed,
     speed: isRed ? 2 : 1,
-    breedingTimer: 0
+    breedingTimer: 0,
+    lifespan: lifespan // milliseconds
   };
 }
 
@@ -117,13 +144,17 @@ function getFoodColor(type) {
 }
 
 function moveAndDrawAnts() {
-  ants.forEach(ant => {
+  for (let i = ants.length - 1; i >= 0; i--) {
+    const ant = ants[i];
+
+    // Draw
     ctx.beginPath();
     ctx.fillStyle = ant.isRed ? 'red' : 'white';
     ctx.arc(ant.x, ant.y, 5, 0, Math.PI * 2);
     ctx.fill();
     ctx.closePath();
 
+    // Movement
     if (foods.length > 0) {
       const nearest = foods.reduce((a, b) => {
         const da = (a.x - ant.x)**2 + (a.y - ant.y)**2;
@@ -146,13 +177,21 @@ function moveAndDrawAnts() {
     if (ant.y < 0) ant.y = canvas.height;
     if (ant.y > canvas.height) ant.y = 0;
 
-    // Breeding logic
+    // Breeding
     ant.breedingTimer += 16;
     if (ant.breedingTimer >= matingSpeed) {
       tryBreeding(ant);
       ant.breedingTimer = 0;
     }
-  });
+
+    // Lifespan ticking
+    ant.lifespan -= 16;
+    if (ant.lifespan <= 0) {
+      ants.splice(i, 1);
+      totalDead++;
+      updateStats();
+    }
+  }
 }
 
 function tryBreeding(ant) {
