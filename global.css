@@ -71,18 +71,12 @@ body {
 /* Responsive */
 @media (max-width: 600px) {
   #nav-links {
-    display: none;
     flex-direction: column;
     background: #111;
     position: absolute;
     top: 60px;
     right: 10px;
-    padding: 1rem;
     border: 1px solid #444;
-  }
-
-  #nav-links.show {
-    display: flex;
   }
 
   #hamburger {
