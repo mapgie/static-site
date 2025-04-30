@@ -1,4 +1,3 @@
- 
 window.addEventListener('DOMContentLoaded', () => {
   canvas = document.getElementById('antCanvas');
   ctx = canvas.getContext('2d');
@@ -7,7 +6,7 @@ window.addEventListener('DOMContentLoaded', () => {
     .then(r => r.text())
     .then(html => {
       document.getElementById('header-placeholder').innerHTML = html;
-      return fetch('ant-controls-panel.html');
+      return fetch('ant-control-panel.html');
     })
     .then(r => r.text())
     .then(html => {
@@ -16,7 +15,7 @@ window.addEventListener('DOMContentLoaded', () => {
       setupUI();
       animate();
     })
-    .catch(err => console.error('Failed to load UI:', err));
+    .catch(err => console.error('Failed to load UI components:', err));
 });
 
 function setupUI() {
@@ -36,12 +35,12 @@ function setupUI() {
     saveFarm();
   });
 
-  get('pause-resume')?.addEventListener('click', (e) => {
+  get('pause-resume')?.addEventListener('click', e => {
     animationPaused = !animationPaused;
     e.target.innerText = animationPaused ? 'Resume' : 'Pause';
   });
 
-  get('allow-red-breeding')?.addEventListener('change', (e) => {
+  get('allow-red-breeding')?.addEventListener('change', e => {
     allowRedBreeding = e.target.checked;
     saveFarm();
   });
@@ -52,25 +51,25 @@ function setupUI() {
     saveFarm();
   });
 
-  get('mating-slider')?.addEventListener('input', (e) => {
-    matingSpeed = 10000 - (e.target.value * 90);
+  get('mating-slider')?.addEventListener('input', e => {
+    matingSpeed = 10000 - e.target.value * 90;
     updateMatingLabel(e.target.value);
     saveFarm();
   });
 
-  get('lifespan-slider-normal')?.addEventListener('input', (e) => {
+  get('lifespan-slider-normal')?.addEventListener('input', e => {
     normalAntLifespan = e.target.value * 1000;
     updateLifespanLabelNormal(e.target.value);
     saveFarm();
   });
 
-  get('lifespan-slider-red')?.addEventListener('input', (e) => {
+  get('lifespan-slider-red')?.addEventListener('input', e => {
     redAntLifespan = e.target.value * 1000;
     updateLifespanLabelRed(e.target.value);
     saveFarm();
   });
 
-  get('antCanvas')?.addEventListener('click', (e) => {
+  get('antCanvas')?.addEventListener('click', e => {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;

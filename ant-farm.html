@@ -1,14 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ant Farm Simulator</title>
-  <link rel="stylesheet" href="global.css">
-  <link rel="stylesheet" href="ant-farm.css">
-  
-  <!-- Load JS modules in order -->
+  <link rel="stylesheet" href="global.css" />
+  <link rel="stylesheet" href="ant-farm.css" />
+
+  <!-- core modules must load in this order -->
   <script defer src="js/ant-constants.js"></script>
   <script defer src="js/ant-utils.js"></script>
-  <script defer src="js/ant-storage.js"></script>
   <script defer src="js/ant-core.js"></script>
   <script defer src="js/ant-ui.js"></script>
+  <script defer src="js/ant-control-panel.js"></script>
 </head>
+<body>
+  <div id="header-placeholder"></div>
+  <div id="controls-placeholder"></div>
+  <main id="main-container">
+    <canvas id="antCanvas"></canvas>
+
+  </main>
+</body>
+</html>

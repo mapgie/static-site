@@ -1,0 +1,17 @@
+.layout {
+    display: block;
+    margin-top: 2rem;
+    gap: 2rem;
+  }
+
+  .controls-right {
+    width: 300px;
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;;
+  }
+
+  canvas {
+    border: 2px solid #1f2937;
+    background: #1a1a1a;
+  }
