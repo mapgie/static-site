@@ -1,3 +1,10 @@
+  
+  export function updateStats() {
+    const statsEl = document.getElementById('stats');
+    if (!statsEl) return;
+    statsEl.innerText = `Ants Alive: ${ants.length} | Born: ${totalBorn} | Dead: ${totalDead}`;
+  }
+
 window.addEventListener('DOMContentLoaded', () => {
   canvas = document.getElementById('antCanvas');
   ctx = canvas.getContext('2d');
@@ -18,7 +25,7 @@ window.addEventListener('DOMContentLoaded', () => {
     .catch(err => console.error('Failed to load UI components:', err));
 });
 
-function setupUI() {
+export function setupUI() {
   const get = id => document.getElementById(id);
 
   get('add-ant')?.addEventListener('click', () => {
