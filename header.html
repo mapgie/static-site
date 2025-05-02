@@ -1,15 +1,16 @@
 <div id="site-header">
-  <a href="https://github.com/mapgie/static-site/" target="_blank" class="site-icon">👾</a>
+  <a href='https://github.com/mapgie/static-site/' target='_blank' class='site-icon'>👾</a>
   <div id="hamburger">☰</div>
   <div id="nav-links">
     <a href="index.html">Home</a>
     <a href="ant-farm.html">Ant Farm</a>
+
   </div>
 </div>
 
 <script>
   const hamburger = document.getElementById("hamburger");
-  const navLinks = document.getElementById("nav-links");
+  const navLinks  = document.getElementById("nav-links");
   hamburger.addEventListener("click", () => {
     navLinks.classList.toggle("show");
   });
