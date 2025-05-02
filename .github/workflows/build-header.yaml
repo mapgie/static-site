@@ -19,6 +19,9 @@ jobs:
       - name: Run header build script
         run: ./build-header.sh
 
+      - name: Run header build script
+        run: ./check-and-inject.sh
+
       - name: Commit and push changes
         run: |
           git config --global user.name "${{ vars.USER_NAME }}"
