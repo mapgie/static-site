@@ -1,44 +1,25 @@
-<div id="controls">
-  <h2>Ant Controls</h2>
-  <button id="add-ant">Add Ant</button>
-  <button id="add-red-ant">Add Red Ant</button>
 
-  <div id="mating-conditions">
-    <label for="mating-slider">Mating Conditions:</label>
-    <input type="range" id="mating-slider" min="1" max="100" value="50" />
-    <span id="mating-label">Moderate</span>
-  </div>
-
-  <div id="lifespan-conditions">
-    <label for="lifespan-slider-normal">Normal Ant Lifespan:</label>
-    <input type="range" id="lifespan-slider-normal" min="30" max="300" value="120" />
-    <span id="lifespan-label-normal">2 minutes</span>
-  </div>
-
-  <div id="lifespan-conditions-red">
-    <label for="lifespan-slider-red">Red Ant Lifespan:</label>
-    <input type="range" id="lifespan-slider-red" min="30" max="300" value="120" />
-    <span id="lifespan-label-red">2 minutes</span>
-  </div>
-
-  <div id="food-selector">
-    <label for="food-type">Select Food:</label>
-    <select id="food-type">
-      <option value="sugar">Sugar (white)</option>
-      <option value="protein">Protein (green)</option>
-      <option value="spoiled">Spoiled Food (blue)</option>
-      <option value="poison">Poison (purple)</option>
-    </select>
-  </div>
-
-  <h2>Red Ant Controls</h2>
-  <label><input type="checkbox" id="allow-red-breeding" checked /> Allow Red Ant Breeding</label>
-  <button id="kill-red-ants">Kill All Red Ants</button>
-
-  <h2>General Controls</h2>
-  <button id="pause-resume">Pause</button>
-  <button id="mute-toggle">Mute</button>
-
-  <h2>Stats</h2>
-  <div id="stats">Ants Alive: 0 | Born: 0 | Dead: 0</div>
-</div>
+/* ant-control-panel.html */
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ant Control Panel</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        button { font-size: 20px; padding: 10px 20px; }
+    </style>
+</head>
+<body>
+    <button id="addAntButton">Add Ant</button>
+    <script>
+        document.getElementById('addAntButton').addEventListener('click', () => {
+            const antFarmWindow = window.opener;
+            if (antFarmWindow) {
+                antFarmWindow.postMessage({ action: 'addAnt' }, '*');
+            } else {
+                alert('Ant farm window not found.');
+            }
+        });
+    </script>
+</body>
+</html>
