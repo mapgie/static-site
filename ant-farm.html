@@ -1,42 +1,130 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ant Farm Simulator</title>
-  <link rel="stylesheet" href="global.css">
-  <link rel="stylesheet" href="ant-farm.css">
-  <script type="module" src="/js/ant-constants.js"></script>
-  <script type="module" src="/js/ant-utils.js"></script>
-  <script type="module" src="/js/ant-storage.js"></script>
-  <script type="module" src="/js/ant-ui.js"></script>
-  <script type="module" src="/js/ant-core.js"></script>
-  <script type="module" src="/js/ant-farm.js"></script>
+    <meta charset="UTF-8">
+    <title>Ant Farm Terminal</title>
+    <style>
+        body {
+            margin: 0;
+            background: black;
+            color: #00FF00;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        canvas {
+            border: 1px solid #00FF00;
+        }
+        #control-panel {
+            width: 600px;
+            margin-top: 10px;
+        }
+        #command-input {
+            width: 100%;
+            background: black;
+            color: #00FF00;
+            border: 1px solid #00FF00;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 16px;
+            padding: 5px;
+        }
+        .tooltip {
+            position: absolute;
+            background: #000;
+            color: #0F0;
+            padding: 2px 4px;
+            border: 1px solid #0F0;
+            font-size: 12px;
+            pointer-events: none;
+        }
+    </style>
 </head>
 <body>
+    <canvas id="antCanvas" width="600" height="400"></canvas>
+    <div id="control-panel">
+        <input type="text" id="command-input" placeholder="Type command here and press Enter...">
+    </div>
+    <div id="tooltip" class="tooltip" style="display:none;"></div>
 
-<div id="header-placeholder"></div>
+    <script>
+        const canvas = document.getElementById('antCanvas');
+        const ctx = canvas.getContext('2d');
+        const input = document.getElementById('command-input');
+        const tooltip = document.getElementById('tooltip');
 
-<div id="main-container">
-  <div id="controls-placeholder"></div>
-  <canvas id="antCanvas" width="1000" height="600"></canvas>
-</div>
+        let ants = [];
 
-<script>
-// Load header
-fetch('header.html')
-  .then(response => response.text())
-  .then(data => {
-    document.getElementById('header-placeholder').innerHTML = data;
-  });
+        function Ant(name, x, y) {
+            this.name = name;
+            this.x = x;
+            this.y = y;
+            this.dx = Math.random() * 2 - 1;
+            this.dy = Math.random() * 2 - 1;
+        }
 
-// Load controls
-fetch('ant-control-panel.html')
-  .then(response => response.text())
-  .then(data => {
-    document.getElementById('controls-placeholder').innerHTML = data;
-  });
-</script>
+        function addAnt(name) {
+            const x = Math.random() * canvas.width;
+            const y = Math.random() * canvas.height;
+            ants.push(new Ant(name, x, y));
+        }
 
+        function updateAnts() {
+            ants.forEach(ant => {
+                ant.x += ant.dx;
+                ant.y += ant.dy;
+
+                if (ant.x < 0 || ant.x > canvas.width) ant.dx *= -1;
+                if (ant.y < 0 || ant.y > canvas.height) ant.dy *= -1;
+            });
+        }
+
+        function drawAnts(mouseX, mouseY) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ants.forEach(ant => {
+                ctx.fillStyle = '#00FF00';
+                ctx.fillRect(ant.x, ant.y, 4, 4);
+
+                // Check for mouseover
+                if (mouseX >= ant.x && mouseX <= ant.x + 4 && mouseY >= ant.y && mouseY <= ant.y + 4) {
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = (ant.x + 10) + 'px';
+                    tooltip.style.top = (ant.y + 10) + 'px';
+                    tooltip.textContent = ant.name;
+                }
+            });
+        }
+
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                const cmd = input.value.trim();
+                if (cmd.startsWith('add ant')) {
+                    let name = 'Unnamed';
+                    const parts = cmd.split('-');
+                    if (parts.length > 1) {
+                        name = parts[1].trim();
+                    }
+                    addAnt(name);
+                    input.value = '';
+                }
+            }
+        });
+
+        let mouseX = 0, mouseY = 0;
+        canvas.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+            tooltip.style.display = 'none'; // Reset tooltip each frame
+        });
+
+        function loop() {
+            updateAnts();
+            drawAnts(mouseX, mouseY);
+            requestAnimationFrame(loop);
+        }
+
+        loop();
+    </script>
 </body>
 </html>
