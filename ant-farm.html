@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Ant Farm Terminal</title>
+    <title>Ant Farm Control Panel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
             margin: 0;
@@ -15,116 +16,82 @@
         }
         canvas {
             border: 1px solid #00FF00;
-        }
-        #control-panel {
-            width: 600px;
-            margin-top: 10px;
-        }
-        #command-input {
             width: 100%;
+            max-width: 600px;
+            height: auto;
+        }
+        #controls {
+            width: 100%;
+            max-width: 600px;
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #00FF00;
+        }
+        button, input, select {
             background: black;
             color: #00FF00;
             border: 1px solid #00FF00;
             font-family: 'Courier New', Courier, monospace;
-            font-size: 16px;
-            padding: 5px;
+            margin: 5px 0;
+            width: 100%;
         }
-        .tooltip {
-            position: absolute;
-            background: #000;
-            color: #0F0;
-            padding: 2px 4px;
-            border: 1px solid #0F0;
-            font-size: 12px;
-            pointer-events: none;
+        h2, label, span {
+            display: block;
+            margin: 5px 0;
         }
     </style>
 </head>
 <body>
+
     <canvas id="antCanvas" width="600" height="400"></canvas>
-    <div id="control-panel">
-        <input type="text" id="command-input" placeholder="Type command here and press Enter...">
+
+    <div id="controls">
+        <h2>Ant Controls</h2>
+        <button id="add-ant">Add Ant</button>
+        <button id="add-red-ant">Add Red Ant</button>
+
+        <div id="mating-conditions">
+            <label for="mating-slider">Mating Conditions:</label>
+            <input type="range" id="mating-slider" min="1" max="100" value="50" />
+            <span id="mating-label">Moderate</span>
+        </div>
+
+        <div id="lifespan-conditions">
+            <label for="lifespan-slider-normal">Normal Ant Lifespan:</label>
+            <input type="range" id="lifespan-slider-normal" min="30" max="300" value="120" />
+            <span id="lifespan-label-normal">2 minutes</span>
+        </div>
+
+        <div id="lifespan-conditions-red">
+            <label for="lifespan-slider-red">Red Ant Lifespan:</label>
+            <input type="range" id="lifespan-slider-red" min="30" max="300" value="120" />
+            <span id="lifespan-label-red">2 minutes</span>
+        </div>
+
+        <div id="food-selector">
+            <label for="food-type">Select Food:</label>
+            <select id="food-type">
+                <option value="sugar">Sugar (white)</option>
+                <option value="protein">Protein (green)</option>
+                <option value="spoiled">Spoiled Food (blue)</option>
+                <option value="poison">Poison (purple)</option>
+            </select>
+        </div>
+
+        <h2>Red Ant Controls</h2>
+        <label><input type="checkbox" id="allow-red-breeding" checked /> Allow Red Ant Breeding</label>
+        <button id="kill-red-ants">Kill All Red Ants</button>
+
+        <h2>General Controls</h2>
+        <button id="pause-resume">Pause</button>
+        <button id="mute-toggle">Mute</button>
+
+        <h2>Stats</h2>
+        <div id="stats">
+            Ants Alive: 0 | Born: 0 | Dead: 0
+        </div>
     </div>
-    <div id="tooltip" class="tooltip" style="display:none;"></div>
 
-    <script>
-        const canvas = document.getElementById('antCanvas');
-        const ctx = canvas.getContext('2d');
-        const input = document.getElementById('command-input');
-        const tooltip = document.getElementById('tooltip');
-
-        let ants = [];
-
-        function Ant(name, x, y) {
-            this.name = name;
-            this.x = x;
-            this.y = y;
-            this.dx = Math.random() * 2 - 1;
-            this.dy = Math.random() * 2 - 1;
-        }
-
-        function addAnt(name) {
-            const x = Math.random() * canvas.width;
-            const y = Math.random() * canvas.height;
-            ants.push(new Ant(name, x, y));
-        }
-
-        function updateAnts() {
-            ants.forEach(ant => {
-                ant.x += ant.dx;
-                ant.y += ant.dy;
-
-                if (ant.x < 0 || ant.x > canvas.width) ant.dx *= -1;
-                if (ant.y < 0 || ant.y > canvas.height) ant.dy *= -1;
-            });
-        }
-
-        function drawAnts(mouseX, mouseY) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ants.forEach(ant => {
-                ctx.fillStyle = '#00FF00';
-                ctx.fillRect(ant.x, ant.y, 4, 4);
-
-                // Check for mouseover
-                if (mouseX >= ant.x && mouseX <= ant.x + 4 && mouseY >= ant.y && mouseY <= ant.y + 4) {
-                    tooltip.style.display = 'block';
-                    tooltip.style.left = (ant.x + 10) + 'px';
-                    tooltip.style.top = (ant.y + 10) + 'px';
-                    tooltip.textContent = ant.name;
-                }
-            });
-        }
-
-        input.addEventListener('keydown', e => {
-            if (e.key === 'Enter') {
-                const cmd = input.value.trim();
-                if (cmd.startsWith('add ant')) {
-                    let name = 'Unnamed';
-                    const parts = cmd.split('-');
-                    if (parts.length > 1) {
-                        name = parts[1].trim();
-                    }
-                    addAnt(name);
-                    input.value = '';
-                }
-            }
-        });
-
-        let mouseX = 0, mouseY = 0;
-        canvas.addEventListener('mousemove', e => {
-            const rect = canvas.getBoundingClientRect();
-            mouseX = e.clientX - rect.left;
-            mouseY = e.clientY - rect.top;
-            tooltip.style.display = 'none'; // Reset tooltip each frame
-        });
-
-        function loop() {
-            updateAnts();
-            drawAnts(mouseX, mouseY);
-            requestAnimationFrame(loop);
-        }
-
-        loop();
-    </script>
+    <script src="ant-farm.js"></script>
 </body>
 </html>
