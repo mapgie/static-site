@@ -80,6 +80,9 @@
             </select>
 
             <label><input type="checkbox" id="allow-red-breeding" checked> Allow Red Ant Breeding</label>
+            <label for="red-aggression-slider">Red Ant Aggression:</label>
+            <input type="range" id="red-aggression-slider" min="0" max="100" value="50">
+            <span id="red-aggression-label">Medium</span>
             <button id="kill-red-ants">Kill All Red Ants</button>
 
             <button id="pause-resume">Pause</button>
@@ -89,240 +92,252 @@
             </div>
             <br />
 
-        <div></div><h2 style="color: red;">Danger Zone</h2> <button id="kill-all-ants" class="kill-all">Kill All Ants</button> <button id="destroy-world" class="kill-all">Destroy World</button>
+            <div></div>
+            <h2 style="color: red;">Danger Zone</h2> <button id="kill-all-ants" class="kill-all">Kill All Ants</button> <button id="destroy-world" class="kill-all">Destroy World</button>
         </div>
-        </div>
-        <canvas id="antCanvas" width="1000" height="600"></canvas>
+    </div>
+    <canvas id="antCanvas" width="1000" height="600"></canvas>
 
-    </main><script>
-        const SAVE_KEY = 'antFarmSave';
-        const BASE_NORMAL_LIFESPAN = 120000;
-        const BASE_RED_LIFESPAN = 120000;
-        let ants = [], foods = [], animationPaused = false;
-        let matingSpeed = 5000, allowRedBreeding = true;
-        let totalBorn = 0, totalDead = 0;
-        let normalAntLifespan = BASE_NORMAL_LIFESPAN;
-        let redAntLifespan = BASE_RED_LIFESPAN;
-        let canvas, ctx;
+</main><script>
+    const SAVE_KEY = 'antFarmSave';
+    const BASE_NORMAL_LIFESPAN = 120000;
+    const BASE_RED_LIFESPAN = 120000;
+    let ants = [], foods = [], animationPaused = false;
+    let matingSpeed = 5000, allowRedBreeding = true;
+    let totalBorn = 0, totalDead = 0;
+    let normalAntLifespan = BASE_NORMAL_LIFESPAN;
+    let redAntLifespan = BASE_RED_LIFESPAN;
+    let canvas, ctx;
 
-        window.addEventListener('DOMContentLoaded', () => {
-            canvas = document.getElementById('antCanvas');
-            ctx = canvas.getContext('2d');
-            resizeCanvas();
-            window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('DOMContentLoaded', () => {
+        canvas = document.getElementById('antCanvas');
+        ctx = canvas.getContext('2d');
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
 
-            loadFarm();
-            setupUI();
-            animate();
-        });
+        loadFarm();
+        setupUI();
+        animate();
+    });
 
-        function resizeCanvas() {
-            canvas.width = Math.min(window.innerWidth - 320, 1000);
-            canvas.height = window.innerHeight - 120;
-        }
-
-        function setupUI() {
-            const get = id => document.getElementById(id);
-
-            get('add-ant')?.addEventListener('click', () => {
-                ants.push(createAnt(false)); totalBorn++; updateStats(); saveFarm();
-            });
-            get('add-red-ant')?.addEventListener('click', () => {
-                ants.push(createAnt(true)); totalBorn++; updateStats(); saveFarm();
-            });
-            get('kill-all-ants')?.addEventListener('click', () => {
-                ants = []; updateStats(); saveFarm();
-            });
-            get('pause-resume')?.addEventListener('click', (e) => {
-                animationPaused = !animationPaused; e.target.innerText = animationPaused ? 'Resume': 'Pause';
-            });
-            get('allow-red-breeding')?.addEventListener('change', (e) => {
-                allowRedBreeding = e.target.checked; saveFarm();
-            });
-            get('kill-red-ants')?.addEventListener('click', () => {
-                ants = ants.filter(a => !a.isRed); updateStats(); saveFarm();
-            });
-            get('mating-slider')?.addEventListener('input', (e) => {
-                matingSpeed = 10000 - (e.target.value * 90); updateMatingLabel(e.target.value); saveFarm();
-            });
-            get('lifespan-slider-normal')?.addEventListener('input', (e) => {
-                normalAntLifespan = e.target.value * 1000; updateLifespanLabelNormal(e.target.value); saveFarm();
-            });
-            get('lifespan-slider-red')?.addEventListener('input', (e) => {
-                redAntLifespan = e.target.value * 1000; updateLifespanLabelRed(e.target.value); saveFarm();
-            });
-            get('antCanvas')?.addEventListener('click', (e) => {
-                const rect = canvas.getBoundingClientRect(); const x = e.clientX - rect.left; const y = e.clientY - rect.top; const foodType = get('food-type')?.value || 'sugar'; createFood(x, y, foodType); saveFarm();
-            });
-            get('destroy-world')?.addEventListener('click', () => {
-                ants = [];
-                foods = [];
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                updateStats();
-                saveFarm();
-            });
-        }
-
-        function updateStats() {
-            const statsEl = document.getElementById('stats');
-            if (!statsEl) return;
-            statsEl.innerText = `Ants Alive: ${ants.length} | Born: ${totalBorn} | Dead: ${totalDead}`;
-        }
-
-        function updateMatingLabel(value) {
-            const label = document.getElementById('mating-label');
-            if (!label) return;
-            label.innerText = value <= 20 ? 'Awful': value <= 50 ? 'Moderate': 'Optimal';
-        }
-
-        function updateLifespanLabelNormal(value) {
-            const label = document.getElementById('lifespan-label-normal');
-            if (!label) return;
-            label.innerText = `${Math.round(value/60)} min`;
-        }
-
-        function updateLifespanLabelRed(value) {
-            const label = document.getElementById('lifespan-label-red');
-            if (!label) return;
-            label.innerText = `${Math.round(value/60)} min`;
-        }
-
-        function getFoodColor(type) {
-            switch (type) {
-                case 'sugar': return 'white';
-                    case 'protein': return 'green';
-                        case 'spoiled': return 'blue';
-                            case 'poison': return 'purple';
-                                default: return 'white';
-                                }
-                        }
-
-                        function saveFarm() {
-                            const data = {
-                                ants,
-                                foods,
-                                totalBorn,
-                                totalDead,
-                                matingSpeed,
-                                normalAntLifespan,
-                                redAntLifespan,
-                                allowRedBreeding
-                        };
-                        localStorage.setItem(SAVE_KEY, JSON.stringify(data));
-                }
-
-                function loadFarm() {
-                    const saved = localStorage.getItem(SAVE_KEY);
-                    if (saved) {
-                        const data = JSON.parse(saved);
-                        ants = data.ants || [];
-                        foods = data.foods || [];
-                        totalBorn = data.totalBorn || 0;
-                        totalDead = data.totalDead || 0;
-                        matingSpeed = data.matingSpeed || 5000;
-                        normalAntLifespan = data.normalAntLifespan || BASE_NORMAL_LIFESPAN;
-                        redAntLifespan = data.redAntLifespan || BASE_RED_LIFESPAN;
-                        allowRedBreeding = data.allowRedBreeding !== undefined ? data.allowRedBreeding: true;
-                        updateStats();
-                    }
-            }
-
-            function createAnt(isRed = false) {
-                const baseLife = isRed ? redAntLifespan: normalAntLifespan;
-                const jitter = (Math.random() * 0.2 - 0.1);
-                const lifespan = baseLife * (1 + jitter);
-                return {
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    angle: Math.random() * Math.PI * 2,
-                    isRed,
-                    speed: isRed ? 2: 1,
-                    breedingTimer: 0,
-                    lifespan
-            };
-        }
-
-        function createFood(x, y, type) {
-            foods.push({
-                x, y, type
-        });
+    function resizeCanvas() {
+        canvas.width = Math.min(window.innerWidth - 320, 1000);
+        canvas.height = window.innerHeight - 120;
     }
 
-    function animate() {
-        if (!animationPaused) {
+    function setupUI() {
+        const get = id => document.getElementById(id);
+        let redAggressionLevel = 50; // default
+
+        get('red-aggression-slider')?.addEventListener('input', (e) => {
+            redAggressionLevel = e.target.value;
+            updateAggressionLabel(redAggressionLevel);
+        });
+
+        function updateAggressionLabel(value) {
+            const label = document.getElementById('red-aggression-label');
+            if (!label) return;
+            label.innerText = value <= 20 ? 'Low': value <= 70 ? 'Medium': 'High';
+        }
+        get('add-ant')?.addEventListener('click', () => {
+            ants.push(createAnt(false)); totalBorn++; updateStats(); saveFarm();
+        });
+        get('add-red-ant')?.addEventListener('click', () => {
+            ants.push(createAnt(true)); totalBorn++; updateStats(); saveFarm();
+        });
+        get('kill-all-ants')?.addEventListener('click', () => {
+            ants = []; updateStats(); saveFarm();
+        });
+        get('pause-resume')?.addEventListener('click', (e) => {
+            animationPaused = !animationPaused; e.target.innerText = animationPaused ? 'Resume': 'Pause';
+        });
+        get('allow-red-breeding')?.addEventListener('change', (e) => {
+            allowRedBreeding = e.target.checked; saveFarm();
+        });
+        get('kill-red-ants')?.addEventListener('click', () => {
+            ants = ants.filter(a => !a.isRed); updateStats(); saveFarm();
+        });
+        get('mating-slider')?.addEventListener('input', (e) => {
+            matingSpeed = 10000 - (e.target.value * 90); updateMatingLabel(e.target.value); saveFarm();
+        });
+        get('lifespan-slider-normal')?.addEventListener('input', (e) => {
+            normalAntLifespan = e.target.value * 1000; updateLifespanLabelNormal(e.target.value); saveFarm();
+        });
+        get('lifespan-slider-red')?.addEventListener('input', (e) => {
+            redAntLifespan = e.target.value * 1000; updateLifespanLabelRed(e.target.value); saveFarm();
+        });
+        get('antCanvas')?.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect(); const x = e.clientX - rect.left; const y = e.clientY - rect.top; const foodType = get('food-type')?.value || 'sugar'; createFood(x, y, foodType); saveFarm();
+        });
+        get('destroy-world')?.addEventListener('click', () => {
+            ants = [];
+            foods = [];
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawFoods();
-            moveAndDrawAnts();
-        }
-        requestAnimationFrame(animate);
-    }
-
-    function drawFoods() {
-        foods.forEach(food => {
-            ctx.beginPath();
-            ctx.fillStyle = getFoodColor(food.type);
-            ctx.arc(food.x, food.y, 5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.closePath();
+            updateStats();
+            saveFarm();
         });
     }
 
-    function moveAndDrawAnts() {
-        for (let i = ants.length - 1; i >= 0; i--) {
-            const ant = ants[i];
-            ctx.beginPath();
-            ctx.fillStyle = ant.isRed ? 'red': 'white';
-            ctx.arc(ant.x, ant.y, 5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.closePath();
-            if (foods.length > 0) {
-                const nearest = foods.reduce((a, b) => {
-                    const da = (a.x - ant.x)**2 + (a.y - ant.y)**2;
-                    const db = (b.x - ant.x)**2 + (b.y - ant.y)**2;
-                    return da < db ? a: b;
-                });
-                const angleToFood = Math.atan2(nearest.y - ant.y, nearest.x - ant.x);
-                ant.angle += (angleToFood - ant.angle) * 0.1;
-                if (Math.hypot(ant.x - nearest.x, ant.y - nearest.y) < 10) {
-                    foods.splice(foods.indexOf(nearest), 1);
+    function updateStats() {
+        const statsEl = document.getElementById('stats');
+        if (!statsEl) return;
+        statsEl.innerText = `Ants Alive: ${ants.length} | Born: ${totalBorn} | Dead: ${totalDead}`;
+    }
+
+    function updateMatingLabel(value) {
+        const label = document.getElementById('mating-label');
+        if (!label) return;
+        label.innerText = value <= 20 ? 'Awful': value <= 50 ? 'Moderate': 'Optimal';
+    }
+
+    function updateLifespanLabelNormal(value) {
+        const label = document.getElementById('lifespan-label-normal');
+        if (!label) return;
+        label.innerText = `${Math.round(value/60)} min`;
+    }
+
+    function updateLifespanLabelRed(value) {
+        const label = document.getElementById('lifespan-label-red');
+        if (!label) return;
+        label.innerText = `${Math.round(value/60)} min`;
+    }
+
+    function getFoodColor(type) {
+        switch (type) {
+            case 'sugar': return 'white';
+                case 'protein': return 'green';
+                    case 'spoiled': return 'blue';
+                        case 'poison': return 'purple';
+                            default: return 'white';
+                            }
+                    }
+
+                    function saveFarm() {
+                        const data = {
+                            ants,
+                            foods,
+                            totalBorn,
+                            totalDead,
+                            matingSpeed,
+                            normalAntLifespan,
+                            redAntLifespan,
+                            allowRedBreeding
+                    };
+                    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+            }
+
+            function loadFarm() {
+                const saved = localStorage.getItem(SAVE_KEY);
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    ants = data.ants || [];
+                    foods = data.foods || [];
+                    totalBorn = data.totalBorn || 0;
+                    totalDead = data.totalDead || 0;
+                    matingSpeed = data.matingSpeed || 5000;
+                    normalAntLifespan = data.normalAntLifespan || BASE_NORMAL_LIFESPAN;
+                    redAntLifespan = data.redAntLifespan || BASE_RED_LIFESPAN;
+                    allowRedBreeding = data.allowRedBreeding !== undefined ? data.allowRedBreeding: true;
+                    updateStats();
                 }
-            }
-            ant.x += Math.cos(ant.angle) * ant.speed;
-            ant.y += Math.sin(ant.angle) * ant.speed;
-            if (ant.x < 0) ant.x = canvas.width;
-            if (ant.x > canvas.width) ant.x = 0;
-            if (ant.y < 0) ant.y = canvas.height;
-            if (ant.y > canvas.height) ant.y = 0;
-            ant.breedingTimer += 16;
-            if (ant.breedingTimer >= matingSpeed) {
-                tryBreeding(ant);
-                ant.breedingTimer = 0;
-            }
-            ant.lifespan -= 16;
-            if (ant.lifespan <= 0) {
-                ants.splice(i, 1);
-                totalDead++;
-                updateStats();
+        }
+
+        function createAnt(isRed = false) {
+            const baseLife = isRed ? redAntLifespan: normalAntLifespan;
+            const jitter = (Math.random() * 0.2 - 0.1);
+            const lifespan = baseLife * (1 + jitter);
+            return {
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                angle: Math.random() * Math.PI * 2,
+                isRed,
+                speed: isRed ? 2: 1,
+                breedingTimer: 0,
+                lifespan
+        };
+    }
+
+    function createFood(x, y, type) {
+        foods.push({
+            x, y, type
+    });
+}
+
+function animate() {
+    if (!animationPaused) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawFoods();
+        moveAndDrawAnts();
+    }
+    requestAnimationFrame(animate);
+}
+
+function drawFoods() {
+    foods.forEach(food => {
+        ctx.beginPath();
+        ctx.fillStyle = getFoodColor(food.type);
+        ctx.arc(food.x, food.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+    });
+}
+
+function moveAndDrawAnts() {
+    for (let i = ants.length - 1; i >= 0; i--) {
+        const ant = ants[i];
+        ctx.beginPath();
+        ctx.fillStyle = ant.isRed ? 'red': 'white';
+        ctx.arc(ant.x, ant.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+        if (foods.length > 0) {
+            const nearest = foods.reduce((a, b) => {
+                const da = (a.x - ant.x)**2 + (a.y - ant.y)**2;
+                const db = (b.x - ant.x)**2 + (b.y - ant.y)**2;
+                return da < db ? a: b;
+            });
+            const angleToFood = Math.atan2(nearest.y - ant.y, nearest.x - ant.x);
+            ant.angle += (angleToFood - ant.angle) * 0.1;
+            if (Math.hypot(ant.x - nearest.x, ant.y - nearest.y) < 10) {
+                foods.splice(foods.indexOf(nearest), 1);
             }
         }
+        ant.x += Math.cos(ant.angle) * ant.speed;
+        ant.y += Math.sin(ant.angle) * ant.speed;
+        if (ant.x < 0) ant.x = canvas.width;
+        if (ant.x > canvas.width) ant.x = 0;
+        if (ant.y < 0) ant.y = canvas.height;
+        if (ant.y > canvas.height) ant.y = 0;
+        ant.breedingTimer += 16;
+        if (ant.breedingTimer >= matingSpeed) {
+            tryBreeding(ant);
+            ant.breedingTimer = 0;
+        }
+        ant.lifespan -= 16;
+        if (ant.lifespan <= 0) {
+            ants.splice(i, 1);
+            totalDead++;
+            updateStats();
+        }
     }
+}
 
 
 
-    function tryBreeding(ant) {
-        ants.forEach(other => {
-            if (other === ant) return;
-            if (Math.hypot(ant.x - other.x, ant.y - other.y) < 30) {
-                if (ant.isRed && other.isRed) {
-                    if (allowRedBreeding) ants.push(createAnt(true));
-                } else if (!ant.isRed && !other.isRed) {
-                    ants.push(createAnt(false));
-                }
-                totalBorn++;
-                updateStats();
+function tryBreeding(ant) {
+    ants.forEach(other => {
+        if (other === ant) return;
+        if (Math.hypot(ant.x - other.x, ant.y - other.y) < 30) {
+            if (ant.isRed && other.isRed) {
+                if (allowRedBreeding) ants.push(createAnt(true));
+            } else if (!ant.isRed && !other.isRed) {
+                ants.push(createAnt(false));
             }
-        });
-    }
+            totalBorn++;
+            updateStats();
+        }
+    });
+}
 </script>
 </body>
 </html>
