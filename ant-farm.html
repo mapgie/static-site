@@ -74,14 +74,13 @@
             white: null,
             red: null
         };
-        let whiteHappiness = 50; // 0–100 scale
-        let matingSpeed = 5000, allowRedBreeding = true, redAggressionLevel = 50;
+        let whiteHappiness = 50;
+        let matingSpeed = 3000, allowRedBreeding = true, redAggressionLevel = 50;
         let totalBornWhite = 0, totalDeadWhite = 0, totalBornRed = 0, totalDeadRed = 0;
         let normalAntLifespan = 10000;
         let redAntLifespan = 10000;
         let canvas, ctx;
-        let holdTimer = null;
-        let holdDuration = 0;
+        let globalPoisonCap = 0.2;
 
         window.addEventListener('DOMContentLoaded', () => {
             canvas = document.getElementById('antCanvas');
@@ -149,39 +148,19 @@
                 (e) => {
                     redAggressionLevel = e.target.value; saveFarm();
                 });
-            get('hold-duration-slider').addEventListener('input',
+            canvas.addEventListener('click',
                 (e) => {
-                    holdDuration = parseInt(e.target.value, 10);
+                    if (foods.length < MAX_FOOD) {
+                        const rect = canvas.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const y = e.clientY - rect.top;
+                        const foodType = document.getElementById('food-type').value || 'sugar';
+                        foods.push({
+                            x, y, type: foodType
+                        });
+                        saveFarm();
+                    }
                 });
-            canvas.addEventListener('mousedown',
-                startHold);
-            canvas.addEventListener('touchstart',
-                startHold);
-            canvas.addEventListener('mouseup',
-                cancelHold);
-            canvas.addEventListener('mouseleave',
-                cancelHold);
-            canvas.addEventListener('touchend',
-                cancelHold);
-        }
-
-        function startHold(e) {
-            holdTimer = setTimeout(() => {
-                if (foods.length < MAX_FOOD) {
-                    const rect = canvas.getBoundingClientRect();
-                    const x = (e.clientX || e.touches[0].clientX) - rect.left;
-                    const y = (e.clientY || e.touches[0].clientY) - rect.top;
-                    const foodType = document.getElementById('food-type').value || 'sugar';
-                    foods.push({
-                        x, y, type: foodType
-                    });
-                    saveFarm();
-                }
-            },
-                holdDuration);
-        }
-        function cancelHold() {
-            if (holdTimer) clearTimeout(holdTimer);
         }
 
         function countWhiteAnts() {
@@ -211,7 +190,10 @@
         }
 
         function animate() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.clearRect(0,
+                0,
+                canvas.width,
+                canvas.height);
             drawFoods();
             drawWhiteHappinessBar();
             if (!animationPaused) moveAndDrawAnts();
@@ -302,9 +284,11 @@
                         }
                         if (ant.isQueen) {
                             ant.spawnTimer += 16;
-                            if (ant.spawnTimer >= 3000) {
-                                ants.push(createAnt(ant.isRed));
-                                if (ant.isRed) totalBornRed++; else totalBornWhite++;
+                            if (ant.spawnTimer >= 2000) {
+                                if ((ant.isRed && countRedAnts() < MAX_RED_ANTS) || (!ant.isRed && countWhiteAnts() < MAX_WHITE_ANTS)) {
+                                    ants.push(createAnt(ant.isRed));
+                                    if (ant.isRed) totalBornRed++; else totalBornWhite++;
+                                }
                                 ant.spawnTimer = 0;
                             }
                         }
@@ -323,12 +307,12 @@
                     if (other === ant || other.isQueen) return;
                     if (Math.hypot(ant.x - other.x, ant.y - other.y) < 30) {
                         if (ant.isRed && other.isRed) {
-                            if (allowRedBreeding && countRedAnts() < MAX_RED_ANTS && Math.random() < 0.1) {
+                            if (allowRedBreeding && countRedAnts() < MAX_RED_ANTS && Math.random() < 0.3) {
                                 ants.push(createAnt(true));
                                 totalBornRed++;
                             }
                         } else if (!ant.isRed && !other.isRed) {
-                            if (countWhiteAnts() < MAX_WHITE_ANTS && Math.random() < 0.1) {
+                            if (countWhiteAnts() < MAX_WHITE_ANTS && Math.random() < 0.3) {
                                 ants.push(createAnt(false));
                                 totalBornWhite++;
                             }
