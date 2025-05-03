@@ -13,14 +13,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Make script executable
-        run: chmod +x build-header.sh
+      - name: Run header build script
+        shell: pwsh
+        run: |
+        ./build-header.ps1
 
       - name: Run header build script
-        run: ./build-header.sh
-
-      - name: Run header build script
-        run: ./check-and-inject.sh
+        run: |
+        chmod +x check-and-inject.sh
+        ./check-and-inject.sh
 
       - name: Commit and push changes
         run: |
