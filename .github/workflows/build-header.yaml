@@ -16,7 +16,7 @@ jobs:
       - name: Run header build script
         shell: pwsh
         run: |
-        ./build-header.ps1
+        ./.pipeline/build-header.ps1
 
       - name: Run header build script
         run: |
