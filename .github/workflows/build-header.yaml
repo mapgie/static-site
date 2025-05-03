@@ -13,15 +13,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Run header build script
+      - name: Run header build script (PowerShell)
         shell: pwsh
         run: |
-        ./.pipeline/build-header.ps1
+          ./.pipeline/build-header.ps1
 
-      - name: Run header build script
+      - name: Run header build script (Shell)
         run: |
-        chmod +x check-and-inject.sh
-        ./check-and-inject.sh
+          chmod +x check-and-inject.sh
+          ./check-and-inject.sh
 
       - name: Commit and push changes
         run: |
