@@ -106,7 +106,14 @@ function setupUI() {
   get('lifespan-slider-normal')?.addEventListener('input', (e) => { normalAntLifespan = e.target.value * 1000; updateLifespanLabelNormal(e.target.value); saveFarm(); });
   get('lifespan-slider-red')?.addEventListener('input', (e) => { redAntLifespan = e.target.value * 1000; updateLifespanLabelRed(e.target.value); saveFarm(); });
   get('red-aggression-slider')?.addEventListener('input', (e) => { redAggressionLevel = e.target.value; updateAggressionLabel(redAggressionLevel); saveFarm(); });
-  get('antCanvas')?.addEventListener('click', (e) => { const rect = canvas.getBoundingClientRect(); const x = e.clientX - rect.left; const y = e.clientY - rect.top; const foodType = get('food-type')?.value || 'sugar'; createFood(x, y, foodType); saveFarm(); });
+  get('antCanvas')?.addEventListener('click', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+    const foodType = get('food-type')?.value || 'sugar';
+    createFood(x, y, foodType);
+    saveFarm();
+  });
 }
 
 function updateStats() {
@@ -203,7 +210,6 @@ function moveAndDrawAnts() {
       if (target) {
         const angleToAnt = Math.atan2(target.y - ant.y, target.x - ant.x);
         ant.angle += (angleToAnt - ant.angle) * 0.1;
-
         if (Math.hypot(ant.x - target.x, ant.y - target.y) < 10) {
           const idx = ants.indexOf(target);
           if (idx > -1) {
