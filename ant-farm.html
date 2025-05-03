@@ -45,7 +45,9 @@
                 <input type="range" id="red-aggression-slider" min="0" max="100" value="50">
                 <span id="red-aggression-label">Medium</span>
 
-                <label><input type="checkbox" id="allow-red-breeding" checked> Allow Red Ant Breeding</label>
+                <div class="button-row">
+                    <label><input type="checkbox" id="allow-red-breeding" checked> Allow Red Ant Breeding</label>
+                </div>
             </div>
 
             <div class="controls-section">
@@ -84,20 +86,21 @@
                     <button id="pause-resume">Pause</button>
                 </div>
                 <label for="hold-duration-slider">Tap-and-Hold Duration (ms)</label>
-                <input type="range" id="hold-duration-slider" min="100" max="1500" value="500">
-                <span id="hold-duration-label">500 ms</span>
+                <input type="range" id="hold-duration-slider" min="0" max="1500" value="0">
+                <span id="hold-duration-label">0 ms</span>
             </div>
 
         </div>
 
         <canvas id="antCanvas" width="1000" height="600"></canvas>
-
     </main>
 
     <script>
         const SAVE_KEY = 'antFarmSave';
         const BASE_NORMAL_LIFESPAN = 10000;
         const BASE_RED_LIFESPAN = 10000;
+        const MAX_ANTS = 500;
+        const MAX_FOOD = 300;
         let ants = [], foods = [], animationPaused = false;
         let matingSpeed = 5000, allowRedBreeding = true, redAggressionLevel = 50;
         let totalBorn = 0, totalDead = 0;
@@ -105,7 +108,7 @@
         let redAntLifespan = BASE_RED_LIFESPAN;
         let canvas, ctx;
         let holdTimer = null;
-        let holdDuration = 500;
+        let holdDuration = 0;
 
         window.addEventListener('DOMContentLoaded', () => {
             canvas = document.getElementById('antCanvas');
@@ -126,58 +129,79 @@
             const get = id => document.getElementById(id);
 
             get('add-ant')?.addEventListener('click', () => {
-                ants.push(createAnt(false)); totalBorn++; updateStats(); saveFarm();
-            });
-            get('add-red-ant')?.addEventListener('click', () => {
-                ants.push(createAnt(true)); totalBorn++; updateStats(); saveFarm();
-            });
-            get('kill-all-ants')?.addEventListener('click', () => {
-                ants = []; updateStats(); saveFarm();
-            });
-            get('destroy-world')?.addEventListener('click', () => {
-                ants = []; foods = []; ctx.clearRect(0, 0, canvas.width, canvas.height); updateStats(); saveFarm();
-            });
-            get('pause-resume')?.addEventListener('click', (e) => {
-                animationPaused = !animationPaused; e.target.innerText = animationPaused ? 'Resume': 'Pause';
-            });
-            get('allow-red-breeding')?.addEventListener('change', (e) => {
-                allowRedBreeding = e.target.checked; saveFarm();
-            });
-            get('kill-red-ants')?.addEventListener('click', () => {
-                ants = ants.filter(a => !a.isRed); updateStats(); saveFarm();
-            });
-            get('mating-slider')?.addEventListener('input', (e) => {
-                matingSpeed = 10000 - (e.target.value * 90); updateMatingLabel(e.target.value); saveFarm();
-            });
-            get('lifespan-slider-normal')?.addEventListener('input', (e) => {
-                normalAntLifespan = e.target.value * 1000; updateLifespanLabelNormal(e.target.value); saveFarm();
-            });
-            get('lifespan-slider-red')?.addEventListener('input', (e) => {
-                redAntLifespan = e.target.value * 1000; updateLifespanLabelRed(e.target.value); saveFarm();
-            });
-            get('red-aggression-slider')?.addEventListener('input', (e) => {
-                redAggressionLevel = e.target.value; updateAggressionLabel(redAggressionLevel); saveFarm();
-            });
-            get('hold-duration-slider')?.addEventListener('input', (e) => {
-                holdDuration = parseInt(e.target.value, 10); document.getElementById('hold-duration-label').innerText = `${holdDuration} ms`;
-            });
+                if (ants.length < MAX_ANTS) {
+                    ants.push(createAnt(false)); totalBorn++; updateStats(); saveFarm();
+                }});
+            get('add-red-ant')?.addEventListener('click',
+                () => {
+                    if (ants.length < MAX_ANTS) {
+                        ants.push(createAnt(true)); totalBorn++; updateStats(); saveFarm();
+                    }});
+            get('kill-all-ants')?.addEventListener('click',
+                () => {
+                    ants = []; updateStats(); saveFarm();
+                });
+            get('destroy-world')?.addEventListener('click',
+                () => {
+                    ants = []; foods = []; totalBorn = 0; totalDead = 0; ctx.clearRect(0, 0, canvas.width, canvas.height); updateStats(); saveFarm();
+                });
+            get('pause-resume')?.addEventListener('click',
+                (e) => {
+                    animationPaused = !animationPaused; e.target.innerText = animationPaused ? 'Resume': 'Pause';
+                });
+            get('allow-red-breeding')?.addEventListener('change',
+                (e) => {
+                    allowRedBreeding = e.target.checked; saveFarm();
+                });
+            get('kill-red-ants')?.addEventListener('click',
+                () => {
+                    ants = ants.filter(a => !a.isRed); updateStats(); saveFarm();
+                });
+            get('mating-slider')?.addEventListener('input',
+                (e) => {
+                    matingSpeed = 10000 - (e.target.value * 90); updateMatingLabel(e.target.value); saveFarm();
+                });
+            get('lifespan-slider-normal')?.addEventListener('input',
+                (e) => {
+                    normalAntLifespan = e.target.value * 1000; updateLifespanLabelNormal(e.target.value); saveFarm();
+                });
+            get('lifespan-slider-red')?.addEventListener('input',
+                (e) => {
+                    redAntLifespan = e.target.value * 1000; updateLifespanLabelRed(e.target.value); saveFarm();
+                });
+            get('red-aggression-slider')?.addEventListener('input',
+                (e) => {
+                    redAggressionLevel = e.target.value; updateAggressionLabel(redAggressionLevel); saveFarm();
+                });
+            get('hold-duration-slider')?.addEventListener('input',
+                (e) => {
+                    holdDuration = parseInt(e.target.value, 10); document.getElementById('hold-duration-label').innerText = `${holdDuration} ms`;
+                });
 
-            canvas.addEventListener('mousedown', startHold);
-            canvas.addEventListener('touchstart', startHold);
-            canvas.addEventListener('mouseup', cancelHold);
-            canvas.addEventListener('mouseleave', cancelHold);
-            canvas.addEventListener('touchend', cancelHold);
+            canvas.addEventListener('mousedown',
+                startHold);
+            canvas.addEventListener('touchstart',
+                startHold);
+            canvas.addEventListener('mouseup',
+                cancelHold);
+            canvas.addEventListener('mouseleave',
+                cancelHold);
+            canvas.addEventListener('touchend',
+                cancelHold);
         }
 
         function startHold(e) {
             holdTimer = setTimeout(() => {
-                const rect = canvas.getBoundingClientRect();
-                const x = (e.clientX || e.touches[0].clientX) - rect.left;
-                const y = (e.clientY || e.touches[0].clientY) - rect.top;
-                const foodType = document.getElementById('food-type').value || 'sugar';
-                createFood(x, y, foodType);
-                saveFarm();
-            }, holdDuration);
+                if (foods.length < MAX_FOOD) {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = (e.clientX || e.touches[0].clientX) - rect.left;
+                    const y = (e.clientY || e.touches[0].clientY) - rect.top;
+                    const foodType = document.getElementById('food-type').value || 'sugar';
+                    createFood(x, y, foodType);
+                    saveFarm();
+                }
+            },
+                holdDuration);
         }
 
         function cancelHold() {
@@ -270,7 +294,7 @@
             ctx.fill();
             ctx.closePath();
 
-            if (ant.isRed && Math.random() < redAggressionLevel / 100) {
+            if (ant.isRed && Math.random() < (0.2 + redAggressionLevel / 100 * 0.8)) {
                 const target = ants.find(a => !a.isRed);
                 if (target) {
                     const angleToAnt = Math.atan2(target.y - ant.y, target.x - ant.x);
@@ -300,7 +324,7 @@
             if (ant.y < 0) ant.y = canvas.height;
             if (ant.y > canvas.height) ant.y = 0;
             ant.breedingTimer += 16;
-            if (ant.breedingTimer >= matingSpeed) {
+            if (ant.breedingTimer >= matingSpeed && ants.length < MAX_ANTS) {
                 tryBreeding(ant);
                 ant.breedingTimer = 0;
             }
@@ -314,7 +338,7 @@
     }
     function tryBreeding(ant) {
         ants.forEach(other => {
-            if (other === ant) return; if (Math.hypot(ant.x - other.x, ant.y - other.y) < 30) {
+            if (other === ant) return; if (Math.hypot(ant.x - other.x, ant.y - other.y) < 30 && ants.length < MAX_ANTS) {
                 if (ant.isRed && other.isRed) {
                     if (allowRedBreeding) ants.push(createAnt(true));
                 } else if (!ant.isRed && !other.isRed) {
