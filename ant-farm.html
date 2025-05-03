@@ -5,6 +5,17 @@
   <title>Ant Farm Simulator</title>
   <link rel="stylesheet" href="global.css">
   <link rel="stylesheet" href="ant-farm.css">
+  <style>
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; }
+    main { display: flex; flex-direction: column; padding-top: 80px; }
+    #controls { display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; }
+    @media (min-width: 768px) {
+      main { flex-direction: row; }
+      #controls { width: 300px; }
+    }
+    #antCanvas { width: 100%; height: auto; max-width: 1000px; border: 1px solid #ccc; }
+    button.kill-all { background: red; color: white; font-weight: bold; }
+  </style>
 </head>
 <body><header id="site-header">
   <nav>
@@ -13,52 +24,41 @@
     <a href="art.html">Art</a> |
     <a href="ant-farm.html">Ant Farm</a>
   </nav>
-</header><main style="padding-top: 80px; display: flex;">
-  <div id="controls" style="width: 300px; padding: 1rem;">
+</header><main>
+  <div id="controls">
     <h2>Ant Controls</h2>
     <button id="add-ant">Add Ant</button>
-    <button id="add-red-ant">Add Red Ant</button><div>
-  <label for="mating-slider">Mating Conditions:</label>
-  <input type="range" id="mating-slider" min="1" max="100" value="50">
-  <span id="mating-label">Moderate</span>
-</div>
+    <button id="add-red-ant">Add Red Ant</button>
+    <button id="kill-all-ants" class="kill-all">Kill All Ants</button><label for="mating-slider">Mating Conditions:</label>
+<input type="range" id="mating-slider" min="1" max="100" value="50">
+<span id="mating-label">Moderate</span>
 
-<div>
-  <label for="lifespan-slider-normal">Normal Ant Lifespan:</label>
-  <input type="range" id="lifespan-slider-normal" min="30" max="300" value="120">
-  <span id="lifespan-label-normal">2 min</span>
-</div>
+<label for="lifespan-slider-normal">Normal Ant Lifespan:</label>
+<input type="range" id="lifespan-slider-normal" min="30" max="300" value="120">
+<span id="lifespan-label-normal">2 min</span>
 
-<div>
-  <label for="lifespan-slider-red">Red Ant Lifespan:</label>
-  <input type="range" id="lifespan-slider-red" min="30" max="300" value="120">
-  <span id="lifespan-label-red">2 min</span>
-</div>
+<label for="lifespan-slider-red">Red Ant Lifespan:</label>
+<input type="range" id="lifespan-slider-red" min="30" max="300" value="120">
+<span id="lifespan-label-red">2 min</span>
 
-<div>
-  <label for="food-type">Select Food:</label>
-  <select id="food-type">
-    <option value="sugar">Sugar (white)</option>
-    <option value="protein">Protein (green)</option>
-    <option value="spoiled">Spoiled (blue)</option>
-    <option value="poison">Poison (purple)</option>
-  </select>
-</div>
+<label for="food-type">Select Food:</label>
+<select id="food-type">
+  <option value="sugar">Sugar (white)</option>
+  <option value="protein">Protein (green)</option>
+  <option value="spoiled">Spoiled (blue)</option>
+  <option value="poison">Poison (purple)</option>
+</select>
 
-<h2>Red Ant Controls</h2>
 <label><input type="checkbox" id="allow-red-breeding" checked> Allow Red Ant Breeding</label>
 <button id="kill-red-ants">Kill All Red Ants</button>
 
-<h2>General</h2>
 <button id="pause-resume">Pause</button>
 
-<h2>Stats</h2>
 <div id="stats">Ants Alive: 0 | Born: 0 | Dead: 0</div>
 
-  </div><canvas id="antCanvas" width="1000" height="600" style="border: 1px solid #ccc;"></canvas>
+  </div><canvas id="antCanvas" width="1000" height="600"></canvas>
 
 </main><script>
-// Constants and setup
 const SAVE_KEY = 'antFarmSave';
 const BASE_NORMAL_LIFESPAN = 120000;
 const BASE_RED_LIFESPAN = 120000;
@@ -67,19 +67,30 @@ let matingSpeed = 5000, allowRedBreeding = true;
 let totalBorn = 0, totalDead = 0;
 let normalAntLifespan = BASE_NORMAL_LIFESPAN;
 let redAntLifespan = BASE_RED_LIFESPAN;
-let canvas = document.getElementById('antCanvas');
-let ctx = canvas.getContext('2d');
+let canvas, ctx;
 
 window.addEventListener('DOMContentLoaded', () => {
+  canvas = document.getElementById('antCanvas');
+  ctx = canvas.getContext('2d');
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
   loadFarm();
   setupUI();
   animate();
 });
 
+function resizeCanvas() {
+  canvas.width = Math.min(window.innerWidth - 320, 1000);
+  canvas.height = window.innerHeight - 120;
+}
+
 function setupUI() {
   const get = id => document.getElementById(id);
+
   get('add-ant')?.addEventListener('click', () => { ants.push(createAnt(false)); totalBorn++; updateStats(); saveFarm(); });
   get('add-red-ant')?.addEventListener('click', () => { ants.push(createAnt(true)); totalBorn++; updateStats(); saveFarm(); });
+  get('kill-all-ants')?.addEventListener('click', () => { ants = []; updateStats(); saveFarm(); });
   get('pause-resume')?.addEventListener('click', (e) => { animationPaused = !animationPaused; e.target.innerText = animationPaused ? 'Resume' : 'Pause'; });
   get('allow-red-breeding')?.addEventListener('change', (e) => { allowRedBreeding = e.target.checked; saveFarm(); });
   get('kill-red-ants')?.addEventListener('click', () => { ants = ants.filter(a => !a.isRed); updateStats(); saveFarm(); });
@@ -148,7 +159,7 @@ function createAnt(isRed = false) {
   const baseLife = isRed ? redAntLifespan : normalAntLifespan;
   const jitter = (Math.random() * 0.2 - 0.1);
   const lifespan = baseLife * (1 + jitter);
-  return { x: Math.random() * canvas.width, y: Math.random() * canvas.height, angle: Math.random() * Math.PI * 2, isRed: isRed, speed: isRed ? 2 : 1, breedingTimer: 0, lifespan };
+  return { x: Math.random() * canvas.width, y: Math.random() * canvas.height, angle: Math.random() * Math.PI * 2, isRed, speed: isRed ? 2 : 1, breedingTimer: 0, lifespan };
 }
 
 function createFood(x, y, type) {
