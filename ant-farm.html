@@ -94,7 +94,7 @@
 
         <canvas id="antCanvas" width="1000" height="600"></canvas>
     </main>
-    <script>
+    <<script>
         const SAVE_KEY = 'antFarmSave';
         const MAX_ANTS = 500;
         const MAX_FOOD = 300;
@@ -106,6 +106,7 @@
         let canvas, ctx;
         let holdTimer = null;
         let holdDuration = 0;
+        let globalPoisonCap = 0.2; // max 20% ants poisoned
 
         window.addEventListener('DOMContentLoaded', () => {
             canvas = document.getElementById('antCanvas');
@@ -217,7 +218,7 @@
                 lifespan: baseLife * (1 + jitter),
                 slowed: 0,
                 poisoned: false,
-                poisonTouches: 0
+                poisonSpreadLeft: 3,
             };
         }
 
@@ -251,17 +252,16 @@
                         }
 
                         function moveAndDrawAnts() {
+                            const poisonedCount = ants.filter(a => a.poisoned).length;
                             for (let i = ants.length - 1; i >= 0; i--) {
                                 const ant = ants[i];
-                                if (ant.slowed > 0) ant.slowed--;
-
                                 ctx.beginPath();
                                 ctx.fillStyle = ant.poisoned ? 'purple': (ant.isRed ? 'red': 'white');
                                 ctx.arc(ant.x, ant.y, 5, 0, Math.PI * 2);
                                 ctx.fill();
                                 ctx.closePath();
 
-                                const speedFactor = ant.slowed > 0 ? 0.7: 1;
+                                const speedFactor = (ant.slowed > 0 ? 0.7: 1) * (ant.poisoned ? 0.7: 1);
                                 ant.x += Math.cos(ant.angle) * ant.speed * speedFactor;
                                 ant.y += Math.sin(ant.angle) * ant.speed * speedFactor;
                                 if (ant.x < 0) ant.x = canvas.width;
@@ -269,7 +269,7 @@
                                 if (ant.y < 0) ant.y = canvas.height;
                                 if (ant.y > canvas.height) ant.y = 0;
 
-                                // Food targeting
+                                // Food handling
                                 if (foods.length > 0) {
                                     const nearest = foods.reduce((a, b) => ((a.x - ant.x)**2 + (a.y - ant.y)**2) < ((b.x - ant.x)**2 + (b.y - ant.y)**2) ? a: b);
                                     const angleToFood = Math.atan2(nearest.y - ant.y, nearest.x - ant.x);
@@ -278,17 +278,18 @@
                                     if (Math.hypot(ant.x - nearest.x, ant.y - nearest.y) < 10) {
                                         if (nearest.type === 'protein' || nearest.type === 'sugar') {
                                             ant.poisoned = false;
+                                            ant.poisonSpreadLeft = 3;
                                         } else if (nearest.type === 'spoiled') {
                                             ant.slowed = 300;
                                         } else if (nearest.type === 'poison') {
                                             foods.splice(foods.indexOf(nearest), 1);
+                                            ants.splice(i, 1);
+                                            totalDead++;
                                             const neighbor = ants.find(a => a !== ant);
-                                            if (neighbor) {
+                                            if (neighbor && poisonedCount / ants.length < globalPoisonCap) {
                                                 neighbor.poisoned = true;
                                                 neighbor.lifespan *= 0.8;
                                             }
-                                            ants.splice(i, 1);
-                                            totalDead++;
                                             updateStats();
                                             continue;
                                         }
@@ -296,6 +297,7 @@
                                     }
                                 }
 
+                                // Lifespan drain
                                 ant.lifespan -= 16 * (ant.poisoned ? 1.2: 1);
                                 if (ant.lifespan <= 0) {
                                     ants.splice(i, 1);
@@ -304,10 +306,23 @@
                                     continue;
                                 }
 
+                                // Breeding and poison spread
                                 ant.breedingTimer += 16;
                                 if (!ant.poisoned && ant.breedingTimer >= matingSpeed && ants.length < MAX_ANTS) {
                                     tryBreeding(ant);
                                     ant.breedingTimer = 0;
+                                }
+
+                                if (ant.poisoned && ant.poisonSpreadLeft > 0) {
+                                    ants.forEach(other => {
+                                        if (other !== ant && !other.poisoned && Math.hypot(ant.x - other.x, ant.y - other.y) < 30) {
+                                            if (Math.random() < 0.2 && poisonedCount / ants.length < globalPoisonCap) {
+                                                other.poisoned = true;
+                                                other.lifespan *= 0.8;
+                                                ant.poisonSpreadLeft--;
+                                            }
+                                        }
+                                    });
                                 }
                             }
                     }
@@ -316,10 +331,6 @@
                         ants.forEach(other => {
                             if (other === ant) return;
                             if (Math.hypot(ant.x - other.x, ant.y - other.y) < 30) {
-                                if (ant.poisoned && ant.poisonTouches++ % 3 === 0) {
-                                    other.poisoned = true;
-                                    other.lifespan *= 0.8;
-                                }
                                 if (ant.isRed && other.isRed && allowRedBreeding) {
                                     ants.push(createAnt(true));
                                     totalBorn++;
@@ -336,7 +347,6 @@
                     const el = document.getElementById('stats');
                     if (el) el.innerText = `Ants Alive: ${ants.length} | Born: ${totalBorn} | Dead: ${totalDead}`;
             }
-
             function saveFarm() {
                 const data = {
                     ants,
@@ -351,13 +361,12 @@
             };
             localStorage.setItem(SAVE_KEY, JSON.stringify(data));
         }
-
         function loadFarm() {
             const saved = localStorage.getItem(SAVE_KEY);
             if (saved) {
                 const data = JSON.parse(saved);
                 ants = (data.ants || []).map(a => ({
-                    ...a, breedingTimer: 0, angle: a.angle || Math.random() * Math.PI * 2, slowed: 0, poisoned: false, poisonTouches: 0
+                    ...a, breedingTimer: 0, angle: a.angle || Math.random() * Math.PI * 2, slowed: 0, poisoned: false, poisonSpreadLeft: 3
             }));
             foods = data.foods || [];
             totalBorn = data.totalBorn || 0;
@@ -370,6 +379,6 @@
             updateStats();
         }
     }
-</script>
+    </script>
 </body>
 </html>
