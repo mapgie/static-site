@@ -4,117 +4,202 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ant Farm Simulator</title>
-    <link rel="stylesheet" href="global.css">
-    <link rel="stylesheet" href="ant-farm.css">
+    <style>
+        body {
+            margin: 0;
+            font-family: sans-serif;
+            background: #f0f0f0;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background: #333;
+        }
+        .controls {
+            padding: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+        }
+        .controls-section {
+            background: #fff;
+            padding: 1rem;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+        }
+        .danger-zone {
+            border: 2px solid red;
+        }
+        button {
+            margin: 0.25rem;
+        }
+    </style>
 </head>
 <body>
-    <header id="site-header">
-        <nav>
-            <a href="index.html">Home</a> |
-            <a href="rps.html">RPS</a> |
-            <a href="art.html">Art</a> |
-            <a href="ant-farm.html">Ant Farm</a>
-        </nav>
-    </header>
-    <main>
-        <div class="controls-parent">
-            <div class="controls-section">
-                <h1>Ant Controls</h1>
-                <button id="add-ant">Add Ant</button>
-                <label for="mating-slider">Mating Conditions:</label>
-                <input type="range" id="mating-slider" min="1" max="100" value="20">
-                <label for="lifespan-slider-normal">Normal Ant Lifespan (seconds):</label>
-                <input type="range" id="lifespan-slider-normal" min="10" max="300" value="120">
-            </div>
-            <div class="controls-section">
-                <h2>Red Ant Controls</h2>
-                <button id="add-red-ant">Add Red Ant</button>
-                <label for="lifespan-slider-red">Red Ant Lifespan (seconds):</label>
-                <input type="range" id="lifespan-slider-red" min="10" max="300" value="120">
-                <label><input type="checkbox" id="allow-red-breeding" checked> Allow Red Ant Breeding</label>
-                <label for="red-aggression-slider">Red Ant Aggression:</label>
-                <input type="range" id="red-aggression-slider" min="0" max="100" value="50">
-            </div>
-            <div class="controls-section">
-                <label for="food-type">Select Food:</label>
-                <select id="food-type">
-                    <option value="sugar">Sugar (white)</option>
-                    <option value="protein">Protein (green)</option>
-                    <option value="spoiled">Spoiled (blue)</option>
-                    <option value="poison">Poison (purple)</option>
-                </select>
-            </div>
-            <div class="controls-section danger-zone">
-                <h2 style="color: red;">Danger Zone</h2>
-                <button id="kill-red-ants" class="kill-all">Kill All Red Ants</button>
-                <button id="kill-all-ants" class="kill-all">Kill All Ants</button>
-                <button id="destroy-world" class="kill-all">Destroy World</button>
-            </div>
-            <div id="stats" class="controls-section">
-                Total Alive: 0<br>
-                White Ants: Alive: 0 | Born: 0 | Dead: 0<br>
-                Red Ants: Alive: 0 | Born: 0 | Dead: 0
-            </div>
-            <div class="controls-section">
-                <h2>User Controls</h2>
-                <button id="pause-resume">Pause</button>
+    <div class="controls">
+        <div class="controls-section">
+            <button id="add-ant">Add Ant</button>
+            <button id="add-red-ant">Add Red Ant</button>
+            <button id="destroy-world">Destroy World</button>
+            <select id="draw-mode">
+                <option value="food">Food</option>
+                <option value="water">Water</option>
+                <option value="wall">Wall</option>
+            </select>
+        </div>
+        <div class="controls-section danger-zone">
+            <button id="kill-all-ants">Kill All Ants</button>
+            <button id="kill-red-ants">Kill All Red Ants</button>
+        </div>
+        <div class="controls-section">
+            <div id="stats">
+                Total Alive: 0<br>White: 0 | Red: 0
             </div>
         </div>
-        <canvas id="antCanvas" width="1000" height="600"></canvas>
-    </main><<script>
-function moveAndDrawAnts() {
-    adjustHappiness();
-    if (whiteHappiness >= 75 && !queens.white) queens.white = createAnt(false, true);
-    if (whiteHappiness < 25 && !queens.red) queens.red = createAnt(true, true);
+    </div>
+    <canvas id="antCanvas" width="800" height="600"></canvas><script>
+        let ants = [], foods = [], waterTiles = [], wallTiles = [], queens = {
+            white: null,
+            red: null
+        };
+        let totalWhite = 0, totalRed = 0, happiness = 50;
+        const MAX_WHITE = 500, MAX_RED = 500;
+        let canvas, ctx;
 
-    ants.forEach(ant => {
-        ant.wanderAngle += (Math.random() - 0.5) * 0.2;
-        ant.angle += Math.sin(ant.wanderAngle) * 0.05;
+        window.addEventListener('DOMContentLoaded', () => {
+            canvas = document.getElementById('antCanvas');
+            ctx = canvas.getContext('2d');
+            setupUI();
+            animate();
+        });
 
-        if (ant.isRed) {
-            const target = ants.find(a => !a.isRed);
-            if (target) {
-                const angleToTarget = Math.atan2(target.y - ant.y, target.x - ant.x);
-                ant.angle += (angleToTarget - ant.angle) * (redAggressionLevel / 100);
-                if (Math.hypot(ant.x - target.x, ant.y - target.y) < 10) {
-                    ants.splice(ants.indexOf(target), 1);
-                    totalDeadWhite++;
-                    updateStats();
+        function setupUI() {
+            document.getElementById('add-ant').addEventListener('click', () => {
+                if (countWhite() < MAX_WHITE) {
+                    ants.push(createAnt(false)); totalWhite++; updateStats();
                 }
-            }
-        } else if (foods.length > 0) {
-            const nearestFood = foods.reduce((a, b) => ((a.x - ant.x) ** 2 + (a.y - ant.y) ** 2) < ((b.x - ant.x) ** 2 + (b.y - ant.y) ** 2) ? a : b);
-            const angleToFood = Math.atan2(nearestFood.y - ant.y, nearestFood.x - ant.x);
-            ant.angle += (angleToFood - ant.angle) * 0.1;
-            if (Math.hypot(ant.x - nearestFood.x, ant.y - nearestFood.y) < 10) foods.splice(foods.indexOf(nearestFood), 1);
+            });
+            document.getElementById('add-red-ant').addEventListener('click',
+                () => {
+                    if (countRed() < MAX_RED) {
+                        ants.push(createAnt(true)); totalRed++; updateStats();
+                    }
+                });
+            document.getElementById('destroy-world').addEventListener('click',
+                () => {
+                    ants = []; foods = []; waterTiles = []; wallTiles = []; queens.white = null; queens.red = null; happiness = 50; updateStats();
+                });
+            document.getElementById('kill-all-ants').addEventListener('click',
+                () => {
+                    ants = []; updateStats();
+                });
+            document.getElementById('kill-red-ants').addEventListener('click',
+                () => {
+                    ants = ants.filter(a => !a.isRed); updateStats();
+                });
+            canvas.addEventListener('mousedown',
+                e => handleCanvasClick(e));
         }
 
-        ant.x += Math.cos(ant.angle) * ant.speed;
-        ant.y += Math.sin(ant.angle) * ant.speed;
-        if (ant.x < 0) ant.x = canvas.width;
-        if (ant.x > canvas.width) ant.x = 0;
-        if (ant.y < 0) ant.y = canvas.height;
-        if (ant.y > canvas.height) ant.y = 0;
-
-        ant.lifespan -= 16;
-        if (ant.lifespan <= 0 && !ant.isQueen) {
-            if (ant.isRed) totalDeadRed++; else totalDeadWhite++;
-            ants.splice(ants.indexOf(ant), 1);
-            updateStats();
-            return;
+        function handleCanvasClick(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const mode = document.getElementById('draw-mode').value;
+            if (mode === 'food') foods.push({
+                x, y
+            });
+            if (mode === 'water') waterTiles.push({
+                x, y
+            });
+            if (mode === 'wall') wallTiles.push({
+                x, y
+            });
         }
-        ant.breedingTimer += 16;
-        if (ant.breedingTimer >= matingSpeed) {
-            tryBreeding(ant);
-            ant.breedingTimer = 0;
+
+        function createAnt(isRed = false, isQueen = false) {
+            return {
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                angle: Math.random() * Math.PI * 2,
+                isRed,
+                isQueen,
+                speed: isQueen ? 0: (isRed ? 2: 1),
+                breedingTimer: 0,
+                lifespan: isQueen ? Infinity: 10000,
+                poisoned: false,
+                poisonSpreadLeft: 3
+            };
         }
-    });
 
-    if (queens.white) spawnFromQueen(queens.white);
-    if (queens.red) spawnFromQueen(queens.red);
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawEnvironment();
+            moveAndDrawAnts();
+            requestAnimationFrame(animate);
+        }
 
-    ants.forEach(drawAnt);
-}
-</script>
-    </body>
+        function drawEnvironment() {
+            waterTiles.forEach(t => {
+                ctx.fillStyle = 'blue'; ctx.fillRect(t.x - 5, t.y - 5, 10, 10);
+            });
+            wallTiles.forEach(t => {
+                ctx.fillStyle = 'gray'; ctx.fillRect(t.x - 5, t.y - 5, 10, 10);
+            });
+            foods.forEach(f => {
+                ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(f.x, f.y, 5, 0, Math.PI * 2); ctx.fill();
+            });
+        }
+
+        function moveAndDrawAnts() {
+            adjustHappiness();
+            if (happiness >= 80 && !queens.white) queens.white = createAnt(false, true);
+            if (happiness <= 20 && !queens.red) queens.red = createAnt(true, true);
+
+            ants.forEach(ant => {
+                if (ant.isQueen) return;
+                ant.angle += (Math.random() - 0.5) * 0.2;
+
+                const nextX = ant.x + Math.cos(ant.angle) * ant.speed;
+                const nextY = ant.y + Math.sin(ant.angle) * ant.speed;
+                const hitsWater = waterTiles.some(t => Math.hypot(t.x - nextX, t.y - nextY) < 8);
+                const hitsWall = wallTiles.some(t => Math.hypot(t.x - nextX, t.y - nextY) < 8);
+                if (!hitsWater && !hitsWall) {
+                    ant.x = nextX;
+                    ant.y = nextY;
+                } else {
+                    ant.angle += Math.PI / 2;
+                }
+
+                if (ant.x < 0) ant.x = canvas.width;
+                if (ant.x > canvas.width) ant.x = 0;
+                if (ant.y < 0) ant.y = canvas.height;
+                if (ant.y > canvas.height) ant.y = 0;
+
+                ctx.fillStyle = ant.poisoned ? 'purple': (ant.isRed ? 'red': 'white');
+                ctx.beginPath();
+                ctx.arc(ant.x, ant.y, ant.isQueen ? 20: 5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function adjustHappiness() {
+            happiness = Math.max(0,
+                Math.min(100, 50 + foods.length / 2 - (totalWhite + totalRed) / 10));
+        }
+
+        function countWhite() {
+            return ants.filter(a => !a.isRed).length;
+        }
+        function countRed() {
+            return ants.filter(a => a.isRed).length;
+        }
+        function updateStats() {
+            document.getElementById('stats').innerHTML =
+            `Total Alive: ${ants.length}<br>White: ${countWhite()} | Red: ${countRed()}`;
+        }
+    </script>
+
+</body>
 </html>
