@@ -58,13 +58,10 @@
             <div class="controls-section">
                 <h2>User Controls</h2>
                 <button id="pause-resume">Pause</button>
-                <label for="hold-duration-slider">Tap-and-Hold Duration (ms):</label>
-                <input type="range" id="hold-duration-slider" min="100" max="1500" value="500">
             </div>
         </div>
         <canvas id="antCanvas" width="1000" height="600"></canvas>
-    </main>
-    <script>
+    </main><script>
         const SAVE_KEY = 'antFarmSave';
         const MAX_WHITE_ANTS = 500;
         const MAX_RED_ANTS = 500;
@@ -80,7 +77,6 @@
         let normalAntLifespan = 10000;
         let redAntLifespan = 10000;
         let canvas, ctx;
-        let globalPoisonCap = 0.2;
 
         window.addEventListener('DOMContentLoaded', () => {
             canvas = document.getElementById('antCanvas');
@@ -116,9 +112,7 @@
                 });
             get('destroy-world').addEventListener('click',
                 () => {
-                    ants = []; foods = []; queens.white = null; queens.red = null; whiteHappiness = 50;
-                    totalBornWhite = 0; totalDeadWhite = 0; totalBornRed = 0; totalDeadRed = 0;
-                    ctx.clearRect(0, 0, canvas.width, canvas.height); updateStats(); saveFarm();
+                    ants = []; foods = []; queens.white = null; queens.red = null; whiteHappiness = 50; totalBornWhite = 0; totalDeadWhite = 0; totalBornRed = 0; totalDeadRed = 0; ctx.clearRect(0, 0, canvas.width, canvas.height); updateStats(); saveFarm();
                 });
             get('pause-resume').addEventListener('click',
                 (e) => {
@@ -182,9 +176,6 @@
                 speed: isQueen ? 0: (isRed ? 2: 1),
                 breedingTimer: 0,
                 lifespan: isQueen ? Infinity: baseLife * (1 + jitter),
-                slowed: 0,
-                poisoned: false,
-                poisonSpreadLeft: 3,
                 spawnTimer: 0
             };
         }
@@ -232,10 +223,7 @@
                             height = 10;
                             ctx.fillStyle = 'gray';
                             ctx.fillRect(x, y, width, height);
-                            let color = 'lime';
-                            if (whiteHappiness < 25) color = 'red';
-                            else if (whiteHappiness < 50) color = 'orange';
-                            else if (whiteHappiness >= 75) color = queens.white ? 'purple': 'lime';
+                            let color = whiteHappiness < 25 ? 'red': whiteHappiness < 50 ? 'orange': whiteHappiness >= 75 ? (queens.white ? 'purple': 'lime'): 'lime';
                             ctx.fillStyle = color;
                             ctx.fillRect(x, y, 2 * whiteHappiness, height);
                             ctx.strokeStyle = 'black';
@@ -244,7 +232,7 @@
 
                     function drawAnt(ant) {
                         ctx.beginPath();
-                        ctx.fillStyle = ant.poisoned ? 'purple': (ant.isRed ? 'red': 'white');
+                        ctx.fillStyle = ant.isRed ? 'red': 'white';
                         const radius = ant.isQueen ? 20: 5;
                         ctx.arc(ant.x, ant.y, radius, 0, Math.PI * 2);
                         ctx.fill();
@@ -262,6 +250,12 @@
 
                     for (let i = ants.length - 1; i >= 0; i--) {
                         const ant = ants[i];
+                        if (foods.length > 0) {
+                            const nearestFood = foods.reduce((a, b) => ((a.x - ant.x) ** 2 + (a.y - ant.y) ** 2) < ((b.x - ant.x) ** 2 + (b.y - ant.y) ** 2) ? a: b);
+                            const angleToFood = Math.atan2(nearestFood.y - ant.y, nearestFood.x - ant.x);
+                            ant.angle += (angleToFood - ant.angle) * 0.3;
+                            if (Math.hypot(ant.x - nearestFood.x, ant.y - nearestFood.y) < 10) foods.splice(foods.indexOf(nearestFood), 1);
+                        }
                         if (!ant.isQueen) {
                             ant.x += Math.cos(ant.angle) * ant.speed;
                             ant.y += Math.sin(ant.angle) * ant.speed;
@@ -270,7 +264,7 @@
                             if (ant.y < 0) ant.y = canvas.height;
                             if (ant.y > canvas.height) ant.y = 0;
                         }
-                        ant.lifespan -= 16 * (ant.poisoned ? 1.2: 1);
+                        ant.lifespan -= 16;
                         if (ant.lifespan <= 0 && !ant.isQueen) {
                             if (ant.isRed) totalDeadRed++; else totalDeadWhite++;
                             ants.splice(i, 1);
@@ -278,21 +272,24 @@
                             continue;
                         }
                         ant.breedingTimer += 16;
-                        if (!ant.poisoned && ant.breedingTimer >= matingSpeed) {
+                        if (ant.breedingTimer >= matingSpeed) {
                             tryBreeding(ant);
                             ant.breedingTimer = 0;
                         }
-                        if (ant.isQueen) {
-                            ant.spawnTimer += 16;
-                            if (ant.spawnTimer >= 2000) {
-                                if ((ant.isRed && countRedAnts() < MAX_RED_ANTS) || (!ant.isRed && countWhiteAnts() < MAX_WHITE_ANTS)) {
-                                    ants.push(createAnt(ant.isRed));
-                                    if (ant.isRed) totalBornRed++; else totalBornWhite++;
-                                }
-                                ant.spawnTimer = 0;
-                            }
-                        }
                     }
+
+                    if (queens.white) spawnFromQueen(queens.white);
+                    if (queens.red) spawnFromQueen(queens.red);
+            }
+
+            function spawnFromQueen(queen) {
+                queen.spawnTimer += 16;
+                if (queen.spawnTimer >= 3000) {
+                    ants.push(createAnt(queen.isRed));
+                    if (queen.isRed) totalBornRed++; else totalBornWhite++;
+                    queen.spawnTimer = 0;
+                    updateStats();
+                }
             }
 
             function adjustWhiteHappiness() {
@@ -353,7 +350,7 @@
                 if (saved) {
                     const data = JSON.parse(saved);
                     ants = (data.ants || []).map(a => ({
-                        ...a, breedingTimer: 0, angle: a.angle || Math.random() * Math.PI * 2, slowed: 0, poisoned: false, poisonSpreadLeft: 3
+                        ...a, breedingTimer: 0, angle: a.angle || Math.random() * Math.PI * 2, spawnTimer: 0
                     }));
                     foods = data.foods || [];
                     totalBornWhite = data.totalBornWhite || 0;
