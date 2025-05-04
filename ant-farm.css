@@ -139,7 +139,6 @@ button#accent-button:hover, button#add-ant:hover, button#add-red-ant:hover, butt
     border: 1px solid #555;
     border-radius: 5px;
 }
-
 .option-sugar { font-weight: bold; color: white; }
 .option-protein { font-weight: bold; color: green; }
 .option-spoiled { font-weight: bold; color: blue; }
