@@ -53,6 +53,7 @@
                     <option value="wall"><b style="color:grey">Wall</b></option>
                     <option value="bulldozer"><b style="color:red">Bulldozer</b></option>
                 </select>
+                <button id="undo-structure">Undo Last</button>
                 <button id="delete-structures">Delete All Structures</button>
             </div>
 
@@ -64,7 +65,7 @@
             </div>
             <div id="stats" class="controls-section">
                 Total Alive: 0<br>
-                White Ants: Alive: 0 | Born: 0 | Dead: 0<br>
+                Ants: Alive: 0 | Born: 0 | Dead: 0<br>
                 Red Ants: Alive: 0 | Born: 0 | Dead: 0
             </div>
             <div class="controls-section">
@@ -79,12 +80,16 @@
             <canvas id="antCanvas" width="1000" height="600"></canvas>
         </div>
     </main>
-    <script>
+    <<script>
         const SAVE_KEY = 'antFarmSave';
         const MAX_WHITE_ANTS = 500;
         const MAX_RED_ANTS = 500;
         const MAX_FOOD = 300;
+
+        // State
         let ants = [], foods = [], pheromones = [], environment = [];
+        let environmentHistory = [];
+
         let animationPaused = false;
         let queens = {
             white: null,
@@ -94,8 +99,85 @@
         let matingSpeed = 5000, allowRedBreeding = true, redAggressionLevel = 50;
         let totalBornWhite = 0, totalDeadWhite = 0, totalBornRed = 0, totalDeadRed = 0;
         let normalAntLifespan = 10000, redAntLifespan = 10000;
+
         let canvas, ctx;
 
+        // Drawing helpers
+        let isDrawing = false, lastX = null, lastY = null;
+
+        // Utility: snapshot for undo
+        function snapshotEnvironment() {
+            environmentHistory.push(environment.slice());
+            if (environmentHistory.length > 20) environmentHistory.shift();
+        }
+
+        // Map event → canvas coords
+        function getCanvasCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            const cx = e.touches ? e.touches[0].clientX: e.clientX;
+            const cy = e.touches ? e.touches[0].clientY: e.clientY;
+            return {
+                x: cx - rect.left,
+                y: cy - rect.top
+            };
+        }
+
+        // Interpolate between two points
+        function interpolateAndDraw(x0, y0, x1, y1, fn) {
+            const d = Math.hypot(x1 - x0, y1 - y0);
+            const steps = Math.ceil(d / 2);
+            for (let i = 0; i <= steps; i++) {
+                const t = i / steps;
+                fn(
+                    x0 + (x1 - x0) * t,
+                    y0 + (y1 - y0) * t
+                );
+            }
+        }
+
+        // Handle pen‐drawing for environment tools
+        function handleDraw(e) {
+            e.preventDefault();
+            const {
+                x,
+                y
+            } = getCanvasCoords(e);
+            const tool = document.getElementById('environment-tool').value;
+
+            if (tool === 'none') {
+                lastX = x; lastY = y;
+                return;
+            }
+
+            // On first stroke point, lastX===null
+            if (lastX === null) {
+                snapshotEnvironment();
+                lastX = x; lastY = y;
+            }
+
+            // Interpolate environment
+            interpolateAndDraw(lastX, lastY, x, y, (ix, iy) => {
+                if (tool === 'wall' || tool === 'water') {
+                    environment.push({
+                        x: ix, y: iy, type: tool
+                    });
+                } else if (tool === 'bulldozer') {
+                    environment = environment.filter(o => Math.hypot(o.x - ix, o.y - iy) > 10);
+                }
+                // Visual feedback
+                ctx.beginPath();
+                ctx.strokeStyle = tool === 'wall' ? 'gray': tool === 'water' ? 'blue': 'red';
+                ctx.lineWidth = 4;
+                ctx.moveTo(ix, iy);
+                ctx.lineTo(ix + 0.1, iy + 0.1);
+                ctx.stroke();
+            });
+
+            lastX = x; lastY = y;
+            saveFarm();
+        }
+
+        // Core initialization
         window.addEventListener('DOMContentLoaded', () => {
             canvas = document.getElementById('antCanvas');
             ctx = canvas.getContext('2d');
@@ -106,88 +188,159 @@
             animate();
         });
 
+        // Resize canvas to viewport
         function resizeCanvas() {
-            canvas.width = Math.max(200, Math.min(window.innerWidth - 320, 1000));
+            canvas.width = Math.max(200,
+                Math.min(window.innerWidth - 320, 1000));
             canvas.height = window.innerHeight - 160;
         }
 
+        // Wire up UI controls
         function setupUI() {
-            const get = id => document.getElementById(id);
-            get('add-ant').addEventListener('click', () => {
-                if (countWhiteAnts() < MAX_WHITE_ANTS) {
-                    ants.push(createAnt(false)); totalBornWhite++; updateStats(); saveFarm();
-                }
-            });
-            get('add-red-ant').addEventListener('click',
+            const $ = id => document.getElementById(id);
+
+            // Ant controls
+            $.addAnt?.addEventListener('click',
+                () => {
+                    if (countWhiteAnts() < MAX_WHITE_ANTS) {
+                        ants.push(createAnt(false));
+                        totalBornWhite++;
+                        updateStats();
+                        saveFarm();
+                    }
+                });
+            $.addRedAnt?.addEventListener('click',
                 () => {
                     if (countRedAnts() < MAX_RED_ANTS) {
-                        ants.push(createAnt(true)); totalBornRed++; updateStats(); saveFarm();
+                        ants.push(createAnt(true));
+                        totalBornRed++;
+                        updateStats();
+                        saveFarm();
                     }
                 });
-            get('kill-all-ants').addEventListener('click',
+            $.killAllAnts?.addEventListener('click',
                 () => {
-                    ants = []; updateStats(); saveFarm();
-                });
-            get('destroy-world').addEventListener('click',
-                () => {
-                    ants = []; foods = []; pheromones = []; environment = []; queens.white = null; queens.red = null; whiteHappiness = 50;
-                    totalBornWhite = 0; totalDeadWhite = 0; totalBornRed = 0; totalDeadRed = 0;
-                    ctx.clearRect(0, 0, canvas.width, canvas.height); updateStats(); saveFarm();
-                });
-            get('pause-resume').addEventListener('click',
-                e => {
-                    animationPaused = !animationPaused; e.target.innerText = animationPaused ? 'Resume': 'Pause';
-                });
-            get('allow-red-breeding').addEventListener('change',
-                e => {
-                    allowRedBreeding = e.target.checked; saveFarm();
-                });
-            get('kill-red-ants').addEventListener('click',
-                () => {
-                    ants = ants.filter(a => !a.isRed); updateStats(); saveFarm();
-                });
-            get('mating-slider').addEventListener('input',
-                e => {
-                    matingSpeed = 10000 - (e.target.value * 90); saveFarm();
-                });
-            get('lifespan-slider-normal').addEventListener('input',
-                e => {
-                    normalAntLifespan = e.target.value * 1000; saveFarm();
-                });
-            get('lifespan-slider-red').addEventListener('input',
-                e => {
-                    redAntLifespan = e.target.value * 1000; saveFarm();
-                });
-            get('red-aggression-slider').addEventListener('input',
-                e => {
-                    redAggressionLevel = e.target.value; saveFarm();
-                });
-            canvas.addEventListener('click',
-                e => {
-                    const rect = canvas.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
-                    const tool = document.getElementById('environment-tool').value;
-                    if (tool === 'food') {
-                        const foodType = document.getElementById('food-type').value || 'sugar';
-                        if (foods.length < MAX_FOOD) foods.push({
-                            x, y, type: foodType
-                        });
-                    } else if (tool === 'wall' || tool === 'water') {
-                        environment.push({
-                            x, y, type: tool
-                        });
-                    } else if (tool === 'bulldozer') {
-                        environment = environment.filter(obj => Math.hypot(obj.x - x, obj.y - y) > 10);
-                    }
+                    ants = [];
+                    updateStats();
                     saveFarm();
                 });
-            get('delete-structures').addEventListener('click',
+            $.killRedAnts?.addEventListener('click',
                 () => {
-                    environment = []; saveFarm();
+                    ants = ants.filter(a => !a.isRed);
+                    updateStats();
+                    saveFarm();
+                });
+            $.destroyWorld?.addEventListener('click',
+                () => {
+                    ants = [];
+                    foods = [];
+                    pheromones = [];
+                    environment = [];
+                    environmentHistory = [];
+                    queens.white = queens.red = null;
+                    whiteHappiness = 50;
+                    totalBornWhite = totalDeadWhite = totalBornRed = totalDeadRed = 0;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    updateStats();
+                    saveFarm();
+                });
+
+            // Sliders & checkboxes
+            $.pauseResume?.addEventListener('click',
+                e => {
+                    animationPaused = !animationPaused;
+                    e.target.innerText = animationPaused ? 'Resume': 'Pause';
+                });
+            $.allowRedBreeding?.addEventListener('change',
+                e => {
+                    allowRedBreeding = e.target.checked;
+                    saveFarm();
+                });
+            $.matingSlider?.addEventListener('input',
+                e => {
+                    matingSpeed = 10000 - e.target.value * 90;
+                    saveFarm();
+                });
+            $.lifespanSliderNormal?.addEventListener('input',
+                e => {
+                    normalAntLifespan = e.target.value * 1000;
+                    saveFarm();
+                });
+            $.lifespanSliderRed?.addEventListener('input',
+                e => {
+                    redAntLifespan = e.target.value * 1000;
+                    saveFarm();
+                });
+            $.redAggressionSlider?.addEventListener('input',
+                e => {
+                    redAggressionLevel = +e.target.value;
+                    saveFarm();
+                });
+
+            // Undo button
+            $.undoStructure?.addEventListener('click',
+                () => {
+                    if (environmentHistory.length) {
+                        environment = environmentHistory.pop();
+                        saveFarm();
+                    }
+                });
+
+            // Single‐click food
+            canvas.addEventListener('click',
+                e => {
+                    const tool = $('environment-tool').value;
+                    if (tool === 'none') {
+                        const {
+                            x,
+                            y
+                        } = getCanvasCoords(e);
+                        const ft = $('food-type').value || 'sugar';
+                        if (foods.length < MAX_FOOD) foods.push({
+                            x, y, type: ft
+                        });
+                        saveFarm();
+                    }
+                });
+
+            // Pen‐drawing for environment
+            canvas.addEventListener('mousedown',
+                e => {
+                    isDrawing = true; lastX = lastY = null;
+                    handleDraw(e);
+                    canvas.addEventListener('mousemove', handleDraw);
+                });
+            canvas.addEventListener('mouseup',
+                () => {
+                    isDrawing = false;
+                    lastX = lastY = null;
+                    canvas.removeEventListener('mousemove', handleDraw);
+                });
+            canvas.addEventListener('mouseleave',
+                () => {
+                    isDrawing = false;
+                    lastX = lastY = null;
+                    canvas.removeEventListener('mousemove', handleDraw);
+                });
+
+            // Touch equivalents
+            canvas.addEventListener('touchstart',
+                e => {
+                    isDrawing = true; lastX = lastY = null;
+                    handleDraw(e);
+                    canvas.addEventListener('touchmove', handleDraw, {
+                        passive: false
+                    });
+                });
+            canvas.addEventListener('touchend',
+                () => {
+                    isDrawing = false;
+                    lastX = lastY = null;
+                    canvas.removeEventListener('touchmove', handleDraw);
                 });
         }
 
+        // Helpers
         function countWhiteAnts() {
             return ants.filter(a => !a.isRed).length;
         }
@@ -196,21 +349,21 @@
         }
 
         function createAnt(isRed = false, isQueen = false) {
-            const baseLife = isRed ? redAntLifespan: normalAntLifespan;
-            const jitter = (Math.random() * 0.2 - 0.1);
+            const base = isRed ? redAntLifespan: normalAntLifespan;
+            const jitter = 1 + (Math.random()*0.2 - 0.1);
             return {
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                angle: Math.random() * Math.PI * 2,
+                x: Math.random()*canvas.width,
+                y: Math.random()*canvas.height,
+                angle: Math.random()*Math.PI*2,
                 isRed, isQueen,
                 speed: isQueen ? 0: (isRed ? 2: 1),
                 breedingTimer: 0,
-                lifespan: isQueen ? Infinity: baseLife * (1 + jitter),
-                spawnTimer: 0,
-                followTarget: null
+                lifespan: isQueen ? Infinity: base*jitter,
+                spawnTimer: 0
             };
         }
 
+        // Main loop
         function animate() {
             ctx.clearRect(0,
                 0,
@@ -219,13 +372,11 @@
             drawEnvironment();
             drawFoods();
             drawPheromones();
-
             adjustWhiteHappiness();
             updateWhiteHappinessBar();
 
-            if (!animationPaused) {
-                moveAndDrawAnts();
-            } else {
+            if (!animationPaused) moveAndDrawAnts();
+            else {
                 ants.forEach(drawAnt);
                 if (queens.white) drawAnt(queens.white);
                 if (queens.red) drawAnt(queens.red);
@@ -234,46 +385,34 @@
             requestAnimationFrame(animate);
         }
 
-        function updateWhiteHappinessBar() {
-            const bar = document.getElementById('happiness-bar');
-            if (bar) {
-                bar.style.width = `${whiteHappiness * 2}px`; // assuming 0–100 maps to 0–200px
-                let color = 'lime';
-                if (whiteHappiness < 25) color = 'red';
-                else if (whiteHappiness < 50) color = 'orange';
-                else if (whiteHappiness >= 75) color = queens.white ? 'purple': 'lime';
-                bar.style.background = color;
-            }
-        }
-
+        // Draw environment features
         function drawEnvironment() {
-            environment.forEach(obj => {
+            environment.forEach(o => {
                 ctx.beginPath();
-                ctx.fillStyle = obj.type === 'wall' ? 'gray': 'blue';
-                ctx.arc(obj.x, obj.y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = o.type === 'wall' ? 'gray': 'blue';
+                ctx.arc(o.x, o.y, 5, 0, Math.PI*2);
                 ctx.fill();
-                ctx.closePath();
             });
         }
 
+        // Draw food
         function drawFoods() {
-            foods.forEach(food => {
+            foods.forEach(f => {
                 ctx.beginPath();
-                ctx.fillStyle = getFoodColor(food.type);
-                ctx.arc(food.x, food.y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = getFoodColor(f.type);
+                ctx.arc(f.x, f.y, 5, 0, Math.PI*2);
                 ctx.fill();
-                ctx.closePath();
             });
         }
 
+        // Draw pheromones
         function drawPheromones() {
             pheromones = pheromones.filter(p => p.strength > 0);
             pheromones.forEach(p => {
                 ctx.beginPath();
-                ctx.fillStyle = `rgba(255, 255, 0, ${p.strength})`;
-                ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255,255,0,${p.strength})`;
+                ctx.arc(p.x, p.y, 2, 0, Math.PI*2);
                 ctx.fill();
-                ctx.closePath();
                 p.strength -= 0.01;
             });
         }
@@ -288,27 +427,28 @@
                                 }
                         }
 
+                        // Happiness bar
                         function updateWhiteHappinessBar() {
                             const bar = document.getElementById('happiness-bar');
-                            bar.style.width = `${whiteHappiness * 2}px`; // since max width is 200px
-                            let color = 'lime';
-                            if (whiteHappiness < 25) color = 'red';
-                            else if (whiteHappiness < 50) color = 'orange';
-                            else if (whiteHappiness >= 75) color = queens.white ? 'purple': 'lime';
-                            bar.style.background = color;
+                            if (!bar) return;
+                            bar.style.width = `${whiteHappiness*2}px`;
+                            let c = 'lime';
+                            if (whiteHappiness < 25) c = 'red';
+                            else if (whiteHappiness < 50) c = 'orange';
+                            else if (whiteHappiness >= 75) c = queens.white ? 'purple': 'lime';
+                            bar.style.background = c;
                     }
 
-                    function drawAnt(ant) {
+                    // Ant drawing & movement
+                    function drawAnt(a) {
                         ctx.beginPath();
-                        ctx.fillStyle = ant.isRed ? 'red': 'white';
-                        const radius = ant.isQueen ? 20: 5;
-                        ctx.arc(ant.x, ant.y, radius, 0, Math.PI * 2);
+                        ctx.fillStyle = a.isRed ? 'red': 'white';
+                        const r = a.isQueen ? 20: 5;
+                        ctx.arc(a.x, a.y, r, 0, Math.PI*2);
                         ctx.fill();
-                        ctx.closePath();
                 }
 
                 function moveAndDrawAnts() {
-                    adjustWhiteHappiness();
                     ants.forEach(drawAnt);
                     if (queens.white) drawAnt(queens.white);
                     if (queens.red) drawAnt(queens.red);
@@ -316,158 +456,142 @@
                     if (whiteHappiness >= 75 && !queens.white) queens.white = createAnt(false, true);
                     if (whiteHappiness < 25 && !queens.red) queens.red = createAnt(true, true);
 
-                    for (let i = ants.length - 1; i >= 0; i--) {
-                        const ant = ants[i];
-                        ant.angle += (Math.random() - 0.5) * 0.2;
+                    for (let i = ants.length-1; i >= 0; i--) {
+                        const a = ants[i];
+                        a.angle += (Math.random()-0.5)*0.2;
 
-                        let blocked = environment.some(e => Math.hypot(e.x - ant.x, e.y - ant.y) < 5);
-                        if (!ant.isQueen && !blocked) {
-                            if (ant.isRed) {
-                                const target = ants.find(a => !a.isRed);
+                        // Environment collision
+                        const blocked = environment.some(o=>Math.hypot(o.x-a.x, o.y-a.y) < 5);
+                        if (!a.isQueen && !blocked) {
+                            if (a.isRed) {
+                                // aggressive pursuit
+                                const target = ants.find(o=>!o.isRed);
                                 if (target) {
-                                    const angleTo = Math.atan2(target.y - ant.y, target.x - ant.x);
-                                    ant.angle += (angleTo - ant.angle) * (redAggressionLevel / 100);
-                                    if (Math.hypot(ant.x - target.x, ant.y - target.y) < 10) {
+                                    const ang = Math.atan2(target.y-a.y, target.x-a.x);
+                                    a.angle += (ang - a.angle)*(redAggressionLevel/100);
+                                    if (Math.hypot(a.x-target.x, a.y-target.y) < 10) {
                                         ants.splice(ants.indexOf(target), 1);
                                         totalDeadWhite++;
                                         updateStats();
                                     }
                                 }
                             } else {
-                                const pheromone = pheromones.find(p => Math.hypot(p.x - ant.x, p.y - ant.y) < 20);
-                                if (pheromone) {
-                                    const angleToPheromone = Math.atan2(pheromone.y - ant.y, pheromone.x - ant.x);
-                                    ant.angle += (angleToPheromone - ant.angle) * 0.05;
+                                // pheromone or food seeking
+                                const ph = pheromones.find(p=>Math.hypot(p.x-a.x, p.y-a.y) < 20);
+                                if (ph) {
+                                    const ang = Math.atan2(ph.y-a.y, ph.x-a.x);
+                                    a.angle += (ang - a.angle)*0.05;
                                 } else if (foods.length > 0) {
-                                    const nearest = foods.reduce((a, b) => ((a.x - ant.x)**2 + (a.y - ant.y)**2) < ((b.x - ant.x)**2 + (b.y - ant.y)**2) ? a: b);
-                                    const angleToFood = Math.atan2(nearest.y - ant.y, nearest.x - ant.x);
-                                    ant.angle += (angleToFood - ant.angle) * 0.1;
-                                    if (Math.hypot(ant.x - nearest.x, ant.y - nearest.y) < 10) {
+                                    const nearest = foods.reduce((u, v)=>((u.x-a.x)**2+(u.y-a.y)**2) < ((v.x-a.x)**2+(v.y-a.y)**2)?u: v);
+                                    const ang = Math.atan2(nearest.y-a.y, nearest.x-a.x);
+                                    a.angle += (ang - a.angle)*0.1;
+                                    if (Math.hypot(a.x-nearest.x, a.y-nearest.y) < 10) {
                                         foods.splice(foods.indexOf(nearest), 1);
                                         pheromones.push({
-                                            x: ant.x, y: ant.y, strength: 1
+                                            x: a.x, y: a.y, strength: 1
                                         });
                                     }
                                 }
                             }
-                            ant.x += Math.cos(ant.angle) * ant.speed;
-                            ant.y += Math.sin(ant.angle) * ant.speed;
-                            if (ant.x < 0) ant.x = canvas.width;
-                            if (ant.x > canvas.width) ant.x = 0;
-                            if (ant.y < 0) ant.y = canvas.height;
-                            if (ant.y > canvas.height) ant.y = 0;
+                            // move
+                            a.x += Math.cos(a.angle)*a.speed;
+                            a.y += Math.sin(a.angle)*a.speed;
+                            if (a.x < 0) a.x = canvas.width;
+                            if (a.x > canvas.width) a.x = 0;
+                            if (a.y < 0) a.y = canvas.height;
+                            if (a.y > canvas.height) a.y = 0;
                         }
 
-                        ants.forEach(other => {
-                            if (other !== ant && Math.hypot(ant.x - other.x, ant.y - other.y) < 2) {
-                                ant.angle += Math.PI / 2;
+                        // sidestep if too close
+                        ants.forEach(o=> {
+                            if (o !== a && Math.hypot(a.x-o.x, a.y-o.y) < 2) {
+                                a.angle += Math.PI/2;
                             }
                         });
 
-                        ant.lifespan -= 16;
-                        if (ant.lifespan <= 0 && !ant.isQueen) {
-                            if (ant.isRed) totalDeadRed++; else totalDeadWhite++;
+                        // lifespan & breeding
+                        a.lifespan -= 16;
+                        if (a.lifespan <= 0 && !a.isQueen) {
+                            a.isRed ? totalDeadRed++: totalDeadWhite++;
                             ants.splice(i, 1);
                             updateStats();
                             continue;
                         }
 
-                        ant.breedingTimer += 16;
-                        if (ant.breedingTimer >= matingSpeed) {
-                            tryBreeding(ant);
-                            ant.breedingTimer = 0;
+                        a.breedingTimer = (a.breedingTimer || 0) + 16;
+                        if (!a.isQueen && a.breedingTimer >= matingSpeed) {
+                            tryBreeding(a);
+                            a.breedingTimer = 0;
                         }
 
-                        if (ant.isQueen) {
-                            ant.spawnTimer += 16;
-                            if (ant.spawnTimer >= 3000) {
-                                ants.push(createAnt(ant.isRed));
-                                if (ant.isRed) totalBornRed++; else totalBornWhite++;
-                                ant.spawnTimer = 0;
+                        if (a.isQueen) {
+                            a.spawnTimer = (a.spawnTimer || 0)+16;
+                            if (a.spawnTimer >= 3000) {
+                                ants.push(createAnt(a.isRed));
+                                a.isRed ? totalBornRed++: totalBornWhite++;
+                                a.spawnTimer = 0;
                             }
                         }
                     }
             }
 
-            function adjustWhiteHappiness() {
-                let foodScore = foods.filter(f => f.type !== 'poison').length;
-                let survivalScore = countWhiteAnts();
-                let deathPenalty = totalDeadWhite;
-                whiteHappiness = Math.max(0, Math.min(100, 50 + foodScore / 5 + survivalScore / 10 - deathPenalty / 20));
-            }
-
-            function tryBreeding(ant) {
-                ants.forEach(other => {
-                    if (other === ant || other.isQueen) return;
-                    if (Math.hypot(ant.x - other.x, ant.y - other.y) < 30) {
-                        if (ant.isRed && other.isRed) {
-                            if (allowRedBreeding && countRedAnts() < MAX_RED_ANTS && Math.random() < 0.1) {
-                                ants.push(createAnt(true));
-                                totalBornRed++;
-                            }
-                        } else if (!ant.isRed && !other.isRed) {
-                            if (countWhiteAnts() < MAX_WHITE_ANTS && Math.random() < 0.1) {
-                                ants.push(createAnt(false));
-                                totalBornWhite++;
-                            }
+            // breeding logic
+            function tryBreeding(a) {
+                ants.forEach(o=> {
+                    if (o === a || o.isQueen) return;
+                    if (Math.hypot(a.x-o.x, a.y-o.y) < 30) {
+                        if (a.isRed && o.isRed && allowRedBreeding && countRedAnts() < MAX_RED_ANTS && Math.random() < 0.1) {
+                            ants.push(createAnt(true)); totalBornRed++;
+                        } else if (!a.isRed&&!o.isRed && countWhiteAnts() < MAX_WHITE_ANTS && Math.random() < 0.1) {
+                            ants.push(createAnt(false)); totalBornWhite++;
                         }
                     }
                 });
                 updateStats();
             }
 
+            // stats display
             function updateStats() {
                 const el = document.getElementById('stats');
-                if (el) el.innerHTML =
-                `Total Alive: ${ants.length}<br>` +
-                `White Ants: Alive: ${countWhiteAnts()} | Born: ${totalBornWhite} | Dead: ${totalDeadWhite}<br>` +
+                if (!el) return;
+                el.innerHTML =
+                `Total Alive: ${ants.length}<br>`+
+                `White Ants: Alive: ${countWhiteAnts()} | Born: ${totalBornWhite} | Dead: ${totalDeadWhite}<br>`+
                 `Red Ants: Alive: ${countRedAnts()} | Born: ${totalBornRed} | Dead: ${totalDeadRed}`;
             }
 
+            // persistence
             function saveFarm() {
-                const data = {
-                    ants,
-                    foods,
-                    pheromones,
-                    environment,
-                    totalBornWhite,
-                    totalDeadWhite,
-                    totalBornRed,
-                    totalDeadRed,
-                    matingSpeed,
-                    normalAntLifespan,
-                    redAntLifespan,
-                    allowRedBreeding,
-                    redAggressionLevel,
-                    whiteHappiness
-                };
-                localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+                localStorage.setItem(SAVE_KEY, JSON.stringify({
+                    ants, foods, pheromones, environment,
+                    totalBornWhite, totalDeadWhite, totalBornRed, totalDeadRed,
+                    matingSpeed, normalAntLifespan, redAntLifespan,
+                    allowRedBreeding, redAggressionLevel, whiteHappiness
+                }));
             }
 
             function loadFarm() {
-                const saved = localStorage.getItem(SAVE_KEY);
-                if (saved) {
-                    const data = JSON.parse(saved);
-                    ants = (data.ants || []).map(a => ({
-                        ...a, breedingTimer: 0, angle: a.angle || Math.random() * Math.PI * 2, spawnTimer: 0
-                    }));
-                    foods = data.foods || [];
-                    pheromones = data.pheromones || [];
-                    environment = data.environment || [];
-                    totalBornWhite = data.totalBornWhite || 0;
-                    totalDeadWhite = data.totalDeadWhite || 0;
-                    totalBornRed = data.totalBornRed || 0;
-                    totalDeadRed = data.totalDeadRed || 0;
-                    matingSpeed = data.matingSpeed || 5000;
-                    normalAntLifespan = data.normalAntLifespan || 10000;
-                    redAntLifespan = data.redAntLifespan || 10000;
-                    allowRedBreeding = data.allowRedBreeding !== undefined ? data.allowRedBreeding: true;
-                    redAggressionLevel = data.redAggressionLevel !== undefined ? data.redAggressionLevel: 50;
-                    whiteHappiness = data.whiteHappiness !== undefined ? data.whiteHappiness: 50;
-                    updateStats();
-                }
+                const s = localStorage.getItem(SAVE_KEY);
+                if (!s) return;
+                const d = JSON.parse(s);
+                ants = (d.ants || []).map(a=>({
+                    ...a, breedingTimer: 0, spawnTimer: 0
+                }));
+                foods = d.foods || [];
+                pheromones = d.pheromones || [];
+                environment = d.environment || [];
+                totalBornWhite = d.totalBornWhite || 0;
+                totalDeadWhite = d.totalDeadWhite || 0;
+                totalBornRed = d.totalBornRed || 0;
+                totalDeadRed = d.totalDeadRed || 0;
+                matingSpeed = d.matingSpeed || 5000;
+                normalAntLifespan = d.normalAntLifespan || 10000;
+                redAntLifespan = d.redAntLifespan || 10000;
+                allowRedBreeding = d.allowRedBreeding !== undefined?d.allowRedBreeding: true;
+                redAggressionLevel = d.redAggressionLevel || 50;
+                whiteHappiness = d.whiteHappiness || 50;
+                updateStats();
             }
-
         </script>
     </body>
-</html>
+    </html>
