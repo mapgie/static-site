@@ -18,6 +18,7 @@
     </header>
     <main>
         <div class="controls-parent">
+            <!-- Ant and Red Ant Controls -->
             <div class="controls-section">
                 <h1>Ant Controls</h1>
                 <button id="add-ant">Add Ant</button>
@@ -38,21 +39,11 @@
             <div class="controls-section">
                 <label for="food-type">Select Food:</label>
                 <select id="food-type">
-                    <option value="sugar"><b style="color:white;">Sugar</b></option>
-                    <option value="protein"><b style="color:green;">Protein</b></option>
-                    <option value="spoiled"><b style="color:blue;">Spoiled</b></option>
-                    <option value="poison"><b style="color:purple;">Poison</b></option>
+                    <option value="sugar" style="color:white;font-weight:bold;">Sugar</option>
+                    <option value="protein" style="color:green;font-weight:bold;">Protein</option>
+                    <option value="spoiled" style="color:blue;font-weight:bold;">Spoiled</option>
+                    <option value="poison" style="color:purple;font-weight:bold;">Poison</option>
                 </select>
-            </div>
-            <div class="controls-section">
-                <label for="structure-type">Select Structure:</label>
-                <select id="structure-type">
-                    <option value="none">None</option>
-                    <option value="water"><b style="color:blue;">Water</b></option>
-                    <option value="wall"><b style="color:gray;">Wall</b></option>
-                    <option value="bulldozer"><b style="color:red;">Bulldozer</b></option>
-                </select>
-                <button id="delete-structures">Delete All Structures</button>
             </div>
             <div class="controls-section danger-zone">
                 <h2 style="color: red;">Danger Zone</h2>
@@ -70,14 +61,20 @@
                 <button id="pause-resume">Pause</button>
             </div>
         </div>
-        <canvas id="antCanvas" width="1000" height="600"></canvas>
+        <div class="canvas-container">
+            <div id="happiness-bar-container">
+                <div id="happiness-bar"></div>
+            </div>
+            <canvas id="antCanvas" width="1000" height="600"></canvas>
+        </div>
     </main>
     <script>
         const SAVE_KEY = 'antFarmSave';
         const MAX_WHITE_ANTS = 500;
         const MAX_RED_ANTS = 500;
         const MAX_FOOD = 300;
-        let ants = [], foods = [], animationPaused = false;
+        let ants = [], foods = [], pheromones = [], environment = [];
+        let animationPaused = false;
         let queens = {
             white: null,
             red: null
@@ -107,87 +104,76 @@
             const get = id => document.getElementById(id);
             get('add-ant').addEventListener('click', () => {
                 if (countWhiteAnts() < MAX_WHITE_ANTS) {
-                    ants.push(createAnt(false));
-                    totalBornWhite++;
-                    updateStats();
-                    saveFarm();
+                    ants.push(createAnt(false)); totalBornWhite++; updateStats(); saveFarm();
                 }
             });
             get('add-red-ant').addEventListener('click',
                 () => {
                     if (countRedAnts() < MAX_RED_ANTS) {
-                        ants.push(createAnt(true));
-                        totalBornRed++;
-                        updateStats();
-                        saveFarm();
+                        ants.push(createAnt(true)); totalBornRed++; updateStats(); saveFarm();
                     }
                 });
             get('kill-all-ants').addEventListener('click',
                 () => {
-                    ants = [];
-                    updateStats();
-                    saveFarm();
+                    ants = []; updateStats(); saveFarm();
                 });
             get('destroy-world').addEventListener('click',
                 () => {
-                    ants = [];
-                    foods = [];
-                    queens.white = null;
-                    queens.red = null;
-                    whiteHappiness = 50;
-                    totalBornWhite = 0;
-                    totalDeadWhite = 0;
-                    totalBornRed = 0;
-                    totalDeadRed = 0;
-                    updateStats();
-                    saveFarm();
+                    ants = []; foods = []; pheromones = []; environment = []; queens.white = null; queens.red = null; whiteHappiness = 50;
+                    totalBornWhite = 0; totalDeadWhite = 0; totalBornRed = 0; totalDeadRed = 0;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height); updateStats(); saveFarm();
                 });
             get('pause-resume').addEventListener('click',
                 e => {
-                    animationPaused = !animationPaused;
-                    e.target.innerText = animationPaused ? 'Resume': 'Pause';
+                    animationPaused = !animationPaused; e.target.innerText = animationPaused ? 'Resume': 'Pause';
                 });
             get('allow-red-breeding').addEventListener('change',
                 e => {
-                    allowRedBreeding = e.target.checked;
-                    saveFarm();
+                    allowRedBreeding = e.target.checked; saveFarm();
                 });
             get('kill-red-ants').addEventListener('click',
                 () => {
-                    ants = ants.filter(a => !a.isRed);
-                    updateStats();
-                    saveFarm();
+                    ants = ants.filter(a => !a.isRed); updateStats(); saveFarm();
                 });
             get('mating-slider').addEventListener('input',
                 e => {
-                    matingSpeed = 10000 - (e.target.value * 90);
-                    saveFarm();
+                    matingSpeed = 10000 - (e.target.value * 90); saveFarm();
                 });
             get('lifespan-slider-normal').addEventListener('input',
                 e => {
-                    normalAntLifespan = e.target.value * 1000;
-                    saveFarm();
+                    normalAntLifespan = e.target.value * 1000; saveFarm();
                 });
             get('lifespan-slider-red').addEventListener('input',
                 e => {
-                    redAntLifespan = e.target.value * 1000;
-                    saveFarm();
+                    redAntLifespan = e.target.value * 1000; saveFarm();
                 });
             get('red-aggression-slider').addEventListener('input',
                 e => {
-                    redAggressionLevel = e.target.value;
-                    saveFarm();
+                    redAggressionLevel = e.target.value; saveFarm();
                 });
             canvas.addEventListener('click',
                 e => {
                     const rect = canvas.getBoundingClientRect();
                     const x = e.clientX - rect.left;
                     const y = e.clientY - rect.top;
-                    const foodType = document.getElementById('food-type').value || 'sugar';
-                    if (foods.length < MAX_FOOD) foods.push({
-                        x, y, type: foodType
-                    });
+                    const tool = document.getElementById('draw-tool').value;
+                    if (tool === 'food') {
+                        const foodType = document.getElementById('food-type').value || 'sugar';
+                        if (foods.length < MAX_FOOD) foods.push({
+                            x, y, type: foodType
+                        });
+                    } else if (tool === 'wall' || tool === 'water') {
+                        environment.push({
+                            x, y, type: tool
+                        });
+                    } else if (tool === 'bulldozer') {
+                        environment = environment.filter(obj => Math.hypot(obj.x - x, obj.y - y) > 10);
+                    }
                     saveFarm();
+                });
+            get('delete-structures').addEventListener('click',
+                () => {
+                    environment = []; saveFarm();
                 });
         }
 
@@ -205,14 +191,12 @@
                 x: Math.random() * canvas.width,
                 y: Math.random() * canvas.height,
                 angle: Math.random() * Math.PI * 2,
-                isRed,
-                isQueen,
+                isRed, isQueen,
                 speed: isQueen ? 0: (isRed ? 2: 1),
                 breedingTimer: 0,
                 lifespan: isQueen ? Infinity: baseLife * (1 + jitter),
                 spawnTimer: 0,
-                poisoned: false,
-                poisonSpreadLeft: 3
+                followTarget: null
             };
         }
 
@@ -221,15 +205,44 @@
                 0,
                 canvas.width,
                 canvas.height);
+            drawEnvironment();
             drawFoods();
-            drawWhiteHappinessBar();
-            if (!animationPaused) moveAndDrawAnts();
-            else {
+            drawPheromones();
+
+            adjustWhiteHappiness();
+            updateWhiteHappinessBar();
+
+            if (!animationPaused) {
+                moveAndDrawAnts();
+            } else {
                 ants.forEach(drawAnt);
                 if (queens.white) drawAnt(queens.white);
                 if (queens.red) drawAnt(queens.red);
             }
+
             requestAnimationFrame(animate);
+        }
+
+        function updateWhiteHappinessBar() {
+            const bar = document.getElementById('happiness-bar');
+            if (bar) {
+                bar.style.width = `${whiteHappiness * 2}px`; // assuming 0–100 maps to 0–200px
+                let color = 'lime';
+                if (whiteHappiness < 25) color = 'red';
+                else if (whiteHappiness < 50) color = 'orange';
+                else if (whiteHappiness >= 75) color = queens.white ? 'purple': 'lime';
+                bar.style.background = color;
+            }
+        }
+
+        function drawEnvironment() {
+            environment.forEach(obj => {
+                ctx.beginPath();
+                ctx.fillStyle = obj.type === 'wall' ? 'gray': 'blue';
+                ctx.arc(obj.x, obj.y, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+            });
         }
 
         function drawFoods() {
@@ -239,6 +252,18 @@
                 ctx.arc(food.x, food.y, 5, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.closePath();
+            });
+        }
+
+        function drawPheromones() {
+            pheromones = pheromones.filter(p => p.strength > 0);
+            pheromones.forEach(p => {
+                ctx.beginPath();
+                ctx.fillStyle = `rgba(255, 255, 0, ${p.strength})`;
+                ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+                p.strength -= 0.01;
             });
         }
 
@@ -252,26 +277,19 @@
                                 }
                         }
 
-                        function drawWhiteHappinessBar() {
-                            const x = 10,
-                            y = 10,
-                            width = 200,
-                            height = 10;
-                            ctx.fillStyle = 'gray';
-                            ctx.fillRect(x, y, width, height);
+                        function updateWhiteHappinessBar() {
+                            const bar = document.getElementById('happiness-bar');
+                            bar.style.width = `${whiteHappiness * 2}px`; // since max width is 200px
                             let color = 'lime';
                             if (whiteHappiness < 25) color = 'red';
                             else if (whiteHappiness < 50) color = 'orange';
                             else if (whiteHappiness >= 75) color = queens.white ? 'purple': 'lime';
-                            ctx.fillStyle = color;
-                            ctx.fillRect(x, y, 2 * whiteHappiness, height);
-                            ctx.strokeStyle = 'black';
-                            ctx.strokeRect(x, y, width, height);
+                            bar.style.background = color;
                     }
 
                     function drawAnt(ant) {
                         ctx.beginPath();
-                        ctx.fillStyle = ant.poisoned ? 'purple': (ant.isRed ? 'red': 'white');
+                        ctx.fillStyle = ant.isRed ? 'red': 'white';
                         const radius = ant.isQueen ? 20: 5;
                         ctx.arc(ant.x, ant.y, radius, 0, Math.PI * 2);
                         ctx.fill();
@@ -289,9 +307,10 @@
 
                     for (let i = ants.length - 1; i >= 0; i--) {
                         const ant = ants[i];
-                        ant.angle += (Math.random() - 0.5) * 0.1;
+                        ant.angle += (Math.random() - 0.5) * 0.2;
 
-                        if (!ant.isQueen) {
+                        let blocked = environment.some(e => Math.hypot(e.x - ant.x, e.y - ant.y) < 5);
+                        if (!ant.isQueen && !blocked) {
                             if (ant.isRed) {
                                 const target = ants.find(a => !a.isRed);
                                 if (target) {
@@ -303,19 +322,23 @@
                                         updateStats();
                                     }
                                 }
-                            } else if (foods.length > 0) {
-                                const nearest = foods.reduce((a, b) => ((a.x - ant.x) ** 2 + (a.y - ant.y) ** 2) < ((b.x - ant.x) ** 2 + (b.y - ant.y) ** 2) ? a: b);
-                                const angleToFood = Math.atan2(nearest.y - ant.y, nearest.x - ant.x);
-                                ant.angle += (angleToFood - ant.angle) * 0.1;
-                                if (Math.hypot(ant.x - nearest.x, ant.y - nearest.y) < 10) {
-                                    if (nearest.type === 'poison') {
-                                        ants.splice(i, 1);
-                                        totalDeadWhite++;
+                            } else {
+                                const pheromone = pheromones.find(p => Math.hypot(p.x - ant.x, p.y - ant.y) < 20);
+                                if (pheromone) {
+                                    const angleToPheromone = Math.atan2(pheromone.y - ant.y, pheromone.x - ant.x);
+                                    ant.angle += (angleToPheromone - ant.angle) * 0.05;
+                                } else if (foods.length > 0) {
+                                    const nearest = foods.reduce((a, b) => ((a.x - ant.x)**2 + (a.y - ant.y)**2) < ((b.x - ant.x)**2 + (b.y - ant.y)**2) ? a: b);
+                                    const angleToFood = Math.atan2(nearest.y - ant.y, nearest.x - ant.x);
+                                    ant.angle += (angleToFood - ant.angle) * 0.1;
+                                    if (Math.hypot(ant.x - nearest.x, ant.y - nearest.y) < 10) {
+                                        foods.splice(foods.indexOf(nearest), 1);
+                                        pheromones.push({
+                                            x: ant.x, y: ant.y, strength: 1
+                                        });
                                     }
-                                    foods.splice(foods.indexOf(nearest), 1);
                                 }
                             }
-
                             ant.x += Math.cos(ant.angle) * ant.speed;
                             ant.y += Math.sin(ant.angle) * ant.speed;
                             if (ant.x < 0) ant.x = canvas.width;
@@ -324,10 +347,15 @@
                             if (ant.y > canvas.height) ant.y = 0;
                         }
 
+                        ants.forEach(other => {
+                            if (other !== ant && Math.hypot(ant.x - other.x, ant.y - other.y) < 2) {
+                                ant.angle += Math.PI / 2;
+                            }
+                        });
+
                         ant.lifespan -= 16;
                         if (ant.lifespan <= 0 && !ant.isQueen) {
-                            if (ant.isRed) totalDeadRed++;
-                            else totalDeadWhite++;
+                            if (ant.isRed) totalDeadRed++; else totalDeadWhite++;
                             ants.splice(i, 1);
                             updateStats();
                             continue;
@@ -343,8 +371,7 @@
                             ant.spawnTimer += 16;
                             if (ant.spawnTimer >= 3000) {
                                 ants.push(createAnt(ant.isRed));
-                                if (ant.isRed) totalBornRed++;
-                                else totalBornWhite++;
+                                if (ant.isRed) totalBornRed++; else totalBornWhite++;
                                 ant.spawnTimer = 0;
                             }
                         }
@@ -390,6 +417,8 @@
                 const data = {
                     ants,
                     foods,
+                    pheromones,
+                    environment,
                     totalBornWhite,
                     totalDeadWhite,
                     totalBornRed,
@@ -409,14 +438,11 @@
                 if (saved) {
                     const data = JSON.parse(saved);
                     ants = (data.ants || []).map(a => ({
-                        ...a,
-                        breedingTimer: 0,
-                        angle: a.angle || Math.random() * Math.PI * 2,
-                        spawnTimer: 0,
-                        poisoned: false,
-                        poisonSpreadLeft: 3
+                        ...a, breedingTimer: 0, angle: a.angle || Math.random() * Math.PI * 2, spawnTimer: 0
                     }));
                     foods = data.foods || [];
+                    pheromones = data.pheromones || [];
+                    environment = data.environment || [];
                     totalBornWhite = data.totalBornWhite || 0;
                     totalDeadWhite = data.totalDeadWhite || 0;
                     totalBornRed = data.totalBornRed || 0;
@@ -430,6 +456,7 @@
                     updateStats();
                 }
             }
+
         </script>
     </body>
 </html>

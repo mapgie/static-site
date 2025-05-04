@@ -95,6 +95,12 @@ button#accent-button:hover, button#add-ant:hover, button#add-red-ant:hover, butt
     }
 }
 
+.canvas-container {
+    position: relative;
+    display: inline-block;
+}
+
+
 #antCanvas {
     width: 100%;
     height: auto;
@@ -102,6 +108,24 @@ button#accent-button:hover, button#add-ant:hover, button#add-red-ant:hover, butt
     border: 1px solid #555;
     background: #111;
     touch-action: none;
+}
+
+#happiness-bar-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 200px;
+    height: 10px;
+    background: gray;
+    z-index: 100;
+    margin: 5px;
+    border: 1px solid black;
+}
+
+#happiness-bar {
+    height: 100%;
+    width: 0;
+    background: lime;
 }
 
 /* Dropdown styling */
