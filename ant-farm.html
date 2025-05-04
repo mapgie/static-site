@@ -45,6 +45,17 @@
                     <option value="poison" style="color:purple;font-weight:bold;">Poison</option>
                 </select>
             </div>
+            <div class="controls-section">
+                <h2>Environment Tools</h2>
+                <select id="environment-tool">
+                    <option value="none">None</option>
+                    <option value="water"><b style="color:blue">Water</b></option>
+                    <option value="wall"><b style="color:grey">Wall</b></option>
+                    <option value="bulldozer"><b style="color:red">Bulldozer</b></option>
+                </select>
+                <button id="delete-structures">Delete All Structures</button>
+            </div>
+
             <div class="controls-section danger-zone">
                 <h2 style="color: red;">Danger Zone</h2>
                 <button id="kill-red-ants" class="kill-all">Kill All Red Ants</button>
@@ -156,7 +167,7 @@
                     const rect = canvas.getBoundingClientRect();
                     const x = e.clientX - rect.left;
                     const y = e.clientY - rect.top;
-                    const tool = document.getElementById('draw-tool').value;
+                    const tool = document.getElementById('environment-tool').value;
                     if (tool === 'food') {
                         const foodType = document.getElementById('food-type').value || 'sugar';
                         if (foods.length < MAX_FOOD) foods.push({
