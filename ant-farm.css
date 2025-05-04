@@ -1,149 +1,213 @@
-/* General layout and dark theme */
+/* ant-farm.css */
+
+/* --- Layout & Dark Theme --- */
 body, html {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    background: #1a1a1a;
-    color: #eee;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: #1a1a1a;
+  color: #eee;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 main {
-    display: flex;
-    flex-direction: column;
-    padding-top: 80px;
-}
-
-.controls-parent {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    padding: 1rem;
-    min-width: 30vw;
-}
-
-.controls-section {
-    background: #333;
-    border-radius: 8px;
-    padding: 1rem;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.4);
-}
-
-.controls-section h1, .controls-section h2 {
-    margin-bottom: 0.5rem;
-    font-size: 1.2rem;
-    color: #00b4d8;
-}
-
-.controls-section label, .controls-section span {
-    font-size: 0.9rem;
-    margin-top: 0.25rem;
-}
-
-.controls-section input[type="range"] {
-    width: 100%;
-    margin: 0.25rem 0;
-}
-
-.controls-section button {
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 5px;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: background 0.3s;
-}
-
-button.kill-all {
-    background: #b00020;
-    color: white;
-    font-weight: bold;
-    margin-top: 0.25rem;
-}
-
-button.kill-all:hover {
-    background: #ff1744;
-}
-
-button#accent-button, button#add-ant, button#add-red-ant, button#pause-resume, button#delete-structures {
-    background: #00b4d8;
-    color: #fff;
-    margin-top: 0.25rem;
-}
-
-button#accent-button:hover, button#add-ant:hover, button#add-red-ant:hover, button#pause-resume:hover, button#delete-structures:hover {
-    background: #0091b2;
-}
-
-.danger-zone {
-    border: 1px solid #b00020;
-    background: #2a0000;
-}
-
-.danger-title {
-    color: red;
+  display: flex;
+  flex-direction: column;
+  padding-top: 80px;
 }
 
 @media (min-width: 768px) {
-    main {
-        flex-direction: row;
-    }
+  main {
+    flex-direction: row;
+  }
+}
 
-    .controls-parent {
-        width: 300px;
-    }
+.controls-parent {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  background: #222;
+  max-width: 320px;
+  overflow-y: auto;
+  height: calc(100vh - 80px);
+}
+
+.controls-section {
+  background: #333;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+}
+
+.controls-section h1,
+.controls-section h2 {
+  margin-bottom: 0.5rem;
+  font-size: 1.2rem;
+  color: #00b4d8;
+}
+
+.controls-section label,
+.controls-section span {
+  font-size: 0.9rem;
+  display: block;
+  margin-top: 0.25rem;
+}
+
+.controls-section input[type="range"],
+.controls-section select {
+  width: 100%;
+  margin: 0.25rem 0;
+}
+
+.controls-section button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 5px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.3s;
+  margin-top: 0.5rem;
+}
+.controls-section button:hover {
+  opacity: 0.9;
+}
+
+button.kill-all {
+  background: #b00020;
+  color: #fff;
+  font-weight: bold;
+}
+button.kill-all:hover {
+  background: #ff1744;
+}
+
+button#add-ant,
+button#add-red-ant,
+button#pause-resume,
+button#undoStructure,
+button#delete-structures {
+  background: #00b4d8;
+  color: #fff;
+}
+button#add-ant:hover,
+button#add-red-ant:hover,
+button#pause-resume:hover,
+button#undoStructure:hover,
+button#delete-structures:hover {
+  background: #0091b2;
+}
+
+.danger-zone {
+  border: 1px solid #b00020;
+  background: #2a0000;
 }
 
 .canvas-container {
-    position: relative;
-    display: inline-block;
+  position: relative;
+  flex-grow: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-
 #antCanvas {
-    width: 100%;
-    height: auto;
-    max-width: 1000px;
-    border: 1px solid #555;
-    background: #111;
-    touch-action: none;
+  width: 100%;
+  max-width: 1000px;
+  height: auto;
+  border: 1px solid #555;
+  background: #111;
+  touch-action: none;
 }
 
 #happiness-bar-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 200px;
-    height: 10px;
-    background: gray;
-    z-index: 100;
-    margin: 5px;
-    border: 1px solid black;
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 200px;
+  height: 12px;
+  background: #444;
+  border: 1px solid #222;
+  border-radius: 4px;
+  overflow: hidden;
+  z-index: 10;
 }
 
 #happiness-bar {
-    height: 100%;
-    width: 0;
-    background: lime;
+  height: 100%;
+  width: 0;
+  background: lime;
+  transition: width 0.2s, background 0.2s;
 }
 
-/* Dropdown styling */
-.controls-section select {
-    width: 100%;
-    padding: 0.4rem;
-    font-size: 0.9rem;
-    margin-top: 0.3rem;
-    background: #222;
-    color: #eee;
-    border: 1px solid #555;
-    border-radius: 5px;
+/* --- Mode Selector (Tools & Foods) --- */
+.mode-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 }
-.option-sugar { font-weight: bold; color: white; }
-.option-protein { font-weight: bold; color: green; }
-.option-spoiled { font-weight: bold; color: blue; }
-.option-poison { font-weight: bold; color: purple; }
-.option-none { font-weight: bold; color: white; }
-.option-water { font-weight: bold; color: blue; }
-.option-wall { font-weight: bold; color: grey; }
-.option-bulldozer { font-weight: bold; color: orange; }
+
+.mode-btn {
+  width: 32px;
+  height: 32px;
+  border: 2px solid #555;
+  border-radius: 4px;
+  background: #222;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.mode-btn.active {
+  border-color: #00b4d8;
+  background: #00b4d8;
+}
+
+.mode-btn .swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+}
+
+.swatch.sugar   { background: white; }
+.swatch.protein { background: green; }
+.swatch.spoiled { background: blue; }
+.swatch.poison  { background: purple; }
+
+/* Hover titles */
+.mode-btn[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 110%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: #eee;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+/* Scrollbar for controls panel */
+.controls-parent {
+  scrollbar-width: thin;
+  scrollbar-color: #555 #222;
+}
+.controls-parent::-webkit-scrollbar {
+  width: 6px;
+}
+.controls-parent::-webkit-scrollbar-track {
+  background: #222;
+}
+.controls-parent::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 3px;
+}
