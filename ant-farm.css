@@ -1,4 +1,5 @@
-/* Updated Ant Farm Control Panel Styling */ body, html {
+/* General layout and dark theme */
+body, html {
     margin: 0;
     padding: 0;
     width: 100%;
@@ -65,18 +66,23 @@ button.kill-all:hover {
     background: #ff1744;
 }
 
-button#accent-button, button#add-ant, button#add-red-ant, button#pause-resume {
+button#accent-button, button#add-ant, button#add-red-ant, button#pause-resume, button#delete-structures {
     background: #00b4d8;
     color: #fff;
+    margin-top: 0.25rem;
 }
 
-button#accent-button:hover, button#add-ant:hover, button#add-red-ant:hover, button#pause-resume:hover {
+button#accent-button:hover, button#add-ant:hover, button#add-red-ant:hover, button#pause-resume:hover, button#delete-structures:hover {
     background: #0091b2;
 }
 
 .danger-zone {
     border: 1px solid #b00020;
     background: #2a0000;
+}
+
+.danger-title {
+    color: red;
 }
 
 @media (min-width: 768px) {
@@ -97,3 +103,24 @@ button#accent-button:hover, button#add-ant:hover, button#add-red-ant:hover, butt
     background: #111;
     touch-action: none;
 }
+
+/* Dropdown styling */
+.controls-section select {
+    width: 100%;
+    padding: 0.4rem;
+    font-size: 0.9rem;
+    margin-top: 0.3rem;
+    background: #222;
+    color: #eee;
+    border: 1px solid #555;
+    border-radius: 5px;
+}
+
+.option-sugar { font-weight: bold; color: white; }
+.option-protein { font-weight: bold; color: green; }
+.option-spoiled { font-weight: bold; color: blue; }
+.option-poison { font-weight: bold; color: purple; }
+.option-none { font-weight: bold; color: white; }
+.option-water { font-weight: bold; color: blue; }
+.option-wall { font-weight: bold; color: grey; }
+.option-bulldozer { font-weight: bold; color: orange; }
