@@ -61,231 +61,60 @@
             </div>
         </div>
         <canvas id="antCanvas" width="1000" height="600"></canvas>
-    </main><script>
-        const MAX_WHITE_ANTS = 500;
-        const MAX_RED_ANTS = 500;
-        const MAX_FOOD = 300;
-        let ants = [], foods = [], animationPaused = false;
-        let queens = {
-            white: null,
-            red: null
-        };
-        let whiteHappiness = 50;
-        let matingSpeed = 3000, allowRedBreeding = true, redAggressionLevel = 50;
-        let totalBornWhite = 0, totalDeadWhite = 0, totalBornRed = 0, totalDeadRed = 0;
-        let normalAntLifespan = 10000;
-        let redAntLifespan = 10000;
-        let canvas, ctx;
+    </main><<script>
+function moveAndDrawAnts() {
+    adjustHappiness();
+    if (whiteHappiness >= 75 && !queens.white) queens.white = createAnt(false, true);
+    if (whiteHappiness < 25 && !queens.red) queens.red = createAnt(true, true);
 
-        window.addEventListener('DOMContentLoaded', () => {
-            canvas = document.getElementById('antCanvas');
-            ctx = canvas.getContext('2d');
-            resizeCanvas();
-            window.addEventListener('resize', resizeCanvas);
-            setupUI();
-            animate();
-        });
+    ants.forEach(ant => {
+        ant.wanderAngle += (Math.random() - 0.5) * 0.2;
+        ant.angle += Math.sin(ant.wanderAngle) * 0.05;
 
-        function resizeCanvas() {
-            canvas.width = Math.max(200, Math.min(window.innerWidth - 320, 1000));
-            canvas.height = window.innerHeight - 160;
-        }
-
-        function setupUI() {
-            document.getElementById('add-ant').addEventListener('click', () => {
-                if (countWhiteAnts() < MAX_WHITE_ANTS) {
-                    ants.push(createAnt(false)); totalBornWhite++; updateStats();
-                }
-            });
-            document.getElementById('add-red-ant').addEventListener('click',
-                () => {
-                    if (countRedAnts() < MAX_RED_ANTS) {
-                        ants.push(createAnt(true)); totalBornRed++; updateStats();
-                    }
-                });
-            document.getElementById('kill-all-ants').addEventListener('click',
-                () => {
-                    ants = []; updateStats();
-                });
-            document.getElementById('destroy-world').addEventListener('click',
-                () => {
-                    ants = []; foods = []; queens.white = null; queens.red = null; whiteHappiness = 50; totalBornWhite = 0; totalDeadWhite = 0; totalBornRed = 0; totalDeadRed = 0; ctx.clearRect(0, 0, canvas.width, canvas.height); updateStats();
-                });
-            document.getElementById('pause-resume').addEventListener('click',
-                (e) => {
-                    animationPaused = !animationPaused; e.target.innerText = animationPaused ? 'Resume': 'Pause';
-                });
-        }
-
-        function countWhiteAnts() {
-            return ants.filter(a => !a.isRed).length;
-        }
-        function countRedAnts() {
-            return ants.filter(a => a.isRed).length;
-        }
-
-        function createAnt(isRed = false, isQueen = false) {
-            const baseLife = isRed ? redAntLifespan: normalAntLifespan;
-            const jitter = (Math.random() * 0.2 - 0.1);
-            return {
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                angle: Math.random() * Math.PI * 2,
-                isRed,
-                isQueen,
-                speed: isQueen ? 0: (isRed ? 2: 1),
-                breedingTimer: 0,
-                lifespan: isQueen ? Infinity: baseLife * (1 + jitter),
-                spawnTimer: 0,
-                wanderAngle: Math.random() * Math.PI * 2
-            };
-        }
-
-        function animate() {
-            ctx.clearRect(0,
-                0,
-                canvas.width,
-                canvas.height);
-            drawFoods();
-            drawHappinessBar();
-            if (!animationPaused) moveAndDrawAnts();
-            else ants.forEach(drawAnt);
-            if (queens.white) drawAnt(queens.white);
-            if (queens.red) drawAnt(queens.red);
-            requestAnimationFrame(animate);
-        }
-
-        function drawFoods() {
-            foods.forEach(food => {
-                ctx.beginPath();
-                ctx.fillStyle = getFoodColor(food.type);
-                ctx.arc(food.x, food.y, 5, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.closePath();
-            });
-        }
-
-        function getFoodColor(type) {
-            switch (type) {
-                case 'sugar': return 'white';
-                    case 'protein': return 'green';
-                        case 'spoiled': return 'blue';
-                            case 'poison': return 'purple';
-                                default: return 'white';
-                                }
-                        }
-
-                        function drawHappinessBar() {
-                            const x = 10,
-                            y = 10,
-                            width = 200,
-                            height = 10;
-                            ctx.fillStyle = 'gray';
-                            ctx.fillRect(x, y, width, height);
-                            let color = whiteHappiness < 25 ? 'red': whiteHappiness < 50 ? 'orange': whiteHappiness >= 75 ? (queens.white ? 'purple': 'lime'): 'lime';
-                            ctx.fillStyle = color;
-                            ctx.fillRect(x, y, 2 * whiteHappiness, height);
-                            ctx.strokeStyle = 'black';
-                            ctx.strokeRect(x, y, width, height);
-                    }
-
-                    function drawAnt(ant) {
-                        ctx.beginPath();
-                        ctx.fillStyle = ant.isRed ? 'red': 'white';
-                        const radius = ant.isQueen ? 20: 5;
-                        ctx.arc(ant.x, ant.y, radius, 0, Math.PI * 2);
-                        ctx.fill();
-                        ctx.closePath();
-                }
-
-                function moveAndDrawAnts() {
-                    adjustHappiness();
-                    if (whiteHappiness >= 75 && !queens.white) queens.white = createAnt(false, true);
-                    if (whiteHappiness < 25 && !queens.red) queens.red = createAnt(true, true);
-
-                    ants.forEach(ant => {
-                        // More natural wandering
-                        ant.wanderAngle += (Math.random() - 0.5) * 0.2;
-                        ant.angle += Math.sin(ant.wanderAngle) * 0.05;
-
-                        if (foods.length > 0) {
-                            const nearestFood = foods.reduce((a, b) => ((a.x - ant.x) ** 2 + (a.y - ant.y) ** 2) < ((b.x - ant.x) ** 2 + (b.y - ant.y) ** 2) ? a: b);
-                            const angleToFood = Math.atan2(nearestFood.y - ant.y, nearestFood.x - ant.x);
-                            ant.angle += (angleToFood - ant.angle) * 0.1;
-                            if (Math.hypot(ant.x - nearestFood.x, ant.y - nearestFood.y) < 10) foods.splice(foods.indexOf(nearestFood), 1);
-                        }
-
-                        ant.x += Math.cos(ant.angle) * ant.speed;
-                        ant.y += Math.sin(ant.angle) * ant.speed;
-                        if (ant.x < 0) ant.x = canvas.width;
-                        if (ant.x > canvas.width) ant.x = 0;
-                        if (ant.y < 0) ant.y = canvas.height;
-                        if (ant.y > canvas.height) ant.y = 0;
-
-                        ant.lifespan -= 16;
-                        if (ant.lifespan <= 0 && !ant.isQueen) {
-                            if (ant.isRed) totalDeadRed++; else totalDeadWhite++;
-                            ants.splice(ants.indexOf(ant), 1);
-                            updateStats();
-                            return;
-                        }
-                        ant.breedingTimer += 16;
-                        if (ant.breedingTimer >= matingSpeed) {
-                            tryBreeding(ant);
-                            ant.breedingTimer = 0;
-                        }
-                });
-
-                if (queens.white) spawnFromQueen(queens.white);
-                if (queens.red) spawnFromQueen(queens.red);
-
-                ants.forEach(drawAnt);
-            }
-
-            function spawnFromQueen(queen) {
-                queen.spawnTimer += 16;
-                if (queen.spawnTimer >= 3000) {
-                    if ((queen.isRed && countRedAnts() < MAX_RED_ANTS) || (!queen.isRed && countWhiteAnts() < MAX_WHITE_ANTS)) {
-                        ants.push(createAnt(queen.isRed));
-                        if (queen.isRed) totalBornRed++; else totalBornWhite++;
-                        queen.spawnTimer = 0;
-                        updateStats();
-                    }
+        if (ant.isRed) {
+            const target = ants.find(a => !a.isRed);
+            if (target) {
+                const angleToTarget = Math.atan2(target.y - ant.y, target.x - ant.x);
+                ant.angle += (angleToTarget - ant.angle) * (redAggressionLevel / 100);
+                if (Math.hypot(ant.x - target.x, ant.y - target.y) < 10) {
+                    ants.splice(ants.indexOf(target), 1);
+                    totalDeadWhite++;
+                    updateStats();
                 }
             }
+        } else if (foods.length > 0) {
+            const nearestFood = foods.reduce((a, b) => ((a.x - ant.x) ** 2 + (a.y - ant.y) ** 2) < ((b.x - ant.x) ** 2 + (b.y - ant.y) ** 2) ? a : b);
+            const angleToFood = Math.atan2(nearestFood.y - ant.y, nearestFood.x - ant.x);
+            ant.angle += (angleToFood - ant.angle) * 0.1;
+            if (Math.hypot(ant.x - nearestFood.x, ant.y - nearestFood.y) < 10) foods.splice(foods.indexOf(nearestFood), 1);
+        }
 
-            function adjustHappiness() {
-                let foodScore = foods.filter(f => f.type !== 'poison').length;
-                let survivalScore = countWhiteAnts();
-                let deathPenalty = totalDeadWhite;
-                whiteHappiness = Math.max(0, Math.min(100, 50 + foodScore / 5 + survivalScore / 10 - deathPenalty / 20));
-            }
+        ant.x += Math.cos(ant.angle) * ant.speed;
+        ant.y += Math.sin(ant.angle) * ant.speed;
+        if (ant.x < 0) ant.x = canvas.width;
+        if (ant.x > canvas.width) ant.x = 0;
+        if (ant.y < 0) ant.y = canvas.height;
+        if (ant.y > canvas.height) ant.y = 0;
 
-            function tryBreeding(ant) {
-                ants.forEach(other => {
-                    if (other === ant || other.isQueen) return;
-                    if (Math.hypot(ant.x - other.x, ant.y - other.y) < 30) {
-                        if (ant.isRed && other.isRed) {
-                            if (allowRedBreeding && countRedAnts() < MAX_RED_ANTS && Math.random() < 0.3) {
-                                ants.push(createAnt(true)); totalBornRed++;
-                            }
-                        } else if (!ant.isRed && !other.isRed) {
-                            if (countWhiteAnts() < MAX_WHITE_ANTS && Math.random() < 0.3) {
-                                ants.push(createAnt(false)); totalBornWhite++;
-                            }
-                        }
-                    }
-                });
-                updateStats();
-            }
+        ant.lifespan -= 16;
+        if (ant.lifespan <= 0 && !ant.isQueen) {
+            if (ant.isRed) totalDeadRed++; else totalDeadWhite++;
+            ants.splice(ants.indexOf(ant), 1);
+            updateStats();
+            return;
+        }
+        ant.breedingTimer += 16;
+        if (ant.breedingTimer >= matingSpeed) {
+            tryBreeding(ant);
+            ant.breedingTimer = 0;
+        }
+    });
 
-            function updateStats() {
-                const el = document.getElementById('stats');
-                if (el) el.innerHTML =
-                `Total Alive: ${ants.length}<br>` +
-                `White Ants: Alive: ${countWhiteAnts()} | Born: ${totalBornWhite} | Dead: ${totalDeadWhite}<br>` +
-                `Red Ants: Alive: ${countRedAnts()} | Born: ${totalBornRed} | Dead: ${totalDeadRed}`;
-            }
-        </script>
+    if (queens.white) spawnFromQueen(queens.white);
+    if (queens.red) spawnFromQueen(queens.red);
+
+    ants.forEach(drawAnt);
+}
+</script>
     </body>
 </html>
