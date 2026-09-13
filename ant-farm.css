@@ -121,6 +121,35 @@ main.controls-hidden .controls-parent {
   color: #00b4d8;
 }
 
+/* Collapsible cards: the heading folds its card away. */
+.controls-section > .card-toggle {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.controls-section > .card-toggle::before {
+  content: '\25be';            /* ▾ */
+  font-size: 0.75em;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+.controls-section.collapsed > .card-toggle {
+  margin-bottom: 0;
+}
+.controls-section.collapsed > .card-toggle::before {
+  transform: rotate(-90deg);
+}
+.controls-section.collapsed > :not(.card-toggle) {
+  display: none;
+}
+.controls-section > .card-toggle:focus-visible {
+  outline: 2px solid #00b4d8;
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
 .controls-section label,
 .controls-section span {
   font-size: 0.9rem;

@@ -7,10 +7,14 @@ Minimal static site.
 
 </div>
 
+## Documentation
+
+- [`docs/ant-farm.md`](docs/ant-farm.md) – How the Ant Farm simulation works: colonies, food, hunger, happiness, poison, queens, and controls.
+
 ## Structure
 
 - `index.html` – Home page  
-- `ant-farm.html` – Ant Farm simulation  
+- `ant-farm.html` – Ant Farm simulation ([mechanics](docs/ant-farm.md))  
 - `memory-maze.html` – Memory Maze demo  
 - `art.html` – Procedural art generator  
 - `rps.html` – Rock–Paper–Scissors game  

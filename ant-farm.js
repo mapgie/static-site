@@ -370,9 +370,38 @@ window.addEventListener('DOMContentLoaded', () => {
   readSettingsFromControls();
   loadFarm();
   setupUI();
+  setupCollapsibleCards();
   updateStats();
   requestAnimationFrame(animate);
 });
+
+// Each control card's heading folds its card away, so the growing dashboard
+// stays manageable. The open/closed choice is remembered per card.
+function setupCollapsibleCards() {
+  const sections = document.querySelectorAll('.controls-parent > .controls-section');
+  sections.forEach((sec, idx) => {
+    if (sec.id === 'spawn-panel' || sec.id === 'stats') return;   // a modal view and a live readout, left alone
+    const head = sec.querySelector(':scope > h1, :scope > h2');
+    if (!head) return;
+    head.classList.add('card-toggle');
+    head.setAttribute('role', 'button');
+    head.setAttribute('tabindex', '0');
+    const key = 'antfarm-collapsed-' + (head.textContent.trim() || idx);
+    const apply = collapsed => {
+      sec.classList.toggle('collapsed', collapsed);
+      head.setAttribute('aria-expanded', String(!collapsed));
+      try { localStorage.setItem(key, collapsed ? '1' : '0'); } catch (e) { /* private mode */ }
+    };
+    let start = false;
+    try { start = localStorage.getItem(key) === '1'; } catch (e) { /* private mode */ }
+    apply(start);
+    const toggle = () => apply(!sec.classList.contains('collapsed'));
+    head.addEventListener('click', toggle);
+    head.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+    });
+  });
+}
 
 function resizeCanvas() {
   const container = canvas.parentElement;
