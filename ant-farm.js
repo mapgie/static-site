@@ -203,6 +203,9 @@ function forEachEnvNear(x, y, radius, fn) {
 // ---------------------------------------------------------------------------
 // Entities
 // ---------------------------------------------------------------------------
+// Red ants are a touch slower than the yellow colony.
+function antSpeed(isRed, isQueen) { return isQueen ? 0 : (isRed ? 1.05 : 1.1); }
+
 function createAnt(isRed = false, isQueen = false, x, y) {
   const base   = isRed ? redAntLifespan : normalAntLifespan;
   const jitter = 1 + (Math.random() * 0.2 - 0.1);
@@ -212,7 +215,7 @@ function createAnt(isRed = false, isQueen = false, x, y) {
     y: y !== undefined ? y : Math.random() * canvas.height,
     angle: Math.random() * Math.PI * 2,
     isRed, isQueen,
-    speed: isQueen ? 0 : (isRed ? 1.6 : 1.1),
+    speed: antSpeed(isRed, isQueen),
     baseLifespan: base,
     lifespan: isQueen ? Infinity : base * jitter,
     breedingTimer: Math.random() * matingSpeed,
@@ -1241,6 +1244,7 @@ function loadFarm() {
     ...a,
     lifespan: a.isQueen || a.lifespan === null ? Infinity : a.lifespan,
     baseLifespan: a.baseLifespan || (a.isRed ? redAntLifespan : normalAntLifespan),
+    speed: antSpeed(!!a.isRed, !!a.isQueen),   // never trust a saved speed
     breedingTimer: 0, spawnTimer: 0, trail: 0
   });
 
