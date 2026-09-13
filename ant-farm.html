@@ -14,35 +14,50 @@
       <div class="controls-section">
         <h1>Ant Controls</h1>
         <button id="add-ant">Add Ant</button>
+        <button id="spawn-maintenance">Spawn Points&hellip;</button>
+        <p class="hint">New ants appear at one of their colony's spawn points, and food is hauled to the nearest one.</p>
         <label for="mating-slider">Mating Conditions:</label>
         <input type="range" id="mating-slider" min="1" max="100" value="20">
         <label for="lifespan-slider-normal">Normal Ant Lifespan (seconds):</label>
         <input type="range" id="lifespan-slider-normal" min="10" max="300" value="120">
+        <label for="speed-slider-normal">Normal Ant Speed (<span id="speed-readout-normal" class="readout"></span>):</label>
+        <input type="range" id="speed-slider-normal" min="50" max="200" value="110">
       </div>
       <div class="controls-section">
         <h2>Red Ant Controls</h2>
         <button id="add-red-ant">Add Red Ant</button>
         <label for="lifespan-slider-red">Red Ant Lifespan (seconds):</label>
         <input type="range" id="lifespan-slider-red" min="10" max="300" value="120">
+        <label for="speed-slider-red">Red Ant Speed (<span id="speed-readout-red" class="readout"></span>):</label>
+        <input type="range" id="speed-slider-red" min="50" max="200" value="105">
         <label><input type="checkbox" id="allow-red-breeding" checked> Allow Red Ant Breeding</label>
         <label for="red-aggression-slider">Red Ant Aggression:</label>
         <input type="range" id="red-aggression-slider" min="0" max="100" value="50">
       </div>
       <div class="controls-section">
-        <label for="food-type">Select Food:</label>
+        <div class="label-row">
+          <label for="food-type">Select Food:</label>
+          <button type="button" id="food-info" class="info-btn" aria-expanded="false" aria-controls="food-legend" title="Reveal what each food does (spoiler)">i</button>
+        </div>
         <select id="food-type">
           <option value="sugar">Sugar</option>
+          <option value="fruit">Fruit</option>
           <option value="protein">Protein</option>
+          <option value="insect">Dead Insect</option>
           <option value="spoiled">Spoiled</option>
           <option value="poison">Poison</option>
         </select>
-        <ul class="legend">
-          <li><span class="swatch sugar"></span> Sugar: ants love it, lifespan up</li>
-          <li><span class="swatch protein"></span> Protein: bigger lifespan boost</li>
-          <li><span class="swatch spoiled"></span> Spoiled: slows ants down</li>
-          <li><span class="swatch poison"></span> Poison: kills and spreads</li>
+        <ul id="food-legend" class="legend">
+          <li><span class="swatch sugar"></span><span class="text">Sugar<span class="spoiler">: ants love it, lifespan up</span></span></li>
+          <li><span class="swatch fruit"></span><span class="text">Fruit<span class="spoiler">: bigger than sugar, spoils over time</span></span></li>
+          <li><span class="swatch protein"></span><span class="text">Protein<span class="spoiler">: bigger lifespan boost</span></span></li>
+          <li><span class="swatch insect"></span><span class="text">Dead Insect<span class="spoiler">: feeds five, takes three ants to haul</span></span></li>
+          <li><span class="swatch spoiled"></span><span class="text">Spoiled<span class="spoiler">: slows ants down, turns to poison</span></span></li>
+          <li><span class="swatch poison"></span><span class="text">Poison<span class="spoiler">: kills and spreads</span></span></li>
         </ul>
-        <p class="hint">Click the canvas to drop food, or pick a tool and drag to draw.</p>
+        <label for="decay-slider">Food Decay Rate (<span id="decay-readout" class="readout"></span>):</label>
+        <input type="range" id="decay-slider" min="1" max="100" value="25">
+        <p class="hint">Click the canvas to drop food, or pick a tool and drag to draw. Ants carry food they find back to the nest ring around their nearest spawn point. Once dropped off, only another ant can eat it.</p>
       </div>
       <div class="controls-section">
         <h2>Environment Tools</h2>
@@ -66,13 +81,28 @@
       </div>
       <div id="stats" class="controls-section">
         Total Alive: 0<br>
-        White Ants: Alive 0 | Born 0 | Dead 0<br>
+        Yellow Ants: Alive 0 | Born 0 | Dead 0<br>
         Red Ants: Alive 0 | Born 0 | Dead 0<br>
         Food: 0 | Happiness: 50
       </div>
       <div class="controls-section">
         <h2>User Controls</h2>
         <button id="pause-resume">Pause</button>
+      </div>
+      <div id="spawn-panel" class="controls-section" hidden>
+        <h2>Spawn Points</h2>
+        <p class="hint">The game is paused while you edit. Drag a point to move it, click one to select it.</p>
+        <button id="spawn-add-yellow">Add Ant Point</button>
+        <button id="spawn-add-red">Add Red Ant Point</button>
+        <div class="spawn-selected">
+          <span id="spawn-selected-label">Nothing selected. Click a point on the map.</span>
+          <label for="spawn-size-slider">Size:</label>
+          <input type="range" id="spawn-size-slider" min="24" max="120" value="40" disabled>
+          <button id="spawn-delete" class="subtle" disabled>Delete Point</button>
+        </div>
+        <button id="spawn-delete-all" class="subtle">Delete All Points</button>
+        <label><input type="checkbox" id="show-spawn-points"> Show spawn points during play</label>
+        <button id="spawn-done">Done</button>
       </div>
     </div>
     <button id="toggle-controls" type="button" aria-label="Hide controls" aria-expanded="true" title="Hide controls">&#9776;</button>
