@@ -13,20 +13,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Run header build script (PowerShell)
-        shell: pwsh
-        run: |
-          ./.pipeline/build-header.ps1
+      - name: Build header.html
+        run: bash .pipeline/build-header.sh
 
-      - name: Run header build script (Shell)
-        run: |
-          chmod +x check-and-inject.sh
-          ./check-and-inject.sh
+      - name: Inject header placeholder into pages
+        run: bash .pipeline/check-and-inject.sh
 
       - name: Commit and push changes
         run: |
           git config --global user.name "${{ vars.USER_NAME }}"
           git config --global user.email "${{ secrets.USER_EMAIL }}"
-          git add header.html
+          git add header.html *.html .pipeline/.header_checksum
           git commit -m "Auto-update header [skip ci]" || echo "No changes to commit"
           git push
