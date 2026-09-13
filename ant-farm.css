@@ -14,13 +14,9 @@ body, html {
 main {
   display: flex;
   flex-direction: column;
-  padding-top: 80px;
-}
-
-@media (min-width: 768px) {
-  main {
-    flex-direction: row;
-  }
+  align-items: stretch;
+  padding: 80px 0 0 0;
+  min-height: 100vh;
 }
 
 .controls-parent {
@@ -29,9 +25,21 @@ main {
   gap: 1rem;
   padding: 1rem;
   background: #222;
-  max-width: 320px;
-  overflow-y: auto;
-  height: calc(100vh - 80px);
+  width: 100%;
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  main {
+    flex-direction: row;
+  }
+  .controls-parent {
+    width: 320px;
+    overflow-y: auto;
+    height: calc(100vh - 80px);
+    position: sticky;
+    top: 80px;
+  }
 }
 
 .controls-section {
@@ -106,25 +114,27 @@ button#delete-structures:hover {
 
 .canvas-container {
   position: relative;
-  flex-grow: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
+  padding: 1rem;
 }
 
 #antCanvas {
-  width: 100%;
-  max-width: 1000px;
-  height: auto;
+  display: block;
+  max-width: 100%;
   border: 1px solid #555;
   background: #111;
   touch-action: none;
+  cursor: crosshair;
 }
 
 #happiness-bar-container {
   position: absolute;
-  top: 10px;
-  left: 10px;
+  top: 26px;
+  left: 26px;
   width: 200px;
   height: 12px;
   background: #444;
@@ -174,10 +184,37 @@ button#delete-structures:hover {
   border-radius: 50%;
 }
 
-.swatch.sugar   { background: white; }
-.swatch.protein { background: green; }
-.swatch.spoiled { background: blue; }
-.swatch.poison  { background: purple; }
+.swatch.sugar   { background: #f5f5f5; }
+.swatch.protein { background: #3cb043; }
+.swatch.spoiled { background: #3d5afe; }
+.swatch.poison  { background: #b040ff; }
+
+/* --- Food legend & hints --- */
+.legend {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  font-size: 0.8rem;
+  color: #ccc;
+}
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.2rem 0;
+}
+.legend .swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.hint {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #999;
+}
 
 /* Hover titles */
 .mode-btn[title]:hover::after {
