@@ -38,6 +38,12 @@ const H_SURVIVE   = 1.5;   // per second, main colony only, while unattacked
 const H_ATTACK    = 6;     // per bite, antagonist only (replaces the survival tick)
 const RED_FACTOR  = 0.6;   // antagonist happiness gains are smaller than the main colony's
 const ATTACK_CALM_MS = 6000;  // how long since the last attack before survival happiness ticks up
+const H_POISON_HIT   = 6;     // the moment an ant becomes poisoned
+const H_POISON_DECAY = 1.0;   // extra points lost per second while it stays poisoned
+const H_ALLY_LOST    = 6;     // morale hit to nearby colony-mates when one is killed
+const WITNESS_RADIUS = 70;    // how near a colony-mate must be to feel the loss
+const HUNGER_MIN = 30;        // an ant's hunger point (a spot on its happiness bar) is
+const HUNGER_MAX = 50;        // jittered in this band; below it, the ant will eat from the store
 
 // Dead insects: too big for one ant, a feast for the colony.
 const INSECT_HAULERS  = 3;    // ants needed before a carcass moves
@@ -70,6 +76,7 @@ let whiteCalmMs        = 0;   // ms since a main-colony ant was last killed by a
 let matingSpeed        = 8200;
 let allowRedBreeding   = true;
 let redAggressionLevel = 50;
+let sadistMode         = false;  // rival queen keyed off the main colony's misery instead of its own mood
 let normalAntLifespan  = 120000;
 let redAntLifespan     = 120000;
 let normalAntSpeed     = 1.1;    // px per tick; sliders hold hundredths
@@ -241,6 +248,7 @@ function createAnt(isRed = false, isQueen = false, x, y) {
     // A hidden temperament and a jittered starting mood so no two ants are alike.
     happiness: clamp(HAPPINESS_START + (Math.random() * 2 - 1) * HAPPINESS_JITTER, 0, 100),
     temperament: 1 + (Math.random() * 0.3 - 0.15),
+    hungerPoint: HUNGER_MIN + Math.random() * (HUNGER_MAX - HUNGER_MIN),
     poisoned: false,
     slowed: 0,
     trail: 0,
@@ -315,8 +323,25 @@ function pickDropOffset(clearance = 4, isRed = false, x = 0, y = 0) {
   return { dx, dy };
 }
 
+// The nearest piece of this colony's own stockpile to its nest, if any.
+function nearestColonyDelivered(s, isRed) {
+  let best = null, bd = (s.r + 20) * (s.r + 20);
+  for (const f of foods) {
+    if (!f.delivered || f.team !== isRed) continue;
+    const d = dist2(f.x, f.y, s.x, s.y);
+    if (d < bd) { bd = d; best = f; }
+  }
+  return best;
+}
+
 function dropTarget(ant) {
-  return nestTarget(nearestSpawnPoint(ant.isRed, ant.x, ant.y), ant.dropOffset, 4);
+  const s = nearestSpawnPoint(ant.isRed, ant.x, ant.y);
+  const anchor = nearestColonyDelivered(s, ant.isRed);
+  if (!anchor) return nestTarget(s, ant.dropOffset, 4);   // the first piece sets the pile's anchor
+  // Every later piece packs against the stockpile, on the ant's approach side.
+  const ang = Math.atan2(ant.y - anchor.y, ant.x - anchor.x);
+  const r = 2 * foodRadius(anchor);
+  return { x: anchor.x + Math.cos(ang) * r, y: anchor.y + Math.sin(ang) * r };
 }
 
 function layPheromone(x, y) {
@@ -377,6 +402,7 @@ function readSettingsFromControls() {
   normalAntSpeed     = (+$('speed-slider-normal').value) / 100;
   redAntSpeed        = (+$('speed-slider-red').value) / 100;
   allowRedBreeding   = $('allow-red-breeding').checked;
+  sadistMode         = $('sadist-mode').checked;
   redAggressionLevel = +$('red-aggression-slider').value;
   penWidth           = +$('thickness-slider').value;
   foodDecayRate      = +$('decay-slider').value;
@@ -398,6 +424,7 @@ function writeSettingsToControls() {
   $('speed-slider-normal').value    = Math.round(normalAntSpeed * 100);
   $('speed-slider-red').value       = Math.round(redAntSpeed * 100);
   $('allow-red-breeding').checked   = allowRedBreeding;
+  $('sadist-mode').checked          = sadistMode;
   $('red-aggression-slider').value  = redAggressionLevel;
   $('thickness-slider').value       = penWidth;
   $('decay-slider').value           = foodDecayRate;
@@ -491,6 +518,7 @@ function setupUI() {
   });
 
   on('allow-red-breeding', 'change', e => { allowRedBreeding = e.target.checked; saveFarm(); });
+  on('sadist-mode', 'change', e => { sadistMode = e.target.checked; saveFarm(); });
   on('mating-slider', 'input', e => { matingSpeed = 10000 - (+e.target.value) * 90; saveFarm(); });
   on('lifespan-slider-normal', 'input', e => { normalAntLifespan = (+e.target.value) * 1000; saveFarm(); });
   on('lifespan-slider-red', 'input', e => { redAntLifespan = (+e.target.value) * 1000; saveFarm(); });
@@ -615,7 +643,7 @@ function selectPoint(s) {
   if (!label) return;
   if (s) {
     const list = spawnPoints[pointIsRed(s) ? 'red' : 'yellow'];
-    label.textContent = `${pointIsRed(s) ? 'Red ant' : 'Ant'} point ${list.indexOf(s) + 1} of ${list.length}`;
+    label.textContent = `${pointIsRed(s) ? 'Rival ant' : 'Ant'} point ${list.indexOf(s) + 1} of ${list.length}`;
     slider.disabled = false; slider.value = s.r;
     del.disabled = false;
   } else {
@@ -711,6 +739,19 @@ function bumpHappiness(ant, amount) {
   ant.happiness = clamp(ant.happiness + scaled, 0, 100);
 }
 
+// A setback. Losses land on both colonies equally (no antagonist scaling).
+function dropHappiness(ant, amount) {
+  ant.happiness = clamp(ant.happiness - amount * ant.temperament, 0, 100);
+}
+
+// A death dents the mood of colony-mates who were near enough to witness it.
+function moraleHit(x, y, isRed, amount) {
+  const r2 = WITNESS_RADIUS * WITNESS_RADIUS;
+  for (const o of ants) {
+    if (o.isRed === isRed && dist2(o.x, o.y, x, y) < r2) dropHappiness(o, amount);
+  }
+}
+
 // Each colony's bar is the average mood of its living ants.
 function aggregateHappiness() {
   let ws = 0, wn = 0, rs = 0, rn = 0;
@@ -726,8 +767,10 @@ function aggregateHappiness() {
 // ant is one of those that brought it in.
 function nearestFood(ant) {
   let best = null, bd = SENSE_FOOD * SENSE_FOOD;
+  const hungry = ant.happiness < ant.hungerPoint;
   for (const f of foods) {
     if (f.delivered && foundByAnt(f, ant)) continue;
+    if (f.delivered && !hungry) continue;   // satiated ants forage but leave the store for later
     if (f.type === 'insect' && !f.delivered) {
       if (ant.haulCooldown > 0) continue;                       // just gave up on one
       if (f.haulers.length && f.team !== ant.isRed) continue;   // one colour per team
@@ -849,7 +892,7 @@ function pickUp(ant, food) {
 function dropOff(ant) {
   const t = dropTarget(ant);
   // If the nest is full the haul waits on the ant until there's room.
-  if (!addFood(t.x, t.y, ant.carrying.type, { delivered: true, foundBy: ant.id, age: ant.carrying.age })) return;
+  if (!addFood(t.x, t.y, ant.carrying.type, { delivered: true, foundBy: ant.id, age: ant.carrying.age, team: ant.isRed })) return;
   bumpHappiness(ant, H_DELIVER);   // colony-building: food is home
   ant.carrying = null;
   ant.dropOffset = null;
@@ -890,7 +933,7 @@ function eat(ant, food) {
     case 'poison': {
       // Eating poisoned food poisons the eater. From there it only travels by
       // being eaten again (a predator eating this ant while it's poisoned).
-      if (!ant.poisoned) { ant.poisoned = true; ant.lifespan *= 0.8; }
+      if (!ant.poisoned) { ant.poisoned = true; ant.lifespan *= 0.8; dropHappiness(ant, H_POISON_HIT); }
       return true;
     }
   }
@@ -911,7 +954,8 @@ function updateAnts() {
     let gain = 0;
     if (a.lifespan > a.baseLifespan) gain += H_SATIATED;
     if (!a.isRed && whiteCalmMs > ATTACK_CALM_MS) gain += H_SURVIVE;
-    const drift = gain * a.temperament * (a.isRed ? RED_FACTOR : 1) - HAPPINESS_DECAY;
+    const decayRate = HAPPINESS_DECAY + (a.poisoned ? H_POISON_DECAY : 0);
+    const drift = gain * a.temperament * (a.isRed ? RED_FACTOR : 1) - decayRate;
     a.happiness = clamp(a.happiness + drift * (TICK_MS / 1000), 0, 100);
 
     // On a haul team: parked by updateFoods, still ages and can still breed
@@ -990,9 +1034,10 @@ function updateAnts() {
     if (prey && dist2(prey.x, prey.y, a.x, a.y) < BITE_RANGE * BITE_RANGE && Math.random() < aggression) {
       const pi = ants.indexOf(prey);
       if (pi !== -1) {
-        if (prey.poisoned && !a.poisoned) { a.poisoned = true; a.lifespan *= 0.8; }
+        if (prey.poisoned && !a.poisoned) { a.poisoned = true; a.lifespan *= 0.8; dropHappiness(a, H_POISON_HIT); }
         bumpHappiness(a, H_ATTACK);   // the antagonist's reward for a kill
         whiteCalmMs = 0;              // the main colony has just been attacked
+        moraleHit(prey.x, prey.y, prey.isRed, H_ALLY_LOST);   // its colony-mates take it hard
         killAnt(pi);
         if (pi < i) i--;           // array shifted under us
       }
@@ -1047,12 +1092,19 @@ function tryBreeding(a) {
 function updateQueens() {
   const whites = countWhiteAnts(), reds = countRedAnts();
 
-  // Each colony's queen arrives when that colony is thriving on its own bar.
+  // The main colony's queen arrives when the colony is thriving, and leaves as it sours.
   if (whiteHappiness >= 75 && !queens.white && whites > 0) queens.white = createAnt(false, true);
-  if (redHappiness   >= 75 && !queens.red   && reds   > 0) queens.red   = createAnt(true, true);
-  // ...and leaves again once that colony's mood clearly drops.
   if (queens.white && whiteHappiness < 40) queens.white = null;
-  if (queens.red   && redHappiness   < 40) queens.red   = null;
+
+  // The rival queen normally tracks the rival colony's own mood; in Sadist mode
+  // she feeds on the main colony's misery instead.
+  if (sadistMode) {
+    if (whiteHappiness < 25 && !queens.red && ants.length > 0) queens.red = createAnt(true, true);
+    if (queens.red && whiteHappiness > 60) queens.red = null;
+  } else {
+    if (redHappiness >= 75 && !queens.red && reds > 0) queens.red = createAnt(true, true);
+    if (queens.red && redHappiness < 40) queens.red = null;
+  }
 
   for (const q of [queens.white, queens.red]) {
     if (!q) continue;
@@ -1238,7 +1290,7 @@ function updateStats() {
   el.innerHTML =
     `Total Alive: ${ants.length}<br>` +
     `Yellow Ants: Alive ${w} | Born ${totalBornWhite} | Dead ${totalDeadWhite}<br>` +
-    `Red Ants: Alive ${r} | Born ${totalBornRed} | Dead ${totalDeadRed}<br>` +
+    `Rival Ants: Alive ${r} | Born ${totalBornRed} | Dead ${totalDeadRed}<br>` +
     `Food: ${foods.length} (${atNest} at nest) | Happiness: ${Math.round(whiteHappiness)} | Rival: ${Math.round(redHappiness)}`;
 }
 
@@ -1255,7 +1307,7 @@ function saveFarm() {
       foods, environment, spawnPoints, showSpawnPoints,
       totalBornWhite, totalDeadWhite, totalBornRed, totalDeadRed,
       matingSpeed, normalAntLifespan, redAntLifespan,
-      allowRedBreeding, redAggressionLevel, penWidth, foodDecayRate,
+      allowRedBreeding, sadistMode, redAggressionLevel, penWidth, foodDecayRate,
       normalAntSpeed, redAntSpeed
     }));
   } catch (err) {
@@ -1287,6 +1339,7 @@ function loadFarm() {
   normalAntLifespan  = d.normalAntLifespan  || normalAntLifespan;
   redAntLifespan     = d.redAntLifespan     || redAntLifespan;
   allowRedBreeding   = d.allowRedBreeding !== undefined ? !!d.allowRedBreeding : allowRedBreeding;
+  sadistMode         = d.sadistMode !== undefined ? !!d.sadistMode : sadistMode;
   redAggressionLevel = d.redAggressionLevel !== undefined ? +d.redAggressionLevel : redAggressionLevel;
   penWidth           = d.penWidth || penWidth;
   foodDecayRate      = d.foodDecayRate || foodDecayRate;
