@@ -31,6 +31,7 @@ main {
   gap: 1rem;
   padding: 1rem;
   background: #222;
+  touch-action: pan-y;   /* scroll the panel, never double-tap zoom */
   width: var(--controls-w);
   flex-shrink: 0;
   overflow-y: auto;
@@ -46,6 +47,7 @@ main.controls-hidden .controls-parent {
 /* Hide/show controls (only offered on small screens) */
 #toggle-controls {
   display: none;
+  touch-action: manipulation;
   position: fixed;
   left: 0.5rem;
   bottom: 0.5rem;

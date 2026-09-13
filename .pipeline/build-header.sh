@@ -80,17 +80,11 @@ for file in "${other_files[@]}"; do
 done
 
 # Finish header
+# The header is injected with innerHTML, so scripts here would never run;
+# the menu is wired by header.js on each page.
 {
   echo '  </div>'
   echo '</div>'
-  echo ''
-  echo '<script>'
-  echo '  const hamburger = document.getElementById("hamburger");'
-  echo '  const navLinks = document.getElementById("nav-links");'
-  echo '  hamburger.addEventListener("click", () => {'
-  echo '    navLinks.classList.toggle("show");'
-  echo '  });'
-  echo '</script>'
 } >> "$TMP_HEADER_FILE"
 
 # Compare and move if different

@@ -84,17 +84,7 @@
     </div>
   </main>
 
-  <script>
-    fetch('header.html')
-      .then(response => response.text())
-      .then(data => {
-        document.getElementById('header-placeholder').innerHTML = data;
-        const hamburger = document.getElementById('hamburger');
-        const navLinks  = document.getElementById('nav-links');
-        if (hamburger && navLinks) hamburger.addEventListener('click', () => navLinks.classList.toggle('show'));
-      })
-      .catch(() => {});
-  </script>
+  <script src="header.js"></script>
   <script src="ant-farm.js"></script>
 </body>
 </html>

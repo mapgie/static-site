@@ -1,16 +1,6 @@
 // rps.js — Rock Paper Scissors
 'use strict';
 
-fetch('header.html')
-  .then(response => response.text())
-  .then(data => {
-    document.getElementById('header-placeholder').innerHTML = data;
-    const hamburger = document.getElementById('hamburger');
-    const navLinks  = document.getElementById('nav-links');
-    if (hamburger && navLinks) hamburger.addEventListener('click', () => navLinks.classList.toggle('show'));
-  })
-  .catch(() => {});
-
 const CHOICES = ['Rock', 'Paper', 'Scissors'];
 const BEATS   = { Rock: 'Scissors', Paper: 'Rock', Scissors: 'Paper' };
 
