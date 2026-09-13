@@ -157,11 +157,11 @@ button.kill-all:hover {
 }
 
 button#add-ant,
-button#add-spawn,
-button#clear-spawn,
+button#spawn-maintenance,
+button#spawn-add-yellow,
+button#spawn-add-red,
+button#spawn-done,
 button#add-red-ant,
-button#add-red-spawn,
-button#clear-red-spawn,
 button#pause-resume,
 button#undoStructure,
 button#delete-structures {
@@ -169,11 +169,11 @@ button#delete-structures {
   color: #fff;
 }
 button#add-ant:hover,
-button#add-spawn:hover,
-button#clear-spawn:hover,
+button#spawn-maintenance:hover,
+button#spawn-add-yellow:hover,
+button#spawn-add-red:hover,
+button#spawn-done:hover,
 button#add-red-ant:hover,
-button#add-red-spawn:hover,
-button#clear-red-spawn:hover,
 button#pause-resume:hover,
 button#undoStructure:hover,
 button#delete-structures:hover {
@@ -326,3 +326,39 @@ button#delete-structures:hover {
 }
 /* Inline readout inside the decay slider label */
 #decay-readout { display: inline; margin: 0; }
+
+/* --- Spawn point maintenance view --- */
+button.subtle {
+  background: #555;
+  color: #eee;
+}
+button.subtle:hover:not(:disabled) {
+  background: #777;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+main.spawn-mode .controls-section:not(#spawn-panel) {
+  display: none;
+}
+#spawn-panel {
+  border: 1px solid #00b4d8;
+}
+.spawn-selected {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #444;
+}
+#spawn-selected-label {
+  color: #ccc;
+  font-size: 0.85rem;
+}
+main.spawn-mode #antCanvas {
+  cursor: grab;
+  border-color: #00b4d8;
+}
+main.spawn-mode #antCanvas.grabbing {
+  cursor: grabbing;
+}

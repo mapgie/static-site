@@ -18,8 +18,10 @@ const BITE_RANGE  = 8;
 const MATE_RANGE  = 30;
 
 // The nest: ants drop food off in a ring around the spawn point, never on it.
-const NEST_CORE   = 12;   // keep the spawn point itself clear
-const NEST_RADIUS = 40;   // drop-off happens inside this radius
+const NEST_CORE   = 12;   // keep the spawn point itself clear (scales a little with size)
+const NEST_RADIUS = 40;   // default drop-off radius; each point can be resized
+const NEST_MIN_R  = 24;
+const NEST_MAX_R  = 120;
 const CARRY_RETRY = 1800; // ticks before a stuck carrier picks a new drop spot
 
 // Dead insects: too big for one ant, a feast for the colony.
@@ -39,7 +41,11 @@ let environment        = [];
 let environmentHistory = [];
 let queens             = { white: null, red: null };
 let spawnPoints        = { yellow: [], red: [] };   // per colony; empty = canvas centre
-let showSpawnPoints    = true;
+let showSpawnPoints    = false;  // during play; the maintenance view always shows them
+let maintenance        = false;  // spawn point maintenance view
+let selectedPoint      = null;
+let dragPoint          = null;
+let pausedBeforeMaint  = false;
 let nextAntId          = 1;
 
 let animationPaused    = false;
@@ -96,11 +102,34 @@ function colonyKey(isRed) { return isRed ? 'red' : 'yellow'; }
 
 function colonySpawnPoints(isRed) {
   const list = spawnPoints[colonyKey(isRed)];
-  return list.length ? list : [{ x: canvas.width / 2, y: canvas.height / 2 }];
+  return list.length ? list : [{ x: canvas.width / 2, y: canvas.height / 2, r: NEST_RADIUS }];
 }
 
-function addSpawnPoint(isRed, x, y) {
-  spawnPoints[colonyKey(isRed)].push({ x: clamp(x, 0, canvas.width), y: clamp(y, 0, canvas.height) });
+function addSpawnPoint(isRed, x, y, r = NEST_RADIUS) {
+  const s = { x: clamp(x, 0, canvas.width), y: clamp(y, 0, canvas.height), r: clamp(r, NEST_MIN_R, NEST_MAX_R) };
+  spawnPoints[colonyKey(isRed)].push(s);
+  return s;
+}
+
+function removeSpawnPoint(s) {
+  for (const k of ['yellow', 'red']) {
+    const i = spawnPoints[k].indexOf(s);
+    if (i !== -1) spawnPoints[k].splice(i, 1);
+  }
+}
+
+function pointIsRed(s) { return spawnPoints.red.includes(s); }
+
+// The clear centre of a nest grows a little with the nest.
+function nestCore(s) { return clamp(s.r * 0.3, 8, NEST_CORE * 2.5); }
+
+// Apply a drop offset to a nest, kept inside its ring and off its centre
+// whatever size that nest happens to be.
+function nestTarget(s, off, clearance) {
+  const m  = Math.hypot(off.dx, off.dy) || 1;
+  const lo = nestCore(s) + clearance, hi = Math.max(lo, s.r - 4);
+  const k  = clamp(m, lo, hi) / m;
+  return { x: s.x + off.dx * k, y: s.y + off.dy * k };
 }
 
 function randomSpawnPoint(isRed) {
@@ -253,9 +282,10 @@ function createAntAtSpawn(isRed) {
 function pickDropOffset(clearance = 4, isRed = false, x = 0, y = 0) {
   const s = nearestSpawnPoint(isRed, x, y);
   let dx = 0, dy = 0;
+  const lo = nestCore(s) + clearance, hi = Math.max(lo, s.r - 4);
   for (let tries = 0; tries < 6; tries++) {
     const a = Math.random() * Math.PI * 2;
-    const d = NEST_CORE + clearance + Math.random() * (NEST_RADIUS - NEST_CORE - clearance - 4);
+    const d = lo + Math.random() * (hi - lo);
     dx = Math.cos(a) * d; dy = Math.sin(a) * d;
     if (!collidesWall(s.x + dx, s.y + dy)) break;
   }
@@ -263,8 +293,7 @@ function pickDropOffset(clearance = 4, isRed = false, x = 0, y = 0) {
 }
 
 function dropTarget(ant) {
-  const s = nearestSpawnPoint(ant.isRed, ant.x, ant.y);
-  return { x: s.x + ant.dropOffset.dx, y: s.y + ant.dropOffset.dy };
+  return nestTarget(nearestSpawnPoint(ant.isRed, ant.x, ant.y), ant.dropOffset, 4);
 }
 
 function layPheromone(x, y) {
@@ -384,11 +413,22 @@ function setupUI() {
     pruneHaulers();
     updateStats(); saveFarm();
   });
-  on('add-spawn',       'click', () => { $('environment-tool').value = 'spawn'; });
-  on('add-red-spawn',   'click', () => { $('environment-tool').value = 'spawn-red'; });
-  on('clear-spawn',     'click', () => { spawnPoints.yellow = []; saveFarm(); });
-  on('clear-red-spawn', 'click', () => { spawnPoints.red = [];    saveFarm(); });
+  // Spawn point maintenance view
+  on('spawn-maintenance', 'click', enterMaintenance);
+  on('spawn-done',        'click', exitMaintenance);
+  on('spawn-add-yellow',  'click', () => addPointFromPanel(false));
+  on('spawn-add-red',     'click', () => addPointFromPanel(true));
+  on('spawn-delete',      'click', deleteSelectedPoint);
+  on('spawn-delete-all',  'click', () => { spawnPoints = { yellow: [], red: [] }; selectPoint(null); saveFarm(); });
+  on('spawn-size-slider', 'input',  e => { if (selectedPoint) selectedPoint.r = +e.target.value; });
+  on('spawn-size-slider', 'change', () => saveFarm());
   on('show-spawn-points', 'change', e => { showSpawnPoints = e.target.checked; saveFarm(); });
+  document.addEventListener('keydown', e => {
+    if (!maintenance) return;
+    const typing = /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName || '');
+    if (e.key === 'Escape') exitMaintenance();
+    else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedPoint && !typing) { e.preventDefault(); deleteSelectedPoint(); }
+  });
 
   on('destroy-world', 'click', () => {
     ants = []; foods = []; pheromones = []; environment = []; environmentHistory = [];
@@ -434,14 +474,14 @@ function setupUI() {
 
   // Single click with no tool selected drops one piece of food
   canvas.addEventListener('click', e => {
-    if ($('environment-tool').value !== 'none') return;
+    if (maintenance || $('environment-tool').value !== 'none') return;
     const { x, y } = getCanvasCoords(e);
     if (addFood(x, y, $('food-type').value)) saveFarm();
   });
 
   // Drag to draw
-  const startDraw = e => { lastX = lastY = null; handleDraw(e); };
-  const endDraw   = () => { lastX = lastY = null; };
+  const startDraw = e => { if (maintenance) return maintPointerDown(e); lastX = lastY = null; handleDraw(e); };
+  const endDraw   = () => { if (maintenance) return maintPointerUp(); lastX = lastY = null; };
 
   canvas.addEventListener('mousedown', e => {
     if (e.button !== 0) return;
@@ -463,18 +503,13 @@ function setupUI() {
 }
 
 function handleDraw(e) {
+  if (maintenance) return maintPointerMove(e);
   const tool = $('environment-tool').value;
   if (tool === 'none') return;      // let the click handler place single food
   e.preventDefault();
 
   const { x, y } = getCanvasCoords(e);
   const foodType = $('food-type').value;
-
-  if (tool === 'spawn' || tool === 'spawn-red') {   // one new spawn point per click
-    if (lastX === null) { addSpawnPoint(tool === 'spawn-red', x, y); saveFarm(); }
-    lastX = x; lastY = y;
-    return;
-  }
 
   if (lastX === null) {
     if (tool !== 'food') snapshotEnvironment();
@@ -489,7 +524,6 @@ function handleDraw(e) {
     } else if (tool === 'bulldozer') {
       const r2 = (penWidth + 4) * (penWidth + 4);
       environment = environment.filter(o => dist2(o.x, o.y, ix, iy) > r2);
-      for (const k of ['yellow', 'red']) spawnPoints[k] = spawnPoints[k].filter(s => dist2(s.x, s.y, ix, iy) > r2);
       foods       = foods.filter(f => dist2(f.x, f.y, ix, iy) > r2);
     }
   });
@@ -500,13 +534,107 @@ function handleDraw(e) {
 }
 
 // ---------------------------------------------------------------------------
+// Spawn point maintenance view
+// ---------------------------------------------------------------------------
+function enterMaintenance() {
+  if (maintenance) return;
+  maintenance = true;
+  pausedBeforeMaint = animationPaused;
+  setPaused(true);
+  document.querySelector('main').classList.add('spawn-mode');
+  $('spawn-panel').hidden = false;
+  selectPoint(null);
+}
+
+function exitMaintenance() {
+  if (!maintenance) return;
+  maintenance = false;
+  dragPoint = null;
+  canvas.classList.remove('grabbing');
+  setPaused(pausedBeforeMaint);
+  document.querySelector('main').classList.remove('spawn-mode');
+  $('spawn-panel').hidden = true;
+  selectPoint(null);
+  saveFarm();
+}
+
+function setPaused(p) {
+  animationPaused = p;
+  const b = $('pause-resume');
+  if (b) b.textContent = p ? 'Resume' : 'Pause';
+}
+
+function selectPoint(s) {
+  selectedPoint = s;
+  const label = $('spawn-selected-label'), slider = $('spawn-size-slider'), del = $('spawn-delete');
+  if (!label) return;
+  if (s) {
+    const list = spawnPoints[pointIsRed(s) ? 'red' : 'yellow'];
+    label.textContent = `${pointIsRed(s) ? 'Red ant' : 'Ant'} point ${list.indexOf(s) + 1} of ${list.length}`;
+    slider.disabled = false; slider.value = s.r;
+    del.disabled = false;
+  } else {
+    label.textContent = 'Nothing selected. Click a point on the map.';
+    slider.disabled = true;
+    del.disabled = true;
+  }
+}
+
+function addPointFromPanel(isRed) {
+  // New points land near the middle, nudged so a run of adds doesn't stack.
+  const jitter = () => (Math.random() - 0.5) * 80;
+  const s = addSpawnPoint(isRed, canvas.width / 2 + jitter(), canvas.height / 2 + jitter());
+  selectPoint(s);
+  saveFarm();
+}
+
+function deleteSelectedPoint() {
+  if (!selectedPoint) return;
+  removeSpawnPoint(selectedPoint);
+  selectPoint(null);
+  saveFarm();
+}
+
+function pointAt(x, y) {
+  let best = null, bd = Infinity;
+  for (const k of ['yellow', 'red']) {
+    for (const s of spawnPoints[k]) {
+      const d = dist2(s.x, s.y, x, y);
+      if (d < s.r * s.r && d < bd) { bd = d; best = s; }
+    }
+  }
+  return best;
+}
+
+function maintPointerDown(e) {
+  const { x, y } = getCanvasCoords(e);
+  const s = pointAt(x, y);
+  selectPoint(s);
+  dragPoint = s;
+  if (s) { e.preventDefault(); canvas.classList.add('grabbing'); }
+}
+
+function maintPointerMove(e) {
+  if (!dragPoint) return;
+  e.preventDefault();
+  const { x, y } = getCanvasCoords(e);
+  dragPoint.x = clamp(x, 0, canvas.width);
+  dragPoint.y = clamp(y, 0, canvas.height);
+}
+
+function maintPointerUp() {
+  if (dragPoint) { dragPoint = null; saveFarm(); }
+  canvas.classList.remove('grabbing');
+}
+
+// ---------------------------------------------------------------------------
 // Main loop
 // ---------------------------------------------------------------------------
 function animate() {
   if (envDirty) rebuildEnvGrid();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawEnvironment();
-  if (showSpawnPoints) drawSpawnPoints();
+  if (showSpawnPoints || maintenance) drawSpawnPoints(maintenance);
   drawFoods();
   drawPheromones();
 
@@ -522,6 +650,7 @@ function animate() {
   if (queens.white) drawAnt(queens.white);
   if (queens.red)   drawAnt(queens.red);
   for (const a of ants) drawAnt(a);
+  if (maintenance) drawMaintenanceBanner();
 
   if ((statsTimer += TICK_MS) >= 250) { statsTimer = 0; updateStats(); }
   requestAnimationFrame(animate);
@@ -627,8 +756,7 @@ function updateFoods() {
     if (team.length >= INSECT_HAULERS) {
       f.waited = 0;
       if (!f.dropOffset) f.dropOffset = pickDropOffset(INSECT_RADIUS + 2, f.team, f.x, f.y);
-      const s = nearestSpawnPoint(f.team, f.x, f.y);
-      const tx = s.x + f.dropOffset.dx, ty = s.y + f.dropOffset.dy;
+      const { x: tx, y: ty } = nestTarget(nearestSpawnPoint(f.team, f.x, f.y), f.dropOffset, INSECT_RADIUS + 2);
       if (dist2(tx, ty, f.x, f.y) < EAT_RANGE * EAT_RANGE) {
         // Delivered: the whole team counts as finders, none of them may eat it.
         f.x = tx; f.y = ty;
@@ -928,26 +1056,46 @@ function getFoodColor(type) {
   }
 }
 
-function drawSpawnPoints() {
+// In the maintenance view only real points are drawn (the centre fallback
+// can't be dragged) and the selected one is highlighted.
+function drawSpawnPoints(editing = false) {
   ctx.save();
-  ctx.lineWidth = 1;
   for (const isRed of [false, true]) {
     const rgb = isRed ? '255,59,59' : '255,240,179';
-    for (const s of colonySpawnPoints(isRed)) {
-      ctx.setLineDash([4, 4]);
-      ctx.strokeStyle = `rgba(${rgb},0.35)`;
+    const list = editing ? spawnPoints[colonyKey(isRed)] : colonySpawnPoints(isRed);
+    for (const s of list) {
+      const sel = editing && s === selectedPoint;
+      ctx.lineWidth = sel ? 2 : 1;
+      ctx.setLineDash(sel ? [] : [4, 4]);
+      ctx.strokeStyle = `rgba(${rgb},${sel ? 0.9 : editing ? 0.6 : 0.35})`;
+      ctx.fillStyle = `rgba(${rgb},${sel ? 0.12 : editing ? 0.06 : 0})`;
       ctx.beginPath();
-      ctx.arc(s.x, s.y, NEST_RADIUS, 0, Math.PI * 2);
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
       ctx.stroke();
       ctx.setLineDash([]);
+      ctx.lineWidth = 1;
       ctx.fillStyle = `rgba(${rgb},0.12)`;
       ctx.strokeStyle = `rgba(${rgb},0.8)`;
       ctx.beginPath();
-      ctx.arc(s.x, s.y, NEST_CORE, 0, Math.PI * 2);
+      ctx.arc(s.x, s.y, nestCore(s), 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
     }
   }
+  ctx.restore();
+}
+
+function drawMaintenanceBanner() {
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(0, canvas.height - 22, canvas.width, 22);
+  ctx.fillStyle = '#ccc';
+  ctx.font = '12px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  const n = spawnPoints.yellow.length + spawnPoints.red.length;
+  ctx.fillText(n ? 'Spawn point maintenance: drag to move, click to select, then resize or delete.' : 'Spawn point maintenance: no points yet, add one from the panel.', 10, canvas.height - 11);
   ctx.restore();
 }
 
@@ -1118,7 +1266,7 @@ function loadFarm() {
   environment  = Array.isArray(d.environment) ? d.environment : [];
   const validPoints = list => (Array.isArray(list) ? list : [])
     .filter(s => s && Number.isFinite(s.x) && Number.isFinite(s.y))
-    .map(s => ({ x: clamp(s.x, 0, canvas.width), y: clamp(s.y, 0, canvas.height) }));
+    .map(s => ({ x: clamp(s.x, 0, canvas.width), y: clamp(s.y, 0, canvas.height), r: clamp(+s.r || NEST_RADIUS, NEST_MIN_R, NEST_MAX_R) }));
   spawnPoints = { yellow: [], red: [] };
   if (d.spawnPoints) {
     spawnPoints.yellow = validPoints(d.spawnPoints.yellow);
@@ -1127,7 +1275,7 @@ function loadFarm() {
     spawnPoints.yellow = validPoints([d.spawnPoint]);
     spawnPoints.red    = validPoints([d.spawnPoint]);
   }
-  showSpawnPoints = d.showSpawnPoints !== undefined ? !!d.showSpawnPoints : true;
+  showSpawnPoints = !!d.showSpawnPoints;
   markEnvDirty();
 
   totalBornWhite = d.totalBornWhite || 0;
