@@ -27,6 +27,7 @@ const CARRY_RETRY = 1800; // ticks before a stuck carrier picks a new drop spot
 const INSECT_HAULERS  = 3;    // ants needed before a carcass moves
 const INSECT_SERVINGS = 5;    // how many ants can eat from one
 const INSECT_RADIUS   = 9;
+const SUGAR_LOADS     = 4;    // a dropped sugar pile is worth this many single-ant loads
 const HAUL_PATIENCE   = 900;  // ticks a short-handed team waits before giving up
 const HAUL_COOLDOWN   = 900;  // ticks a giver-upper ignores carcasses afterwards
 
@@ -255,6 +256,8 @@ function spawnNear(parent, isRed) {
 function makeFood(x, y, type, extra = {}) {
   const f = { x, y, type, delivered: false, foundBy: null, age: 0 };
   if (type === 'insect') Object.assign(f, { haulers: [], servings: INSECT_SERVINGS, dropOffset: null, stuck: 0, waited: 0, heading: 0 });
+  // A loose sugar pile can be carried off a load at a time; delivered sugar is a single serving.
+  if (type === 'sugar' && !extra.delivered) f.loads = extra.loads ?? SUGAR_LOADS;
   return Object.assign(f, extra);
 }
 
@@ -270,7 +273,11 @@ function foundByAnt(f, ant) {
 }
 
 function foodRadius(f) {
-  return f.type === 'insect' ? INSECT_RADIUS : f.type === 'fruit' ? 6 : 4;
+  if (f.type === 'insect') return INSECT_RADIUS;
+  if (f.type === 'fruit') return 6;
+  // A fuller sugar pile draws bigger, shrinking as ants carry loads away.
+  if (f.type === 'sugar' && f.loads > 1) return Math.min(4 + (f.loads - 1) * 1.3, 9);
+  return 4;
 }
 
 // Manually added ants appear at one of their colony's spawn points (nudged
@@ -306,8 +313,8 @@ function layPheromone(x, y) {
 function killAnt(index) {
   const a = ants[index];
   ants.splice(index, 1);
-  // Whatever it was hauling lands where it fell, unclaimed.
-  if (a.carrying) addFood(a.x, a.y, a.carrying.type, { age: a.carrying.age });
+  // Whatever it was hauling lands where it fell, unclaimed (a single dropped crumb, not a fresh pile).
+  if (a.carrying) addFood(a.x, a.y, a.carrying.type, { age: a.carrying.age, ...(a.carrying.type === 'sugar' ? { loads: 1 } : {}) });
   if (a.hauling) leaveTeam(a);
   if (a.isRed) totalDeadRed++;
   else { totalDeadWhite++; recentWhiteDeaths++; }
@@ -804,7 +811,9 @@ function updateFoods() {
 function pickUp(ant, food) {
   const i = foods.indexOf(food);
   if (i === -1) return;
-  foods.splice(i, 1);
+  // A sugar pile keeps its remaining loads for other ants; everything else is taken whole.
+  if (food.type === 'sugar' && food.loads > 1) food.loads--;
+  else foods.splice(i, 1);
   ant.carrying   = { type: food.type, age: food.age || 0 };
   ant.dropOffset = pickDropOffset(4, ant.isRed, ant.x, ant.y);
   ant.carryTicks = 0;
@@ -1245,6 +1254,7 @@ function loadFarm() {
   foods        = Array.isArray(d.foods)
     ? d.foods.map(f => makeFood(f.x, f.y, f.type, {
         delivered: !!f.delivered, foundBy: f.foundBy ?? null, age: f.age || 0,
+        ...(f.type === 'sugar' && !f.delivered && f.loads ? { loads: f.loads } : {}),
         ...(f.type === 'insect' ? {
           haulers: Array.isArray(f.haulers) ? f.haulers : [], servings: f.servings || INSECT_SERVINGS,
           dropOffset: f.dropOffset || null, heading: f.heading || 0, team: !!f.team
