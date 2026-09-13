@@ -275,7 +275,8 @@ function createAnt(isRed = false, isQueen = false, x, y) {
     dropOffset: null,   // where in the nest ring this ant will drop it
     carryTicks: 0,
     hauling: null,      // the carcass this ant is on a team for
-    haulCooldown: 0     // ticks left ignoring carcasses after a team gave up
+    haulCooldown: 0,    // ticks left ignoring carcasses after a team gave up
+    wallCooldown: 0     // ticks left peeling away from a wall before chasing again
   };
 }
 
@@ -1035,25 +1036,30 @@ function updateAnts() {
     // Wander
     a.angle += (Math.random() - 0.5) * 0.3;
 
-    // Decide what to chase
+    // Decide what to chase. Right after a wall bump this is paused so the ant peels
+    // away instead of steering straight back into the wall and grinding to a stop.
     let target = null, prey = null;
-    if (a.isRed && aggression > 0) {
-      prey = nearestWhiteAnt(a);
-      if (prey) steerToward(a, prey.x, prey.y, 0.05 + aggression * 0.25);
-    }
-    if (!prey && a.carrying) {
-      // Haul it home
-      const t = dropTarget(a);
-      steerToward(a, t.x, t.y, 0.25);
-      if (++a.carryTicks > CARRY_RETRY) { a.dropOffset = pickDropOffset(4, a.isRed, a.x, a.y); a.carryTicks = 0; }
-    } else if (!prey) {
-      target = nearestFood(a);
-      if (target) {
-        const keen = { sugar: 0.25, fruit: 0.22, protein: 0.2, insect: 0.2 }[target.type] || 0.12;
-        steerToward(a, target.x, target.y, keen);
-      } else {
-        const p = strongestTrail(a);
-        if (p) steerToward(a, p.x, p.y, 0.08);
+    if (a.wallCooldown > 0) {
+      a.wallCooldown--;
+    } else {
+      if (a.isRed && aggression > 0) {
+        prey = nearestWhiteAnt(a);
+        if (prey) steerToward(a, prey.x, prey.y, 0.05 + aggression * 0.25);
+      }
+      if (!prey && a.carrying) {
+        // Haul it home
+        const t = dropTarget(a);
+        steerToward(a, t.x, t.y, 0.25);
+        if (++a.carryTicks > CARRY_RETRY) { a.dropOffset = pickDropOffset(4, a.isRed, a.x, a.y); a.carryTicks = 0; }
+      } else if (!prey) {
+        target = nearestFood(a);
+        if (target) {
+          const keen = { sugar: 0.25, fruit: 0.22, protein: 0.2, insect: 0.2 }[target.type] || 0.12;
+          steerToward(a, target.x, target.y, keen);
+        } else {
+          const p = strongestTrail(a);
+          if (p) steerToward(a, p.x, p.y, 0.08);
+        }
       }
     }
 
@@ -1078,7 +1084,16 @@ function updateAnts() {
     a.wet = inWater;
 
     if (hitWall) {
+      // Turn back, hold off chasing for a moment, and actually step into the clear
+      // so the ant leaves the wall instead of pressing against it.
       a.angle += Math.PI + (Math.random() - 0.5) * 0.8;
+      a.wallCooldown = 25;
+      const bx = a.x + Math.cos(a.angle) * speed;
+      const by = a.y + Math.sin(a.angle) * speed;
+      if (!collidesWall(bx, by)) {
+        a.x = (bx + canvas.width)  % canvas.width;
+        a.y = (by + canvas.height) % canvas.height;
+      }
     } else {
       if (nearWater && nearWaterD < 30 * 30) steerAway(a, nearWater.x, nearWater.y, 0.25);
       if (inWater) { nx = a.x + (nx - a.x) * 0.4; ny = a.y + (ny - a.y) * 0.4; }
