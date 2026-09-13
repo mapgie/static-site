@@ -18,6 +18,9 @@ point and food is hauled to the nearest one. Each colony is capped at 500 ants.
 Rival ants hunt and bite main-colony ants; their **Aggression** control sets how
 keenly they chase and how often a bite lands. A bite kills instantly.
 
+Ants breed when a mate is nearby. **Overcrowding** — many colony-mates packed close
+— makes them a little less inclined to, so a dense clump grows more slowly.
+
 ## Food
 
 Drop food by clicking the canvas, or paint it with the **Food** environment tool.
@@ -44,11 +47,12 @@ to it**, so a colony's store grows as a tidy pile rather than a scattered ring.
 
 ## Hunger and food stores
 
-Hunger is a fixed point on each ant's own happiness bar, jittered per ant. An ant
-only eats from the store when its happiness is **below** its hunger point; above it,
-the ant keeps foraging and leaves the store alone. Because every ant's threshold is
-different, a content colony doesn't swarm returned food all at once — it builds up
-reserves instead.
+Each ant has a **fullness** stat, separate from its mood, that drains over time into
+hunger. An ant only eats from the store when its fullness drops **below** its own
+(jittered) hunger point; while it is well-fed it keeps foraging and leaves the store
+alone. Because every ant's threshold is different, a content colony doesn't swarm
+returned food all at once — it builds up reserves instead. Eating refills fullness
+(and, as noted above, extends lifespan).
 
 ## Happiness
 
@@ -60,7 +64,7 @@ bars: the main colony's (top) and the rival colony's (below it).
 Happiness **rises** from:
 
 - eating (a bigger lift for protein, fruit, or insect)
-- being satiated (lifespan above its baseline)
+- being well-fed (fullness high)
 - mating (both parents)
 - delivering food to the nest (colony-building)
 - **main colony:** a slow background lift the longer the colony goes unattacked
@@ -73,6 +77,10 @@ Happiness **falls** from:
 - becoming poisoned (an immediate hit) and staying poisoned (slow ongoing decay)
 
 Rival happiness gains are deliberately **smaller** than the main colony's.
+
+**Sadist mode** piles on extra setbacks that don't apply in normal play: a colony
+takes a morale hit when its queen departs, and ants lose happiness while they're wet
+(in water) or slowed. These compounding miseries are reserved for the sadist.
 
 ## Poison
 
@@ -92,7 +100,8 @@ spawns extra ants; she leaves again when the bar drops (< 40).
 
 **Sadist mode** (a Rival Ant control) changes what drives the rival queen: instead of
 tracking the rival colony's own mood, she is summoned by the **main** colony's misery
-— she arrives when your ants are suffering and withdraws once they recover.
+— she arrives when your ants are suffering and withdraws once they recover. Sadist
+mode also switches on the extra happiness setbacks described under Happiness.
 
 ## Controls
 
