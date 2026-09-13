@@ -324,8 +324,8 @@ button#delete-structures:hover {
   background: #555;
   border-radius: 3px;
 }
-/* Inline readout inside the decay slider label */
-#decay-readout { display: inline; margin: 0; }
+/* Inline readouts inside slider labels */
+.controls-section .readout { display: inline; margin: 0; }
 
 /* --- Spawn point maintenance view --- */
 button.subtle {

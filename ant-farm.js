@@ -56,6 +56,8 @@ let allowRedBreeding   = true;
 let redAggressionLevel = 50;
 let normalAntLifespan  = 120000;
 let redAntLifespan     = 120000;
+let normalAntSpeed     = 1.1;    // px per tick; sliders hold hundredths
+let redAntSpeed        = 1.05;
 let foodDecayRate      = 25;     // 1..100, slider; see decayStageMs()
 
 let totalBornWhite = 0, totalDeadWhite = 0;
@@ -203,8 +205,8 @@ function forEachEnvNear(x, y, radius, fn) {
 // ---------------------------------------------------------------------------
 // Entities
 // ---------------------------------------------------------------------------
-// Red ants are a touch slower than the yellow colony.
-function antSpeed(isRed, isQueen) { return isQueen ? 0 : (isRed ? 1.05 : 1.1); }
+// Read live from the sliders so a change applies to every ant at once.
+function antSpeed(isRed, isQueen) { return isQueen ? 0 : (isRed ? redAntSpeed : normalAntSpeed); }
 
 function createAnt(isRed = false, isQueen = false, x, y) {
   const base   = isRed ? redAntLifespan : normalAntLifespan;
@@ -215,7 +217,6 @@ function createAnt(isRed = false, isQueen = false, x, y) {
     y: y !== undefined ? y : Math.random() * canvas.height,
     angle: Math.random() * Math.PI * 2,
     isRed, isQueen,
-    speed: antSpeed(isRed, isQueen),
     baseLifespan: base,
     lifespan: isQueen ? Infinity : base * jitter,
     breedingTimer: Math.random() * matingSpeed,
@@ -354,29 +355,35 @@ function readSettingsFromControls() {
   matingSpeed        = 10000 - (+$('mating-slider').value) * 90;
   normalAntLifespan  = (+$('lifespan-slider-normal').value) * 1000;
   redAntLifespan     = (+$('lifespan-slider-red').value) * 1000;
+  normalAntSpeed     = (+$('speed-slider-normal').value) / 100;
+  redAntSpeed        = (+$('speed-slider-red').value) / 100;
   allowRedBreeding   = $('allow-red-breeding').checked;
   redAggressionLevel = +$('red-aggression-slider').value;
   penWidth           = +$('thickness-slider').value;
   foodDecayRate      = +$('decay-slider').value;
   showSpawnPoints    = $('show-spawn-points').checked;
-  updateDecayReadout();
+  updateReadouts();
 }
 
-function updateDecayReadout() {
-  const el = $('decay-readout');
-  if (el) el.textContent = `~${Math.round(decayStageMs() / 1000)}s per stage`;
+function updateReadouts() {
+  const set = (id, text) => { const el = $(id); if (el) el.textContent = text; };
+  set('decay-readout',        `~${Math.round(decayStageMs() / 1000)}s per stage`);
+  set('speed-readout-normal', normalAntSpeed.toFixed(2));
+  set('speed-readout-red',    redAntSpeed.toFixed(2));
 }
 
 function writeSettingsToControls() {
   $('mating-slider').value          = Math.round((10000 - matingSpeed) / 90);
   $('lifespan-slider-normal').value = Math.round(normalAntLifespan / 1000);
   $('lifespan-slider-red').value    = Math.round(redAntLifespan / 1000);
+  $('speed-slider-normal').value    = Math.round(normalAntSpeed * 100);
+  $('speed-slider-red').value       = Math.round(redAntSpeed * 100);
   $('allow-red-breeding').checked   = allowRedBreeding;
   $('red-aggression-slider').value  = redAggressionLevel;
   $('thickness-slider').value       = penWidth;
   $('decay-slider').value           = foodDecayRate;
   $('show-spawn-points').checked    = showSpawnPoints;
-  updateDecayReadout();
+  updateReadouts();
 }
 
 // ---------------------------------------------------------------------------
@@ -468,8 +475,10 @@ function setupUI() {
   on('mating-slider', 'input', e => { matingSpeed = 10000 - (+e.target.value) * 90; saveFarm(); });
   on('lifespan-slider-normal', 'input', e => { normalAntLifespan = (+e.target.value) * 1000; saveFarm(); });
   on('lifespan-slider-red', 'input', e => { redAntLifespan = (+e.target.value) * 1000; saveFarm(); });
+  on('speed-slider-normal', 'input', e => { normalAntSpeed = (+e.target.value) / 100; updateReadouts(); saveFarm(); });
+  on('speed-slider-red',    'input', e => { redAntSpeed    = (+e.target.value) / 100; updateReadouts(); saveFarm(); });
   on('red-aggression-slider', 'input', e => { redAggressionLevel = +e.target.value; saveFarm(); });
-  on('decay-slider', 'input', e => { foodDecayRate = +e.target.value; updateDecayReadout(); saveFarm(); });
+  on('decay-slider', 'input', e => { foodDecayRate = +e.target.value; updateReadouts(); saveFarm(); });
 
   on('undoStructure', 'click', () => {
     if (environmentHistory.length) {
@@ -918,7 +927,7 @@ function updateAnts() {
     }
 
     // Movement with wall bounce and water avoidance
-    let speed = a.speed * (a.slowed > 0 ? 0.6 : 1) * (a.poisoned ? 0.7 : 1);
+    let speed = antSpeed(a.isRed, a.isQueen) * (a.slowed > 0 ? 0.6 : 1) * (a.poisoned ? 0.7 : 1);
     if (a.slowed > 0) a.slowed--;
 
     let nx = a.x + Math.cos(a.angle) * speed;
@@ -1220,7 +1229,8 @@ function saveFarm() {
       foods, environment, spawnPoints, showSpawnPoints,
       totalBornWhite, totalDeadWhite, totalBornRed, totalDeadRed,
       matingSpeed, normalAntLifespan, redAntLifespan,
-      allowRedBreeding, redAggressionLevel, penWidth, foodDecayRate
+      allowRedBreeding, redAggressionLevel, penWidth, foodDecayRate,
+      normalAntSpeed, redAntSpeed
     }));
   } catch (err) {
     console.warn('Could not save ant farm', err);
@@ -1244,7 +1254,6 @@ function loadFarm() {
     ...a,
     lifespan: a.isQueen || a.lifespan === null ? Infinity : a.lifespan,
     baseLifespan: a.baseLifespan || (a.isRed ? redAntLifespan : normalAntLifespan),
-    speed: antSpeed(!!a.isRed, !!a.isQueen),   // never trust a saved speed
     breedingTimer: 0, spawnTimer: 0, trail: 0
   });
 
@@ -1255,6 +1264,8 @@ function loadFarm() {
   redAggressionLevel = d.redAggressionLevel !== undefined ? +d.redAggressionLevel : redAggressionLevel;
   penWidth           = d.penWidth || penWidth;
   foodDecayRate      = d.foodDecayRate || foodDecayRate;
+  normalAntSpeed     = Number.isFinite(d.normalAntSpeed) ? clamp(d.normalAntSpeed, 0.5, 2) : normalAntSpeed;
+  redAntSpeed        = Number.isFinite(d.redAntSpeed)    ? clamp(d.redAntSpeed,    0.5, 2) : redAntSpeed;
 
   ants         = Array.isArray(d.ants) ? d.ants.map(reviveAnt) : [];
   queens.white = d.queens && d.queens.white ? reviveAnt(d.queens.white) : null;

@@ -20,12 +20,16 @@
         <input type="range" id="mating-slider" min="1" max="100" value="20">
         <label for="lifespan-slider-normal">Normal Ant Lifespan (seconds):</label>
         <input type="range" id="lifespan-slider-normal" min="10" max="300" value="120">
+        <label for="speed-slider-normal">Normal Ant Speed (<span id="speed-readout-normal" class="readout"></span>):</label>
+        <input type="range" id="speed-slider-normal" min="50" max="200" value="110">
       </div>
       <div class="controls-section">
         <h2>Red Ant Controls</h2>
         <button id="add-red-ant">Add Red Ant</button>
         <label for="lifespan-slider-red">Red Ant Lifespan (seconds):</label>
         <input type="range" id="lifespan-slider-red" min="10" max="300" value="120">
+        <label for="speed-slider-red">Red Ant Speed (<span id="speed-readout-red" class="readout"></span>):</label>
+        <input type="range" id="speed-slider-red" min="50" max="200" value="105">
         <label><input type="checkbox" id="allow-red-breeding" checked> Allow Red Ant Breeding</label>
         <label for="red-aggression-slider">Red Ant Aggression:</label>
         <input type="range" id="red-aggression-slider" min="0" max="100" value="50">
@@ -51,7 +55,7 @@
           <li><span class="swatch spoiled"></span><span class="text">Spoiled<span class="spoiler">: slows ants down, turns to poison</span></span></li>
           <li><span class="swatch poison"></span><span class="text">Poison<span class="spoiler">: kills and spreads</span></span></li>
         </ul>
-        <label for="decay-slider">Food Decay Rate (<span id="decay-readout"></span>):</label>
+        <label for="decay-slider">Food Decay Rate (<span id="decay-readout" class="readout"></span>):</label>
         <input type="range" id="decay-slider" min="1" max="100" value="25">
         <p class="hint">Click the canvas to drop food, or pick a tool and drag to draw. Ants carry food they find back to the nest ring around their nearest spawn point. Once dropped off, only another ant can eat it.</p>
       </div>
