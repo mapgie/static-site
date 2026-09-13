@@ -682,13 +682,11 @@ function adjustWhiteHappiness() {
   let goodFood = 0, poisonFood = 0;
   for (const f of foods) { if (f.type === 'poison') poisonFood++; else if (f.type !== 'spoiled') goodFood++; }
   const whites = countWhiteAnts();
-  const reds   = countRedAnts();
   const score  = 50
     + Math.min(25, goodFood / 4)
     + Math.min(15, whites / 10)
     - Math.min(15, poisonFood / 2)
-    - Math.min(40, recentWhiteDeaths * 3)
-    - Math.min(15, reds / 20);
+    - Math.min(40, recentWhiteDeaths * 3);
   whiteHappiness = clamp(score, 0, 100);
 }
 
@@ -1066,7 +1064,7 @@ function drawEnvironment() {
 
 function getFoodColor(type) {
   switch (type) {
-    case 'protein': return '#3cb043';
+    case 'protein': return '#ef9a9a';
     case 'spoiled': return '#3d5afe';
     case 'poison':  return '#b040ff';
     case 'fruit':   return '#ff8c00';
