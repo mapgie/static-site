@@ -34,16 +34,22 @@
         <label for="food-type">Select Food:</label>
         <select id="food-type">
           <option value="sugar">Sugar</option>
+          <option value="fruit">Fruit</option>
           <option value="protein">Protein</option>
+          <option value="insect">Dead Insect</option>
           <option value="spoiled">Spoiled</option>
           <option value="poison">Poison</option>
         </select>
         <ul class="legend">
           <li><span class="swatch sugar"></span> Sugar: ants love it, lifespan up</li>
+          <li><span class="swatch fruit"></span> Fruit: bigger than sugar, spoils over time</li>
           <li><span class="swatch protein"></span> Protein: bigger lifespan boost</li>
-          <li><span class="swatch spoiled"></span> Spoiled: slows ants down</li>
+          <li><span class="swatch insect"></span> Dead Insect: feeds five, takes three ants to haul</li>
+          <li><span class="swatch spoiled"></span> Spoiled: slows ants down, turns to poison</li>
           <li><span class="swatch poison"></span> Poison: kills and spreads</li>
         </ul>
+        <label for="decay-slider">Food Decay Rate (<span id="decay-readout"></span>):</label>
+        <input type="range" id="decay-slider" min="1" max="100" value="25">
         <p class="hint">Click the canvas to drop food, or pick a tool and drag to draw. Ants carry food they find back to the nest ring around the spawn point. Once dropped off, only another ant can eat it.</p>
       </div>
       <div class="controls-section">
