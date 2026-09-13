@@ -361,7 +361,7 @@ function readSettingsFromControls() {
 
 function updateDecayReadout() {
   const el = $('decay-readout');
-  if (el) el.textContent = `fruit spoils in ~${Math.round(decayStageMs() / 1000)}s`;
+  if (el) el.textContent = `~${Math.round(decayStageMs() / 1000)}s per stage`;
 }
 
 function writeSettingsToControls() {
@@ -383,6 +383,13 @@ function setupUI() {
   const on = (id, ev, fn) => $(id)?.addEventListener(ev, fn);
 
   on('thickness-slider', 'input', e => { penWidth = +e.target.value; });
+
+  // Food effects are a spoiler: hidden until the player asks
+  on('food-info', 'click', e => {
+    const open = $('food-legend').classList.toggle('revealed');
+    e.currentTarget.setAttribute('aria-expanded', String(open));
+    e.currentTarget.title = open ? 'Hide what each food does' : 'Reveal what each food does (spoiler)';
+  });
 
   on('add-ant', 'click', () => {
     if (countWhiteAnts() < MAX_WHITE_ANTS) {

@@ -31,7 +31,10 @@
         <input type="range" id="red-aggression-slider" min="0" max="100" value="50">
       </div>
       <div class="controls-section">
-        <label for="food-type">Select Food:</label>
+        <div class="label-row">
+          <label for="food-type">Select Food:</label>
+          <button type="button" id="food-info" class="info-btn" aria-expanded="false" aria-controls="food-legend" title="Reveal what each food does (spoiler)">i</button>
+        </div>
         <select id="food-type">
           <option value="sugar">Sugar</option>
           <option value="fruit">Fruit</option>
@@ -40,13 +43,13 @@
           <option value="spoiled">Spoiled</option>
           <option value="poison">Poison</option>
         </select>
-        <ul class="legend">
-          <li><span class="swatch sugar"></span> Sugar: ants love it, lifespan up</li>
-          <li><span class="swatch fruit"></span> Fruit: bigger than sugar, spoils over time</li>
-          <li><span class="swatch protein"></span> Protein: bigger lifespan boost</li>
-          <li><span class="swatch insect"></span> Dead Insect: feeds five, takes three ants to haul</li>
-          <li><span class="swatch spoiled"></span> Spoiled: slows ants down, turns to poison</li>
-          <li><span class="swatch poison"></span> Poison: kills and spreads</li>
+        <ul id="food-legend" class="legend">
+          <li><span class="swatch sugar"></span><span class="text">Sugar<span class="spoiler">: ants love it, lifespan up</span></span></li>
+          <li><span class="swatch fruit"></span><span class="text">Fruit<span class="spoiler">: bigger than sugar, spoils over time</span></span></li>
+          <li><span class="swatch protein"></span><span class="text">Protein<span class="spoiler">: bigger lifespan boost</span></span></li>
+          <li><span class="swatch insect"></span><span class="text">Dead Insect<span class="spoiler">: feeds five, takes three ants to haul</span></span></li>
+          <li><span class="swatch spoiled"></span><span class="text">Spoiled<span class="spoiler">: slows ants down, turns to poison</span></span></li>
+          <li><span class="swatch poison"></span><span class="text">Poison<span class="spoiler">: kills and spreads</span></span></li>
         </ul>
         <label for="decay-slider">Food Decay Rate (<span id="decay-readout"></span>):</label>
         <input type="range" id="decay-slider" min="1" max="100" value="25">

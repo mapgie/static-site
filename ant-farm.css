@@ -362,3 +362,32 @@ main.spawn-mode #antCanvas {
 main.spawn-mode #antCanvas.grabbing {
   cursor: grabbing;
 }
+
+/* --- Food info toggle (spoilers hidden by default) --- */
+.label-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.label-row label { margin-top: 0.25rem; }
+.controls-section .info-btn {
+  width: 1.3rem;
+  height: 1.3rem;
+  padding: 0;
+  margin: 0.25rem 0 0;
+  border: 1px solid #00b4d8;
+  border-radius: 50%;
+  background: transparent;
+  color: #00b4d8;
+  font: bold 0.75rem/1 Georgia, serif;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.controls-section .info-btn:hover,
+.controls-section .info-btn[aria-expanded="true"] {
+  background: #00b4d8;
+  color: #fff;
+}
+.legend .text    { display: inline; }
+.legend .spoiler { display: none; }
+.legend.revealed .spoiler { display: inline; }
