@@ -22,6 +22,7 @@ const NEST_RADIUS = 40;   // default drop-off radius; each point can be resized
 const NEST_MIN_R  = 24;
 const NEST_MAX_R  = 120;
 const CARRY_RETRY = 1800; // ticks before a stuck carrier picks a new drop spot
+const SUGAR_SPACING = 22; // px between painted sugar pieces, so a dragged line scatters instead of piling
 
 // Dead insects: too big for one ant, a feast for the colony.
 const INSECT_HAULERS  = 3;    // ants needed before a carcass moves
@@ -64,6 +65,7 @@ let totalBornRed   = 0, totalDeadRed   = 0;
 
 let canvas, ctx;
 let lastX = null, lastY = null;
+let lastFoodX = null, lastFoodY = null;   // last painted sugar piece, for drop spacing
 let penWidth = 4;
 
 let envGrid   = new Map();
@@ -497,8 +499,8 @@ function setupUI() {
   });
 
   // Drag to draw
-  const startDraw = e => { if (maintenance) return maintPointerDown(e); lastX = lastY = null; handleDraw(e); };
-  const endDraw   = () => { if (maintenance) return maintPointerUp(); lastX = lastY = null; };
+  const startDraw = e => { if (maintenance) return maintPointerDown(e); lastX = lastY = lastFoodX = lastFoodY = null; handleDraw(e); };
+  const endDraw   = () => { if (maintenance) return maintPointerUp(); lastX = lastY = lastFoodX = lastFoodY = null; };
 
   canvas.addEventListener('mousedown', e => {
     if (e.button !== 0) return;
@@ -537,7 +539,14 @@ function handleDraw(e) {
     if (tool === 'wall' || tool === 'water') {
       environment.push({ x: ix, y: iy, type: tool, r: penWidth });
     } else if (tool === 'food') {
-      addFood(ix, iy, foodType);
+      // Sugar scatters with spacing so a dragged line is dots, not a solid pile; other food paints densely.
+      if (foodType === 'sugar') {
+        if (lastFoodX === null || dist2(ix, iy, lastFoodX, lastFoodY) >= SUGAR_SPACING * SUGAR_SPACING) {
+          if (addFood(ix, iy, foodType)) { lastFoodX = ix; lastFoodY = iy; }
+        }
+      } else {
+        addFood(ix, iy, foodType);
+      }
     } else if (tool === 'bulldozer') {
       const r2 = (penWidth + 4) * (penWidth + 4);
       environment = environment.filter(o => dist2(o.x, o.y, ix, iy) > r2);
@@ -1051,7 +1060,7 @@ function getFoodColor(type) {
 function drawSpawnPoints(editing = false) {
   ctx.save();
   for (const isRed of [false, true]) {
-    const rgb = isRed ? '255,59,59' : '255,240,179';
+    const rgb = isRed ? '60,179,153' : '255,240,179';   // rival ring matches the jade ants
     const list = editing ? spawnPoints[colonyKey(isRed)] : colonySpawnPoints(isRed);
     for (const s of list) {
       const sel = editing && s === selectedPoint;
@@ -1137,8 +1146,9 @@ function drawPheromones() {
 function drawAnt(a) {
   const r = a.isQueen ? 12 : 4;
   ctx.beginPath();
-  if (a.poisoned) ctx.fillStyle = a.isRed ? '#c2185b' : '#b388ff';
-  else            ctx.fillStyle = a.isRed ? '#ff3b3b' : '#fff0b3';
+  // Rival colony is a muted jade; poisoned ants of each colony turn an amethyst shade.
+  if (a.poisoned) ctx.fillStyle = a.isRed ? '#9f95b5' : '#7d6f9e';
+  else            ctx.fillStyle = a.isRed ? '#3cb399' : '#fff0b3';
   ctx.arc(a.x, a.y, r, 0, Math.PI * 2);
   ctx.fill();
 
