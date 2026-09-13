@@ -8,7 +8,6 @@ const MAX_FOOD       = 300;
 const MAX_PHEROMONES = 1500;
 const TICK_MS        = 16;
 const GRID_CELL      = 32;
-const POISON_CAP     = 0.2; // at most 20% of a colony can be poisoned at once
 
 const SENSE_FOOD  = 180;
 const SENSE_PREY  = 160;
@@ -222,7 +221,6 @@ function createAnt(isRed = false, isQueen = false, x, y) {
     breedingTimer: Math.random() * matingSpeed,
     spawnTimer: 0,
     poisoned: false,
-    poisonSpreadLeft: 3,
     slowed: 0,
     trail: 0,
     carrying: null,     // { type, age } while hauling food back to the nest
@@ -725,11 +723,6 @@ function strongestTrail(ant) {
   return best;
 }
 
-function poisonedRatio() {
-  if (!ants.length) return 0;
-  return ants.reduce((n, a) => n + (a.poisoned ? 1 : 0), 0) / ants.length;
-}
-
 function decay(f) {
   if (f.type !== 'fruit' && f.type !== 'spoiled') return;
   f.age = (f.age || 0) + TICK_MS;
@@ -828,7 +821,7 @@ function dropOff(ant) {
   ant.carryTicks = 0;
 }
 
-function eat(ant, food, index) {
+function eat(ant, food) {
   const i = foods.indexOf(food);
   if (i !== -1) foods.splice(i, 1);
 
@@ -841,7 +834,6 @@ function eat(ant, food, index) {
       if (--food.servings > 0) foods.push(food);
       ant.lifespan = Math.min(ant.lifespan + ant.baseLifespan * 0.4, ant.baseLifespan * 2);
       ant.poisoned = false;
-      ant.poisonSpreadLeft = 3;
       ant.slowed = 0;
       return true;
     }
@@ -851,7 +843,6 @@ function eat(ant, food, index) {
       const bonus = ant.baseLifespan * (food.type === 'protein' ? 0.25 : food.type === 'fruit' ? 0.2 : 0.15);
       ant.lifespan = Math.min(ant.lifespan + bonus, ant.baseLifespan * 2);
       ant.poisoned = false;
-      ant.poisonSpreadLeft = 3;
       ant.slowed = 0;
       return true;
     }
@@ -860,18 +851,10 @@ function eat(ant, food, index) {
       ant.lifespan -= ant.baseLifespan * 0.05;
       return true;
     case 'poison': {
-      // The eater dies; the poison spreads to a few neighbours.
-      let spread = 0;
-      for (const o of ants) {
-        if (o === ant || o.poisoned || spread >= 3) continue;
-        if (dist2(o.x, o.y, ant.x, ant.y) < MATE_RANGE * MATE_RANGE && poisonedRatio() < POISON_CAP) {
-          o.poisoned = true;
-          o.lifespan *= 0.8;
-          spread++;
-        }
-      }
-      killAnt(index);
-      return false;               // ant no longer exists
+      // Eating poisoned food poisons the eater. From there it only travels by
+      // being eaten again (a predator eating this ant while it's poisoned).
+      if (!ant.poisoned) { ant.poisoned = true; ant.lifespan *= 0.8; }
+      return true;
     }
   }
   return true;
@@ -958,10 +941,11 @@ function updateAnts() {
       if (a.trail % 6 === 0) layPheromone(a.x, a.y);
     }
 
-    // Red ants bite white ants
+    // Red ants bite white ants; biting a poisoned one poisons the biter.
     if (prey && dist2(prey.x, prey.y, a.x, a.y) < BITE_RANGE * BITE_RANGE && Math.random() < aggression) {
       const pi = ants.indexOf(prey);
       if (pi !== -1) {
+        if (prey.poisoned && !a.poisoned) { a.poisoned = true; a.lifespan *= 0.8; }
         killAnt(pi);
         if (pi < i) i--;           // array shifted under us
       }
@@ -974,20 +958,9 @@ function updateAnts() {
     } else if (target) {
       const reach = EAT_RANGE + (target.type === 'insect' ? INSECT_RADIUS : 0);
       if (dist2(target.x, target.y, a.x, a.y) < reach * reach) {
-        if (target.delivered)           { if (!eat(a, target, i)) continue; }
+        if (target.delivered)           { if (!eat(a, target)) continue; }
         else if (target.type === 'insect') joinTeam(a, target);
         else                            pickUp(a, target);
-      }
-    }
-
-    // Poison spreads by contact
-    if (a.poisoned && a.poisonSpreadLeft > 0 && Math.random() < 0.05 && poisonedRatio() < POISON_CAP) {
-      for (const o of ants) {
-        if (o === a || o.poisoned || o.isRed !== a.isRed) continue;
-        if (dist2(o.x, o.y, a.x, a.y) < 25 * 25) {
-          o.poisoned = true; o.lifespan *= 0.8; a.poisonSpreadLeft--;
-          break;
-        }
       }
     }
 
