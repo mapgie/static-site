@@ -38,7 +38,8 @@ let pheromones         = [];
 let environment        = [];
 let environmentHistory = [];
 let queens             = { white: null, red: null };
-let spawnPoint         = null;   // null = centre of the canvas
+let spawnPoints        = { yellow: [], red: [] };   // per colony; empty = canvas centre
+let showSpawnPoints    = true;
 let nextAntId          = 1;
 
 let animationPaused    = false;
@@ -91,12 +92,30 @@ function steerAway(ant, tx, ty, weight) {
 // another. Rate 25 is ~40s a stage; 100 is 10s.
 function decayStageMs() { return 1000000 / clamp(foodDecayRate, 1, 100); }
 
-function getSpawnPoint() {
-  return spawnPoint || { x: canvas.width / 2, y: canvas.height / 2 };
+function colonyKey(isRed) { return isRed ? 'red' : 'yellow'; }
+
+function colonySpawnPoints(isRed) {
+  const list = spawnPoints[colonyKey(isRed)];
+  return list.length ? list : [{ x: canvas.width / 2, y: canvas.height / 2 }];
 }
 
-function setSpawnPoint(x, y) {
-  spawnPoint = { x: clamp(x, 0, canvas.width), y: clamp(y, 0, canvas.height) };
+function addSpawnPoint(isRed, x, y) {
+  spawnPoints[colonyKey(isRed)].push({ x: clamp(x, 0, canvas.width), y: clamp(y, 0, canvas.height) });
+}
+
+function randomSpawnPoint(isRed) {
+  const list = colonySpawnPoints(isRed);
+  return list[(Math.random() * list.length) | 0];
+}
+
+// The colony's nearest nest to a position: where food from around there goes.
+function nearestSpawnPoint(isRed, x, y) {
+  let best = null, bd = Infinity;
+  for (const s of colonySpawnPoints(isRed)) {
+    const d = dist2(s.x, s.y, x, y);
+    if (d < bd) { bd = d; best = s; }
+  }
+  return best;
 }
 
 function countWhiteAnts() { return ants.reduce((n, a) => n + (a.isRed ? 0 : 1), 0); }
@@ -223,14 +242,16 @@ function foodRadius(f) {
   return f.type === 'insect' ? INSECT_RADIUS : f.type === 'fruit' ? 6 : 4;
 }
 
-// Manually added ants appear at the spawn point (nudged out of any wall).
+// Manually added ants appear at one of their colony's spawn points (nudged
+// out of any wall).
 function createAntAtSpawn(isRed) {
-  return spawnNear(getSpawnPoint(), isRed);
+  return spawnNear(randomSpawnPoint(isRed), isRed);
 }
 
-// Pick a spot in the nest ring, as an offset so it follows a moved spawn point.
-function pickDropOffset(clearance = 4) {
-  const s = getSpawnPoint();
+// Pick a spot in the nest ring, as an offset so it applies to whichever nest
+// turns out to be nearest on the way home.
+function pickDropOffset(clearance = 4, isRed = false, x = 0, y = 0) {
+  const s = nearestSpawnPoint(isRed, x, y);
   let dx = 0, dy = 0;
   for (let tries = 0; tries < 6; tries++) {
     const a = Math.random() * Math.PI * 2;
@@ -242,7 +263,7 @@ function pickDropOffset(clearance = 4) {
 }
 
 function dropTarget(ant) {
-  const s = getSpawnPoint();
+  const s = nearestSpawnPoint(ant.isRed, ant.x, ant.y);
   return { x: s.x + ant.dropOffset.dx, y: s.y + ant.dropOffset.dy };
 }
 
@@ -292,7 +313,9 @@ function resizeCanvas() {
   // keep everything on the board
   for (const a of ants) { a.x = clamp(a.x, 0, width); a.y = clamp(a.y, 0, height); }
   for (const q of [queens.white, queens.red]) if (q) { q.x = clamp(q.x, 0, width); q.y = clamp(q.y, 0, height); }
-  if (spawnPoint) setSpawnPoint(spawnPoint.x, spawnPoint.y);
+  for (const list of [spawnPoints.yellow, spawnPoints.red]) {
+    for (const s of list) { s.x = clamp(s.x, 0, width); s.y = clamp(s.y, 0, height); }
+  }
 }
 
 function readSettingsFromControls() {
@@ -303,6 +326,7 @@ function readSettingsFromControls() {
   redAggressionLevel = +$('red-aggression-slider').value;
   penWidth           = +$('thickness-slider').value;
   foodDecayRate      = +$('decay-slider').value;
+  showSpawnPoints    = $('show-spawn-points').checked;
   updateDecayReadout();
 }
 
@@ -319,6 +343,7 @@ function writeSettingsToControls() {
   $('red-aggression-slider').value  = redAggressionLevel;
   $('thickness-slider').value       = penWidth;
   $('decay-slider').value           = foodDecayRate;
+  $('show-spawn-points').checked    = showSpawnPoints;
   updateDecayReadout();
 }
 
@@ -359,14 +384,16 @@ function setupUI() {
     pruneHaulers();
     updateStats(); saveFarm();
   });
-  on('set-spawn', 'click', () => {
-    $('environment-tool').value = 'spawn';
-  });
+  on('add-spawn',       'click', () => { $('environment-tool').value = 'spawn'; });
+  on('add-red-spawn',   'click', () => { $('environment-tool').value = 'spawn-red'; });
+  on('clear-spawn',     'click', () => { spawnPoints.yellow = []; saveFarm(); });
+  on('clear-red-spawn', 'click', () => { spawnPoints.red = [];    saveFarm(); });
+  on('show-spawn-points', 'change', e => { showSpawnPoints = e.target.checked; saveFarm(); });
 
   on('destroy-world', 'click', () => {
     ants = []; foods = []; pheromones = []; environment = []; environmentHistory = [];
     queens.white = queens.red = null;
-    spawnPoint = null;
+    spawnPoints = { yellow: [], red: [] };
     whiteHappiness = 50; recentWhiteDeaths = 0;
     totalBornWhite = totalDeadWhite = totalBornRed = totalDeadRed = 0;
     markEnvDirty();
@@ -443,10 +470,9 @@ function handleDraw(e) {
   const { x, y } = getCanvasCoords(e);
   const foodType = $('food-type').value;
 
-  if (tool === 'spawn') {           // click or drag to place the spawn point
-    setSpawnPoint(x, y);
+  if (tool === 'spawn' || tool === 'spawn-red') {   // one new spawn point per click
+    if (lastX === null) { addSpawnPoint(tool === 'spawn-red', x, y); saveFarm(); }
     lastX = x; lastY = y;
-    saveFarm();
     return;
   }
 
@@ -463,6 +489,7 @@ function handleDraw(e) {
     } else if (tool === 'bulldozer') {
       const r2 = (penWidth + 4) * (penWidth + 4);
       environment = environment.filter(o => dist2(o.x, o.y, ix, iy) > r2);
+      for (const k of ['yellow', 'red']) spawnPoints[k] = spawnPoints[k].filter(s => dist2(s.x, s.y, ix, iy) > r2);
       foods       = foods.filter(f => dist2(f.x, f.y, ix, iy) > r2);
     }
   });
@@ -479,7 +506,7 @@ function animate() {
   if (envDirty) rebuildEnvGrid();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawEnvironment();
-  drawSpawnPoint();
+  if (showSpawnPoints) drawSpawnPoints();
   drawFoods();
   drawPheromones();
 
@@ -599,8 +626,8 @@ function updateFoods() {
 
     if (team.length >= INSECT_HAULERS) {
       f.waited = 0;
-      if (!f.dropOffset) f.dropOffset = pickDropOffset(INSECT_RADIUS + 2);
-      const s = getSpawnPoint();
+      if (!f.dropOffset) f.dropOffset = pickDropOffset(INSECT_RADIUS + 2, f.team, f.x, f.y);
+      const s = nearestSpawnPoint(f.team, f.x, f.y);
       const tx = s.x + f.dropOffset.dx, ty = s.y + f.dropOffset.dy;
       if (dist2(tx, ty, f.x, f.y) < EAT_RANGE * EAT_RANGE) {
         // Delivered: the whole team counts as finders, none of them may eat it.
@@ -615,7 +642,7 @@ function updateFoods() {
       const speed = Math.min(1, 0.3 + 0.1 * team.length);
       const nx = f.x + Math.cos(f.heading) * speed, ny = f.y + Math.sin(f.heading) * speed;
       if (collidesWall(nx, ny)) {
-        if (++f.stuck > CARRY_RETRY / 4) { f.dropOffset = pickDropOffset(INSECT_RADIUS + 2); f.stuck = 0; }
+        if (++f.stuck > CARRY_RETRY / 4) { f.dropOffset = pickDropOffset(INSECT_RADIUS + 2, f.team, f.x, f.y); f.stuck = 0; }
       } else {
         f.x = clamp(nx, 0, canvas.width); f.y = clamp(ny, 0, canvas.height); f.stuck = 0;
       }
@@ -641,7 +668,7 @@ function pickUp(ant, food) {
   if (i === -1) return;
   foods.splice(i, 1);
   ant.carrying   = { type: food.type, age: food.age || 0 };
-  ant.dropOffset = pickDropOffset();
+  ant.dropOffset = pickDropOffset(4, ant.isRed, ant.x, ant.y);
   ant.carryTicks = 0;
   ant.trail = 90;                  // lay a trail from the find back to the nest
   layPheromone(ant.x, ant.y);
@@ -740,7 +767,7 @@ function updateAnts() {
       // Haul it home
       const t = dropTarget(a);
       steerToward(a, t.x, t.y, 0.25);
-      if (++a.carryTicks > CARRY_RETRY) { a.dropOffset = pickDropOffset(); a.carryTicks = 0; }
+      if (++a.carryTicks > CARRY_RETRY) { a.dropOffset = pickDropOffset(4, a.isRed, a.x, a.y); a.carryTicks = 0; }
     } else if (!prey) {
       target = nearestFood(a);
       if (target) {
@@ -901,22 +928,26 @@ function getFoodColor(type) {
   }
 }
 
-function drawSpawnPoint() {
-  const s = getSpawnPoint();
+function drawSpawnPoints() {
   ctx.save();
-  ctx.setLineDash([4, 4]);
-  ctx.strokeStyle = 'rgba(255,240,179,0.35)';
   ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.arc(s.x, s.y, NEST_RADIUS, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.fillStyle = 'rgba(255,240,179,0.12)';
-  ctx.strokeStyle = 'rgba(255,240,179,0.8)';
-  ctx.beginPath();
-  ctx.arc(s.x, s.y, NEST_CORE, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
+  for (const isRed of [false, true]) {
+    const rgb = isRed ? '255,59,59' : '255,240,179';
+    for (const s of colonySpawnPoints(isRed)) {
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = `rgba(${rgb},0.35)`;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, NEST_RADIUS, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = `rgba(${rgb},0.12)`;
+      ctx.strokeStyle = `rgba(${rgb},0.8)`;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, NEST_CORE, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
   ctx.restore();
 }
 
@@ -1028,7 +1059,7 @@ function saveFarm() {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       ants: ants.map(serialiseAnt),
       queens: { white: queens.white && serialiseAnt(queens.white), red: queens.red && serialiseAnt(queens.red) },
-      foods, environment, spawnPoint,
+      foods, environment, spawnPoints, showSpawnPoints,
       totalBornWhite, totalDeadWhite, totalBornRed, totalDeadRed,
       matingSpeed, normalAntLifespan, redAntLifespan,
       allowRedBreeding, redAggressionLevel, penWidth, foodDecayRate
@@ -1085,8 +1116,18 @@ function loadFarm() {
     if (a) a.hauling = f;
   }
   environment  = Array.isArray(d.environment) ? d.environment : [];
-  spawnPoint   = d.spawnPoint && Number.isFinite(d.spawnPoint.x) && Number.isFinite(d.spawnPoint.y) ? d.spawnPoint : null;
-  if (spawnPoint) setSpawnPoint(spawnPoint.x, spawnPoint.y);
+  const validPoints = list => (Array.isArray(list) ? list : [])
+    .filter(s => s && Number.isFinite(s.x) && Number.isFinite(s.y))
+    .map(s => ({ x: clamp(s.x, 0, canvas.width), y: clamp(s.y, 0, canvas.height) }));
+  spawnPoints = { yellow: [], red: [] };
+  if (d.spawnPoints) {
+    spawnPoints.yellow = validPoints(d.spawnPoints.yellow);
+    spawnPoints.red    = validPoints(d.spawnPoints.red);
+  } else if (d.spawnPoint) {          // older save: one point shared by both colonies
+    spawnPoints.yellow = validPoints([d.spawnPoint]);
+    spawnPoints.red    = validPoints([d.spawnPoint]);
+  }
+  showSpawnPoints = d.showSpawnPoints !== undefined ? !!d.showSpawnPoints : true;
   markEnvDirty();
 
   totalBornWhite = d.totalBornWhite || 0;

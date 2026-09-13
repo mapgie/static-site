@@ -14,8 +14,9 @@
       <div class="controls-section">
         <h1>Ant Controls</h1>
         <button id="add-ant">Add Ant</button>
-        <button id="set-spawn">Set Spawn Point</button>
-        <p class="hint">New ants appear at the spawn point. Pick the tool, then click the map to place it.</p>
+        <button id="add-spawn">Add Spawn Point</button>
+        <button id="clear-spawn">Clear Spawn Points</button>
+        <p class="hint">New ants appear at one of their spawn points, and food is hauled to the nearest one. Pick the tool, then click the map once per point.</p>
         <label for="mating-slider">Mating Conditions:</label>
         <input type="range" id="mating-slider" min="1" max="100" value="20">
         <label for="lifespan-slider-normal">Normal Ant Lifespan (seconds):</label>
@@ -24,6 +25,8 @@
       <div class="controls-section">
         <h2>Red Ant Controls</h2>
         <button id="add-red-ant">Add Red Ant</button>
+        <button id="add-red-spawn">Add Red Spawn Point</button>
+        <button id="clear-red-spawn">Clear Red Spawn Points</button>
         <label for="lifespan-slider-red">Red Ant Lifespan (seconds):</label>
         <input type="range" id="lifespan-slider-red" min="10" max="300" value="120">
         <label><input type="checkbox" id="allow-red-breeding" checked> Allow Red Ant Breeding</label>
@@ -50,13 +53,14 @@
         </ul>
         <label for="decay-slider">Food Decay Rate (<span id="decay-readout"></span>):</label>
         <input type="range" id="decay-slider" min="1" max="100" value="25">
-        <p class="hint">Click the canvas to drop food, or pick a tool and drag to draw. Ants carry food they find back to the nest ring around the spawn point. Once dropped off, only another ant can eat it.</p>
+        <p class="hint">Click the canvas to drop food, or pick a tool and drag to draw. Ants carry food they find back to the nest ring around their nearest spawn point. Once dropped off, only another ant can eat it. The bulldozer also removes spawn points.</p>
       </div>
       <div class="controls-section">
         <h2>Environment Tools</h2>
         <select id="environment-tool">
           <option value="none">None</option>
-          <option value="spawn">Spawn Point</option>
+          <option value="spawn">Ant Spawn Point</option>
+          <option value="spawn-red">Red Ant Spawn Point</option>
           <option value="food">Food</option>
           <option value="water">Water</option>
           <option value="wall">Wall</option>
@@ -82,6 +86,7 @@
       <div class="controls-section">
         <h2>User Controls</h2>
         <button id="pause-resume">Pause</button>
+        <label><input type="checkbox" id="show-spawn-points" checked> Show spawn points</label>
       </div>
     </div>
     <button id="toggle-controls" type="button" aria-label="Hide controls" aria-expanded="true" title="Hide controls">&#9776;</button>
