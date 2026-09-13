@@ -206,8 +206,12 @@ function resizeCanvas() {
   const container = canvas.parentElement;
   const cs = getComputedStyle(container);
   const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
-  const width  = clamp(Math.floor(container.clientWidth - padX), 240, 1000);
-  const height = clamp(Math.floor(window.innerHeight - 110), 320, 900);
+  const padY = parseFloat(cs.paddingTop)  + parseFloat(cs.paddingBottom);
+  const headerH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 80;
+  const borderX = canvas.offsetWidth  - canvas.clientWidth;   // canvas border, so the
+  const borderY = canvas.offsetHeight - canvas.clientHeight;  // bitmap is never scaled
+  const width  = clamp(Math.floor(container.clientWidth - padX - borderX), 160, 1000);
+  const height = clamp(Math.floor(window.innerHeight - headerH - padY - borderY), 240, 900);
   if (canvas.width === width && canvas.height === height) return;
   canvas.width  = width;
   canvas.height = height;
@@ -276,6 +280,15 @@ function setupUI() {
     totalBornWhite = totalDeadWhite = totalBornRed = totalDeadRed = 0;
     markEnvDirty();
     updateStats(); saveFarm();
+  });
+
+  on('toggle-controls', 'click', e => {
+    const hidden = document.querySelector('main').classList.toggle('controls-hidden');
+    e.currentTarget.setAttribute('aria-expanded', String(!hidden));
+    const label = hidden ? 'Show controls' : 'Hide controls';
+    e.currentTarget.title = label;
+    e.currentTarget.setAttribute('aria-label', label);
+    resizeCanvas();
   });
 
   on('pause-resume', 'click', e => {
