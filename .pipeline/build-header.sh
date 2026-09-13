@@ -1,100 +1,112 @@
 #!/bin/bash
+#
+# Generates header.html in the repo root from the list of pages in the repo
+# root. Works no matter which directory it is invoked from: everything is
+# resolved relative to this script's own location (.pipeline/).
+#
+#   bash .pipeline/build-header.sh        # from the repo root
+#   bash build-header.sh                  # from inside .pipeline/
+#
+# Nav order: Home (index.html), Ant Farm (ant-farm.html), then every other
+# root page alphabetically. A checksum of the page list is kept in
+# .pipeline/.header_checksum so the header is only rebuilt when pages are
+# added or removed.
 
 set -euo pipefail
 
-# Output file
-HEADER_FILE="header.html"
-TMP_HEADER_FILE="$(mktemp)"
-CHECKSUM_FILE=".header_checksum"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT"
 
-# Helper to capitalize each word properly
+HEADER_FILE="header.html"
+CHECKSUM_FILE="$SCRIPT_DIR/.header_checksum"
+REPO_URL="https://github.com/mapgie/static-site/"
+
+TMP_HEADER_FILE="$(mktemp)"
+trap 'rm -f "$TMP_HEADER_FILE"' EXIT
+
+# Helper to capitalize each dash-separated word: "memory-maze" -> "Memory Maze"
 capitalize() {
   awk '
   BEGIN {
-    split(ARGV[1], words, /-/)
+    n = split(ARGV[1], words, /-/)
     ARGV[1] = ""
-    for (i = 1; i <= length(words); i++) {
+    for (i = 1; i <= n; i++) {
       word = words[i]
-      printf toupper(substr(word,1,1)) tolower(substr(word,2))
-      if (i < length(words)) printf " "
+      printf "%s%s", toupper(substr(word, 1, 1)), tolower(substr(word, 2))
+      if (i < n) printf " "
     }
   }' "$1"
 }
 
-# Find matching files
-mapfile -d '' all_files < <(
-  find . -maxdepth 1 -type f -name "*.html" \
-    ! -name "header.html" \
-    ! -name "ant-*.html" ! -name "ant-farm.html" \
-    -print0 | sort -z
-)
-
-# Manually extract Home and Ant Farm
-home_file=""
-ant_farm_file=""
-other_files=()
-
-for file in "${all_files[@]}"; do
-  base="$(basename "$file" .html)"
-  if [[ "$base" == "index" ]]; then
-    home_file="$file"
-  elif [[ "$base" == "ant-farm" ]]; then
-    ant_farm_file="$file"
-  else
-    other_files+=("$file")
-  fi
+# Collect page names (basenames, so the checksum is machine-independent) from
+# the repo root only. header.html is the output, and ant-*.html pages other
+# than ant-farm.html are helper pages that do not get a nav link.
+page_names=()
+for path in "$REPO_ROOT"/*.html; do
+  [[ -f "$path" ]] || continue
+  name="$(basename "$path")"
+  case "$name" in
+    header.html) continue ;;
+    ant-farm.html) ;;
+    ant-*.html) continue ;;
+  esac
+  page_names+=("$name")
 done
 
-# Compute checksum of file list
-current_checksum="$(printf '%s\0' "${all_files[@]}" | sha256sum | awk '{print $1}')"
+if [[ ${#page_names[@]} -gt 0 ]]; then
+  mapfile -t page_names < <(printf '%s\n' "${page_names[@]}" | LC_ALL=C sort)
+fi
 
-# If checksum matches previous run, skip regeneration
-if [[ -f "$CHECKSUM_FILE" ]] && grep -q "$current_checksum" "$CHECKSUM_FILE"; then
+# Split into Home, Ant Farm and the rest (already alphabetical)
+home_page=""
+ant_farm_page=""
+other_pages=()
+for name in "${page_names[@]}"; do
+  case "$name" in
+    index.html)    home_page="$name" ;;
+    ant-farm.html) ant_farm_page="$name" ;;
+    *)             other_pages+=("$name") ;;
+  esac
+done
+
+# Checksum of the page list; skip regeneration when it has not changed
+current_checksum="$( { printf '%s\0' "${page_names[@]+"${page_names[@]}"}"; } | sha256sum | awk '{print $1}')"
+
+if [[ -f "$CHECKSUM_FILE" ]] && [[ "$(tr -d '[:space:]' < "$CHECKSUM_FILE")" == "$current_checksum" ]]; then
   echo "No changes made."
   exit 0
 fi
 
-# Start building header
+# Build the header. No <script> here: header.html is injected with innerHTML,
+# so scripts in it would never run; the menu is wired by header.js instead.
 {
   echo '<div id="site-header">'
-  echo '  <a href="https://github.com/mapgie/static-site/" target="_blank" class="site-icon">👾</a>'
+  echo "  <a href='$REPO_URL' target='_blank' class='site-icon'>👾</a>"
   echo '  <div id="hamburger">☰</div>'
   echo '  <div id="nav-links">'
-} > "$TMP_HEADER_FILE"
-
-# Always add Home first (even if missing file will just be missing link)
-if [[ -n "$home_file" ]]; then
-  echo '    <a href="index.html">Home</a>' >> "$TMP_HEADER_FILE"
-fi
-
-# Always add Ant Farm second (even if missing file will just be missing link)
-if [[ -n "$ant_farm_file" ]]; then
-  echo '    <a href="ant-farm.html">Ant Farm</a>' >> "$TMP_HEADER_FILE"
-fi
-
-# Add other files (alphabetically)
-for file in "${other_files[@]}"; do
-  base="$(basename "$file" .html)"
-  display_name=$(capitalize "$base")
-  echo "    <a href=\"${base}.html\">$display_name</a>" >> "$TMP_HEADER_FILE"
-done
-
-# Finish header
-# The header is injected with innerHTML, so scripts here would never run;
-# the menu is wired by header.js on each page.
-{
+  if [[ -n "$home_page" ]]; then
+    echo '    <a href="index.html">Home</a>'
+  fi
+  if [[ -n "$ant_farm_page" ]]; then
+    echo '    <a href="ant-farm.html">Ant Farm</a>'
+  fi
+  for name in "${other_pages[@]+"${other_pages[@]}"}"; do
+    base="${name%.html}"
+    echo "    <a href='${base}.html'>$(capitalize "$base")</a>"
+  done
+  echo ''
   echo '  </div>'
   echo '</div>'
-} >> "$TMP_HEADER_FILE"
+  echo ''
+} > "$TMP_HEADER_FILE"
 
-# Compare and move if different
+# Only touch header.html if the content actually changed
 if [[ -f "$HEADER_FILE" ]] && cmp -s "$TMP_HEADER_FILE" "$HEADER_FILE"; then
   echo "No changes made."
 else
-  mv "$TMP_HEADER_FILE" "$HEADER_FILE"
-  echo "$current_checksum" > "$CHECKSUM_FILE"
+  cp "$TMP_HEADER_FILE" "$HEADER_FILE"
   echo "Header regenerated successfully."
 fi
 
-# Clean up
-[[ -f "$TMP_HEADER_FILE" ]] && rm -f "$TMP_HEADER_FILE"
+echo "$current_checksum" > "$CHECKSUM_FILE"
