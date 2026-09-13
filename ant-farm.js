@@ -17,6 +17,11 @@ const EAT_RANGE   = 8;
 const BITE_RANGE  = 8;
 const MATE_RANGE  = 30;
 
+// The nest: ants drop food off in a ring around the spawn point, never on it.
+const NEST_CORE   = 12;   // keep the spawn point itself clear
+const NEST_RADIUS = 40;   // drop-off happens inside this radius
+const CARRY_RETRY = 1800; // ticks before a stuck carrier picks a new drop spot
+
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
@@ -26,6 +31,8 @@ let pheromones         = [];
 let environment        = [];
 let environmentHistory = [];
 let queens             = { white: null, red: null };
+let spawnPoint         = null;   // null = centre of the canvas
+let nextAntId          = 1;
 
 let animationPaused    = false;
 let whiteHappiness     = 50;
@@ -70,6 +77,14 @@ function steerToward(ant, tx, ty, weight) {
 function steerAway(ant, tx, ty, weight) {
   const want = Math.atan2(ant.y - ty, ant.x - tx);
   ant.angle += angleDiff(want, ant.angle) * weight;
+}
+
+function getSpawnPoint() {
+  return spawnPoint || { x: canvas.width / 2, y: canvas.height / 2 };
+}
+
+function setSpawnPoint(x, y) {
+  spawnPoint = { x: clamp(x, 0, canvas.width), y: clamp(y, 0, canvas.height) };
 }
 
 function countWhiteAnts() { return ants.reduce((n, a) => n + (a.isRed ? 0 : 1), 0); }
@@ -132,6 +147,7 @@ function createAnt(isRed = false, isQueen = false, x, y) {
   const base   = isRed ? redAntLifespan : normalAntLifespan;
   const jitter = 1 + (Math.random() * 0.2 - 0.1);
   return {
+    id: nextAntId++,
     x: x !== undefined ? x : Math.random() * canvas.width,
     y: y !== undefined ? y : Math.random() * canvas.height,
     angle: Math.random() * Math.PI * 2,
@@ -144,7 +160,10 @@ function createAnt(isRed = false, isQueen = false, x, y) {
     poisoned: false,
     poisonSpreadLeft: 3,
     slowed: 0,
-    trail: 0
+    trail: 0,
+    carrying: null,     // { type } while hauling food back to the nest
+    dropOffset: null,   // where in the nest ring this ant will drop it
+    carryTicks: 0
   };
 }
 
@@ -169,10 +188,33 @@ function spawnNear(parent, isRed) {
   return createAnt(isRed, false, x, y);
 }
 
-function addFood(x, y, type) {
+function addFood(x, y, type, delivered = false, foundBy = null) {
   if (foods.length >= MAX_FOOD) return false;
-  foods.push({ x, y, type });
+  foods.push({ x, y, type, delivered, foundBy });
   return true;
+}
+
+// Manually added ants appear at the spawn point (nudged out of any wall).
+function createAntAtSpawn(isRed) {
+  return spawnNear(getSpawnPoint(), isRed);
+}
+
+// Pick a spot in the nest ring, as an offset so it follows a moved spawn point.
+function pickDropOffset() {
+  const s = getSpawnPoint();
+  let dx = 0, dy = 0;
+  for (let tries = 0; tries < 6; tries++) {
+    const a = Math.random() * Math.PI * 2;
+    const d = NEST_CORE + 4 + Math.random() * (NEST_RADIUS - NEST_CORE - 8);
+    dx = Math.cos(a) * d; dy = Math.sin(a) * d;
+    if (!collidesWall(s.x + dx, s.y + dy)) break;
+  }
+  return { dx, dy };
+}
+
+function dropTarget(ant) {
+  const s = getSpawnPoint();
+  return { x: s.x + ant.dropOffset.dx, y: s.y + ant.dropOffset.dy };
 }
 
 function layPheromone(x, y) {
@@ -183,6 +225,8 @@ function layPheromone(x, y) {
 function killAnt(index) {
   const a = ants[index];
   ants.splice(index, 1);
+  // Whatever it was hauling lands where it fell, unclaimed.
+  if (a.carrying) addFood(a.x, a.y, a.carrying.type);
   if (a.isRed) totalDeadRed++;
   else { totalDeadWhite++; recentWhiteDeaths++; }
 }
@@ -218,6 +262,7 @@ function resizeCanvas() {
   // keep everything on the board
   for (const a of ants) { a.x = clamp(a.x, 0, width); a.y = clamp(a.y, 0, height); }
   for (const q of [queens.white, queens.red]) if (q) { q.x = clamp(q.x, 0, width); q.y = clamp(q.y, 0, height); }
+  if (spawnPoint) setSpawnPoint(spawnPoint.x, spawnPoint.y);
 }
 
 function readSettingsFromControls() {
@@ -248,14 +293,14 @@ function setupUI() {
 
   on('add-ant', 'click', () => {
     if (countWhiteAnts() < MAX_WHITE_ANTS) {
-      ants.push(createAnt(false));
+      ants.push(createAntAtSpawn(false));
       totalBornWhite++;
       updateStats(); saveFarm();
     }
   });
   on('add-red-ant', 'click', () => {
     if (countRedAnts() < MAX_RED_ANTS) {
-      ants.push(createAnt(true));
+      ants.push(createAntAtSpawn(true));
       totalBornRed++;
       updateStats(); saveFarm();
     }
@@ -273,9 +318,14 @@ function setupUI() {
     queens.red = null;
     updateStats(); saveFarm();
   });
+  on('set-spawn', 'click', () => {
+    $('environment-tool').value = 'spawn';
+  });
+
   on('destroy-world', 'click', () => {
     ants = []; foods = []; pheromones = []; environment = []; environmentHistory = [];
     queens.white = queens.red = null;
+    spawnPoint = null;
     whiteHappiness = 50; recentWhiteDeaths = 0;
     totalBornWhite = totalDeadWhite = totalBornRed = totalDeadRed = 0;
     markEnvDirty();
@@ -351,6 +401,13 @@ function handleDraw(e) {
   const { x, y } = getCanvasCoords(e);
   const foodType = $('food-type').value;
 
+  if (tool === 'spawn') {           // click or drag to place the spawn point
+    setSpawnPoint(x, y);
+    lastX = x; lastY = y;
+    saveFarm();
+    return;
+  }
+
   if (lastX === null) {
     if (tool !== 'food') snapshotEnvironment();
     lastX = x; lastY = y;
@@ -380,6 +437,7 @@ function animate() {
   if (envDirty) rebuildEnvGrid();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawEnvironment();
+  drawSpawnPoint();
   drawFoods();
   drawPheromones();
 
@@ -416,9 +474,12 @@ function adjustWhiteHappiness() {
   whiteHappiness = clamp(score, 0, 100);
 }
 
+// Loose food is worth picking up; delivered food is worth eating, unless this
+// ant is the one that brought it in.
 function nearestFood(ant) {
   let best = null, bd = SENSE_FOOD * SENSE_FOOD;
   for (const f of foods) {
+    if (f.delivered && f.foundBy === ant.id) continue;
     const d = dist2(f.x, f.y, ant.x, ant.y);
     if (d < bd) { bd = d; best = f; }
   }
@@ -449,6 +510,26 @@ function poisonedRatio() {
   return ants.reduce((n, a) => n + (a.poisoned ? 1 : 0), 0) / ants.length;
 }
 
+function pickUp(ant, food) {
+  const i = foods.indexOf(food);
+  if (i === -1) return;
+  foods.splice(i, 1);
+  ant.carrying   = { type: food.type };
+  ant.dropOffset = pickDropOffset();
+  ant.carryTicks = 0;
+  ant.trail = 90;                  // lay a trail from the find back to the nest
+  layPheromone(ant.x, ant.y);
+}
+
+function dropOff(ant) {
+  const t = dropTarget(ant);
+  // If the nest is full the haul waits on the ant until there's room.
+  if (!addFood(t.x, t.y, ant.carrying.type, true, ant.id)) return;
+  ant.carrying = null;
+  ant.dropOffset = null;
+  ant.carryTicks = 0;
+}
+
 function eat(ant, food, index) {
   const i = foods.indexOf(food);
   if (i !== -1) foods.splice(i, 1);
@@ -461,8 +542,6 @@ function eat(ant, food, index) {
       ant.poisoned = false;
       ant.poisonSpreadLeft = 3;
       ant.slowed = 0;
-      ant.trail = 90;              // lay a trail so others can find the spot
-      layPheromone(ant.x, ant.y);
       return true;
     }
     case 'spoiled':
@@ -502,7 +581,12 @@ function updateAnts() {
       prey = nearestWhiteAnt(a);
       if (prey) steerToward(a, prey.x, prey.y, 0.05 + aggression * 0.25);
     }
-    if (!prey) {
+    if (!prey && a.carrying) {
+      // Haul it home
+      const t = dropTarget(a);
+      steerToward(a, t.x, t.y, 0.25);
+      if (++a.carryTicks > CARRY_RETRY) { a.dropOffset = pickDropOffset(); a.carryTicks = 0; }
+    } else if (!prey) {
       target = nearestFood(a);
       if (target) {
         const keen = target.type === 'sugar' ? 0.25 : target.type === 'protein' ? 0.2 : 0.12;
@@ -556,9 +640,16 @@ function updateAnts() {
       }
     }
 
-    // Eating
-    if (target && dist2(target.x, target.y, a.x, a.y) < EAT_RANGE * EAT_RANGE) {
-      if (!eat(a, target, i)) continue;
+    // Drop off, pick up, or eat
+    if (a.carrying) {
+      const t = dropTarget(a);
+      if (dist2(t.x, t.y, a.x, a.y) < EAT_RANGE * EAT_RANGE) dropOff(a);
+    } else if (target && dist2(target.x, target.y, a.x, a.y) < EAT_RANGE * EAT_RANGE) {
+      if (target.delivered) {
+        if (!eat(a, target, i)) continue;
+      } else {
+        pickUp(a, target);
+      }
     }
 
     // Poison spreads by contact
@@ -652,12 +743,38 @@ function getFoodColor(type) {
   }
 }
 
+function drawSpawnPoint() {
+  const s = getSpawnPoint();
+  ctx.save();
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = 'rgba(255,240,179,0.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(s.x, s.y, NEST_RADIUS, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(255,240,179,0.12)';
+  ctx.strokeStyle = 'rgba(255,240,179,0.8)';
+  ctx.beginPath();
+  ctx.arc(s.x, s.y, NEST_CORE, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawFoods() {
   for (const f of foods) {
     ctx.beginPath();
     ctx.fillStyle = getFoodColor(f.type);
     ctx.arc(f.x, f.y, 4, 0, Math.PI * 2);
     ctx.fill();
+    if (f.delivered) {           // ready to eat
+      ctx.beginPath();
+      ctx.strokeStyle = 'rgba(255,240,179,0.6)';
+      ctx.lineWidth = 1;
+      ctx.arc(f.x, f.y, 6, 0, Math.PI * 2);
+      ctx.stroke();
+    }
   }
 }
 
@@ -679,9 +796,16 @@ function drawAnt(a) {
   const r = a.isQueen ? 12 : 4;
   ctx.beginPath();
   if (a.poisoned) ctx.fillStyle = a.isRed ? '#c2185b' : '#b388ff';
-  else            ctx.fillStyle = a.isRed ? '#ff3b3b' : '#ffffff';
+  else            ctx.fillStyle = a.isRed ? '#ff3b3b' : '#fff0b3';
   ctx.arc(a.x, a.y, r, 0, Math.PI * 2);
   ctx.fill();
+
+  if (a.carrying) {              // the haul rides just ahead of the ant
+    ctx.beginPath();
+    ctx.fillStyle = getFoodColor(a.carrying.type);
+    ctx.arc(a.x + Math.cos(a.angle) * 5, a.y + Math.sin(a.angle) * 5, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   if (a.isQueen) {
     ctx.beginPath();
@@ -713,11 +837,12 @@ function updateStats() {
   const el = $('stats');
   if (!el) return;
   const w = countWhiteAnts(), r = countRedAnts();
+  const atNest = foods.reduce((n, f) => n + (f.delivered ? 1 : 0), 0);
   el.innerHTML =
     `Total Alive: ${ants.length}<br>` +
-    `White Ants: Alive ${w} | Born ${totalBornWhite} | Dead ${totalDeadWhite}<br>` +
+    `Yellow Ants: Alive ${w} | Born ${totalBornWhite} | Dead ${totalDeadWhite}<br>` +
     `Red Ants: Alive ${r} | Born ${totalBornRed} | Dead ${totalDeadRed}<br>` +
-    `Food: ${foods.length} | Happiness: ${Math.round(whiteHappiness)}`;
+    `Food: ${foods.length} (${atNest} at nest) | Happiness: ${Math.round(whiteHappiness)}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -729,7 +854,7 @@ function saveFarm() {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       ants: ants.map(serialiseAnt),
       queens: { white: queens.white && serialiseAnt(queens.white), red: queens.red && serialiseAnt(queens.red) },
-      foods, environment,
+      foods, environment, spawnPoint,
       totalBornWhite, totalDeadWhite, totalBornRed, totalDeadRed,
       matingSpeed, normalAntLifespan, redAntLifespan,
       allowRedBreeding, redAggressionLevel, penWidth
@@ -769,8 +894,13 @@ function loadFarm() {
   ants         = Array.isArray(d.ants) ? d.ants.map(reviveAnt) : [];
   queens.white = d.queens && d.queens.white ? reviveAnt(d.queens.white) : null;
   queens.red   = d.queens && d.queens.red   ? reviveAnt(d.queens.red)   : null;
-  foods        = Array.isArray(d.foods) ? d.foods : [];
+  nextAntId = Math.max(nextAntId, ...[...ants, queens.white, queens.red].map(a => (a && a.id) || 0)) + 1;
+  foods        = Array.isArray(d.foods)
+    ? d.foods.map(f => ({ x: f.x, y: f.y, type: f.type, delivered: !!f.delivered, foundBy: f.foundBy ?? null }))
+    : [];
   environment  = Array.isArray(d.environment) ? d.environment : [];
+  spawnPoint   = d.spawnPoint && Number.isFinite(d.spawnPoint.x) && Number.isFinite(d.spawnPoint.y) ? d.spawnPoint : null;
+  if (spawnPoint) setSpawnPoint(spawnPoint.x, spawnPoint.y);
   markEnvDirty();
 
   totalBornWhite = d.totalBornWhite || 0;

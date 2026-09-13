@@ -157,6 +157,7 @@ button.kill-all:hover {
 }
 
 button#add-ant,
+button#set-spawn,
 button#add-red-ant,
 button#pause-resume,
 button#undoStructure,
@@ -165,6 +166,7 @@ button#delete-structures {
   color: #fff;
 }
 button#add-ant:hover,
+button#set-spawn:hover,
 button#add-red-ant:hover,
 button#pause-resume:hover,
 button#undoStructure:hover,

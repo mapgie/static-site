@@ -14,6 +14,8 @@
       <div class="controls-section">
         <h1>Ant Controls</h1>
         <button id="add-ant">Add Ant</button>
+        <button id="set-spawn">Set Spawn Point</button>
+        <p class="hint">New ants appear at the spawn point. Pick the tool, then click the map to place it.</p>
         <label for="mating-slider">Mating Conditions:</label>
         <input type="range" id="mating-slider" min="1" max="100" value="20">
         <label for="lifespan-slider-normal">Normal Ant Lifespan (seconds):</label>
@@ -42,12 +44,13 @@
           <li><span class="swatch spoiled"></span> Spoiled: slows ants down</li>
           <li><span class="swatch poison"></span> Poison: kills and spreads</li>
         </ul>
-        <p class="hint">Click the canvas to drop food, or pick a tool and drag to draw.</p>
+        <p class="hint">Click the canvas to drop food, or pick a tool and drag to draw. Ants carry food they find back to the nest ring around the spawn point. Once dropped off, only another ant can eat it.</p>
       </div>
       <div class="controls-section">
         <h2>Environment Tools</h2>
         <select id="environment-tool">
           <option value="none">None</option>
+          <option value="spawn">Spawn Point</option>
           <option value="food">Food</option>
           <option value="water">Water</option>
           <option value="wall">Wall</option>
@@ -66,7 +69,7 @@
       </div>
       <div id="stats" class="controls-section">
         Total Alive: 0<br>
-        White Ants: Alive 0 | Born 0 | Dead 0<br>
+        Yellow Ants: Alive 0 | Born 0 | Dead 0<br>
         Red Ants: Alive 0 | Born 0 | Dead 0<br>
         Food: 0 | Happiness: 50
       </div>
