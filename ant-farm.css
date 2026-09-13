@@ -225,6 +225,27 @@ button#delete-structures:hover {
   transition: width 0.2s, background 0.2s;
 }
 
+#antagonist-bar-container {
+  position: absolute;
+  top: calc(var(--canvas-pad) + 28px);
+  left: calc(var(--canvas-pad) + 10px);
+  width: 30%;
+  max-width: 200px;
+  height: 12px;
+  background: #444;
+  border: 1px solid #222;
+  border-radius: 4px;
+  overflow: hidden;
+  z-index: 10;
+}
+
+#antagonist-bar {
+  height: 100%;
+  width: 0;
+  background: #3cb399;
+  transition: width 0.2s, background 0.2s;
+}
+
 /* --- Mode Selector (Tools & Foods) --- */
 .mode-selector {
   display: flex;

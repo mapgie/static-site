@@ -24,6 +24,21 @@ const NEST_MAX_R  = 120;
 const CARRY_RETRY = 1800; // ticks before a stuck carrier picks a new drop spot
 const SUGAR_SPACING = 22; // px between painted sugar pieces, so a dragged line scatters instead of piling
 
+// Individual happiness. Each ant carries its own, jittered at birth, and the
+// colony bar is the average across its ants. Antagonist boosts are scaled down.
+const HAPPINESS_START  = 50;
+const HAPPINESS_JITTER = 12;    // +/- spread on the starting value
+const HAPPINESS_DECAY  = 1.2;   // points lost per second, always
+const H_EAT       = 5;     // any meal
+const H_GOOD_FOOD = 6;     // extra for protein / fruit / insect
+const H_MATE      = 8;     // a successful pairing (both parents)
+const H_DELIVER   = 5;     // colony-building: dropping food off at the nest
+const H_SATIATED  = 2.5;   // per second while well-fed (lifespan above baseline)
+const H_SURVIVE   = 1.5;   // per second, main colony only, while unattacked
+const H_ATTACK    = 6;     // per bite, antagonist only (replaces the survival tick)
+const RED_FACTOR  = 0.6;   // antagonist happiness gains are smaller than the main colony's
+const ATTACK_CALM_MS = 6000;  // how long since the last attack before survival happiness ticks up
+
 // Dead insects: too big for one ant, a feast for the colony.
 const INSECT_HAULERS  = 3;    // ants needed before a carcass moves
 const INSECT_SERVINGS = 5;    // how many ants can eat from one
@@ -50,7 +65,8 @@ let nextAntId          = 1;
 
 let animationPaused    = false;
 let whiteHappiness     = 50;
-let recentWhiteDeaths  = 0;   // decays over time; feeds the happiness score
+let redHappiness       = 50;
+let whiteCalmMs        = 0;   // ms since a main-colony ant was last killed by an antagonist
 let matingSpeed        = 8200;
 let allowRedBreeding   = true;
 let redAggressionLevel = 50;
@@ -222,6 +238,9 @@ function createAnt(isRed = false, isQueen = false, x, y) {
     lifespan: isQueen ? Infinity : base * jitter,
     breedingTimer: Math.random() * matingSpeed,
     spawnTimer: 0,
+    // A hidden temperament and a jittered starting mood so no two ants are alike.
+    happiness: clamp(HAPPINESS_START + (Math.random() * 2 - 1) * HAPPINESS_JITTER, 0, 100),
+    temperament: 1 + (Math.random() * 0.3 - 0.15),
     poisoned: false,
     slowed: 0,
     trail: 0,
@@ -312,7 +331,7 @@ function killAnt(index) {
   if (a.carrying) addFood(a.x, a.y, a.carrying.type, { age: a.carrying.age });
   if (a.hauling) leaveTeam(a);
   if (a.isRed) totalDeadRed++;
-  else { totalDeadWhite++; recentWhiteDeaths++; }
+  else totalDeadWhite++;
 }
 
 // ---------------------------------------------------------------------------
@@ -451,7 +470,7 @@ function setupUI() {
     ants = []; foods = []; pheromones = []; environment = []; environmentHistory = [];
     queens.white = queens.red = null;
     spawnPoints = { yellow: [], red: [] };
-    whiteHappiness = 50; recentWhiteDeaths = 0;
+    whiteHappiness = redHappiness = 50; whiteCalmMs = 0;
     totalBornWhite = totalDeadWhite = totalBornRed = totalDeadRed = 0;
     markEnvDirty();
     updateStats(); saveFarm();
@@ -668,10 +687,10 @@ function animate() {
     updateFoods();
     updateAnts();
     updateQueens();
-    recentWhiteDeaths *= 0.995;
+    whiteCalmMs += TICK_MS;
   }
-  adjustWhiteHappiness();
-  updateWhiteHappinessBar();
+  aggregateHappiness();
+  updateHappinessBars();
 
   if (queens.white) drawAnt(queens.white);
   if (queens.red)   drawAnt(queens.red);
@@ -685,16 +704,22 @@ function animate() {
 // ---------------------------------------------------------------------------
 // Simulation
 // ---------------------------------------------------------------------------
-function adjustWhiteHappiness() {
-  let goodFood = 0, poisonFood = 0;
-  for (const f of foods) { if (f.type === 'poison') poisonFood++; else if (f.type !== 'spoiled') goodFood++; }
-  const whites = countWhiteAnts();
-  const score  = 50
-    + Math.min(25, goodFood / 4)
-    + Math.min(15, whites / 10)
-    - Math.min(15, poisonFood / 2)
-    - Math.min(40, recentWhiteDeaths * 3);
-  whiteHappiness = clamp(score, 0, 100);
+// A one-off happy moment for an ant, scaled by its temperament and (for the
+// antagonist) the smaller-boost factor.
+function bumpHappiness(ant, amount) {
+  const scaled = amount * ant.temperament * (ant.isRed ? RED_FACTOR : 1);
+  ant.happiness = clamp(ant.happiness + scaled, 0, 100);
+}
+
+// Each colony's bar is the average mood of its living ants.
+function aggregateHappiness() {
+  let ws = 0, wn = 0, rs = 0, rn = 0;
+  for (const a of ants) {
+    if (a.isRed) { rs += a.happiness; rn++; }
+    else         { ws += a.happiness; wn++; }
+  }
+  whiteHappiness = wn ? ws / wn : 50;
+  redHappiness   = rn ? rs / rn : 50;
 }
 
 // Loose food is worth picking up; delivered food is worth eating, unless this
@@ -825,6 +850,7 @@ function dropOff(ant) {
   const t = dropTarget(ant);
   // If the nest is full the haul waits on the ant until there's room.
   if (!addFood(t.x, t.y, ant.carrying.type, { delivered: true, foundBy: ant.id, age: ant.carrying.age })) return;
+  bumpHappiness(ant, H_DELIVER);   // colony-building: food is home
   ant.carrying = null;
   ant.dropOffset = null;
   ant.carryTicks = 0;
@@ -842,6 +868,7 @@ function eat(ant, food) {
       food.foundBy.push(ant.id);
       if (--food.servings > 0) foods.push(food);
       ant.lifespan = Math.min(ant.lifespan + ant.baseLifespan * 0.4, ant.baseLifespan * 2);
+      bumpHappiness(ant, H_EAT + H_GOOD_FOOD);
       ant.poisoned = false;
       ant.slowed = 0;
       return true;
@@ -851,6 +878,7 @@ function eat(ant, food) {
     case 'protein': {
       const bonus = ant.baseLifespan * (food.type === 'protein' ? 0.25 : food.type === 'fruit' ? 0.2 : 0.15);
       ant.lifespan = Math.min(ant.lifespan + bonus, ant.baseLifespan * 2);
+      bumpHappiness(ant, H_EAT + (food.type === 'protein' || food.type === 'fruit' ? H_GOOD_FOOD : 0));
       ant.poisoned = false;
       ant.slowed = 0;
       return true;
@@ -877,6 +905,14 @@ function updateAnts() {
 
     if (a.haulCooldown > 0) a.haulCooldown--;
     if (a.carrying) decay(a.carrying);   // fruit keeps ripening on the way home
+
+    // Mood drifts every tick: it decays, rises while well-fed, and (main colony
+    // only) rises the longer the colony goes without being attacked.
+    let gain = 0;
+    if (a.lifespan > a.baseLifespan) gain += H_SATIATED;
+    if (!a.isRed && whiteCalmMs > ATTACK_CALM_MS) gain += H_SURVIVE;
+    const drift = gain * a.temperament * (a.isRed ? RED_FACTOR : 1) - HAPPINESS_DECAY;
+    a.happiness = clamp(a.happiness + drift * (TICK_MS / 1000), 0, 100);
 
     // On a haul team: parked by updateFoods, still ages and can still breed
     // (a waiting pair may raise the extra hands it needs).
@@ -955,6 +991,8 @@ function updateAnts() {
       const pi = ants.indexOf(prey);
       if (pi !== -1) {
         if (prey.poisoned && !a.poisoned) { a.poisoned = true; a.lifespan *= 0.8; }
+        bumpHappiness(a, H_ATTACK);   // the antagonist's reward for a kill
+        whiteCalmMs = 0;              // the main colony has just been attacked
         killAnt(pi);
         if (pi < i) i--;           // array shifted under us
       }
@@ -998,6 +1036,8 @@ function tryBreeding(a) {
       if (Math.random() < 0.35) {
         ants.push(spawnNear(a, a.isRed));
         if (a.isRed) totalBornRed++; else totalBornWhite++;
+        bumpHappiness(a, H_MATE);
+        bumpHappiness(o, H_MATE);
       }
       return;
     }
@@ -1007,12 +1047,12 @@ function tryBreeding(a) {
 function updateQueens() {
   const whites = countWhiteAnts(), reds = countRedAnts();
 
-  // Queens arrive when the colony is thriving (white) or suffering (red)
+  // Each colony's queen arrives when that colony is thriving on its own bar.
   if (whiteHappiness >= 75 && !queens.white && whites > 0) queens.white = createAnt(false, true);
-  if (whiteHappiness <  25 && !queens.red   && ants.length > 0) queens.red = createAnt(true, true);
-  // ...and leave again once the mood has clearly swung the other way
+  if (redHappiness   >= 75 && !queens.red   && reds   > 0) queens.red   = createAnt(true, true);
+  // ...and leaves again once that colony's mood clearly drops.
   if (queens.white && whiteHappiness < 40) queens.white = null;
-  if (queens.red   && whiteHappiness > 60) queens.red   = null;
+  if (queens.red   && redHappiness   < 40) queens.red   = null;
 
   for (const q of [queens.white, queens.red]) {
     if (!q) continue;
@@ -1174,15 +1214,20 @@ function drawAnt(a) {
   }
 }
 
-function updateWhiteHappinessBar() {
-  const bar = $('happiness-bar');
+function setBar(id, value, happyColor, queenColor, hasQueen) {
+  const bar = $(id);
   if (!bar) return;
-  bar.style.width = `${whiteHappiness}%`;
-  let c = 'lime';
-  if (whiteHappiness < 25) c = 'red';
-  else if (whiteHappiness < 50) c = 'orange';
-  else if (whiteHappiness >= 75) c = queens.white ? '#c77dff' : 'lime';
+  bar.style.width = `${value}%`;
+  let c = happyColor;
+  if (value < 25) c = 'red';
+  else if (value < 50) c = 'orange';
+  else if (value >= 75 && hasQueen) c = queenColor;
   bar.style.background = c;
+}
+
+function updateHappinessBars() {
+  setBar('happiness-bar',  whiteHappiness, 'lime',    '#c77dff', !!queens.white);
+  setBar('antagonist-bar', redHappiness,   '#3cb399', '#7d6f9e', !!queens.red);
 }
 
 function updateStats() {
@@ -1194,7 +1239,7 @@ function updateStats() {
     `Total Alive: ${ants.length}<br>` +
     `Yellow Ants: Alive ${w} | Born ${totalBornWhite} | Dead ${totalDeadWhite}<br>` +
     `Red Ants: Alive ${r} | Born ${totalBornRed} | Dead ${totalDeadRed}<br>` +
-    `Food: ${foods.length} (${atNest} at nest) | Happiness: ${Math.round(whiteHappiness)}`;
+    `Food: ${foods.length} (${atNest} at nest) | Happiness: ${Math.round(whiteHappiness)} | Rival: ${Math.round(redHappiness)}`;
 }
 
 // ---------------------------------------------------------------------------
