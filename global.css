@@ -98,7 +98,19 @@ main {
 }
 
 /* Buttons */
+button,
+input,
+select,
+label,
+a {
+  /* Allow pinch zoom but not double-tap zoom, so rapid taps do not zoom the page */
+  touch-action: manipulation;
+}
+
 button {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
   font-family: inherit;
   border: none;
   padding: 0.75rem 1.5rem;

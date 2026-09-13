@@ -66,18 +66,12 @@ function Build-HeaderFile {
       $lines   += "    <a href='$basename.html'>$label</a>"  
     }  
   
+    # The header is injected with innerHTML, so scripts here would never run;
+    # the menu is wired by header.js on each page.
     $lines += @(   
       '',  
       '  </div>',  
-      '</div>',  
-      '',  
-      '<script>',  
-      '  const hamburger = document.getElementById("hamburger");',  
-      '  const navLinks  = document.getElementById("nav-links");',  
-      '  hamburger.addEventListener("click", () => {',  
-      '    navLinks.classList.toggle("show");',  
-      '  });',  
-      '</script>'  
+      '</div>'  
     )  
   
     foreach ($line in $lines) {  
