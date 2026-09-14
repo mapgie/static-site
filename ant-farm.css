@@ -66,11 +66,51 @@ main {
 /* Dim backdrop behind the open drawer (shown only on small screens). */
 #controls-backdrop { display: none; }
 
+/* Quick action bar — a persistent strip of the main buttons on phones. */
+#mobile-bar { display: none; }
+
 /* --- Phones: the map gets the full width; controls slide in as a drawer --- */
 @media (max-width: 767px) {
   :root { --canvas-pad: 0.4rem; }
 
-  #toggle-controls { display: block; }
+  /* The map keeps the full width, but a quick bar of the main buttons and the
+     food/tool pickers stays visible at the bottom, and the full controls open
+     as a drawer on demand. The extra bottom padding (more specific than the
+     base rule) keeps the canvas clear of the fixed two-row bar. */
+  main .canvas-container { padding-bottom: 6.75rem; }
+
+  #mobile-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;                    /* under the backdrop, so opening the drawer dims it */
+    padding: 0.4rem;
+    background: #1c1c1c;
+    border-top: 1px solid #333;
+  }
+  .mbar-row { display: flex; gap: 0.4rem; }
+  #mobile-bar button,
+  #mobile-bar select {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0.6rem 0.3rem;
+    border: none;
+    border-radius: 6px;
+    background: #333;
+    color: #eee;
+    font-size: 0.82rem;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  #mobile-bar select { border: 1px solid #555; padding: 0.55rem 0.4rem; }
+  #mobile-bar #mbar-menu { background: #00b4d8; color: #fff; }
+
+  /* The round toggle only appears while the drawer is open, as its close button. */
+  main:not(.controls-hidden) #toggle-controls { display: block; }
 
   /* Off-canvas drawer: floats over the map instead of shrinking it. */
   .controls-parent {

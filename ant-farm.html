@@ -140,6 +140,31 @@
       </div>
       <canvas id="antCanvas" width="1000" height="600" aria-label="Ant farm"></canvas>
     </div>
+    <div id="mobile-bar" aria-label="Quick controls">
+      <div class="mbar-row">
+        <button id="mbar-menu" type="button" title="Open all controls">&#9776; Menu</button>
+        <button id="mbar-add" type="button" title="Add an ant">+ Ant</button>
+        <button id="mbar-add-red" type="button" title="Add a rival ant">+ Rival</button>
+        <button id="mbar-pause" type="button" title="Pause or resume">Pause</button>
+      </div>
+      <div class="mbar-row">
+        <select id="mbar-food" aria-label="Food type" title="Food to drop">
+          <option value="sugar">Sugar</option>
+          <option value="fruit">Fruit</option>
+          <option value="protein">Protein</option>
+          <option value="insect">Dead Insect</option>
+          <option value="spoiled">Spoiled</option>
+          <option value="poison">Poison</option>
+        </select>
+        <select id="mbar-tool" aria-label="Tool" title="Tap-to-drop food, or drag to paint">
+          <option value="none">Tap: food</option>
+          <option value="food">Paint food</option>
+          <option value="water">Water</option>
+          <option value="wall">Wall</option>
+          <option value="bulldozer">Bulldozer</option>
+        </select>
+      </div>
+    </div>
     <div id="config-compare-modal" role="dialog" aria-modal="true" aria-label="Compare configurations">
       <div class="compare-panel">
         <div class="compare-head">
