@@ -72,7 +72,8 @@ const TUNE_DEFAULTS = {
   MATE_CHANCE: 0.35,     // base chance a nearby pair breeds
   CROWD_MATE_STEP: 0.05, // each nearby colony-mate trims that chance by this
   CROWD_MATE_FLOOR: 0.35,// ...but never below this fraction of it (denser = fewer births)
-  QUEEN_HIGH: 75,        // a colony's bar at/above this summons its queen
+  QUEEN_MIN_ANTS: 12,    // ...but only once the colony is at least this many strong
+  QUEEN_HIGH: 75,        // a colony's bar at/above this (sustained) summons its queen
   QUEEN_LOW: 40,         // ...and she leaves below this
   SADIST_SPAWN: 25,      // Sadist: rival queen arrives when main mood is below this
   SADIST_LEAVE: 60,      // ...and leaves once main mood recovers above this

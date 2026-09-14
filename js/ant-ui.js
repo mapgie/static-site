@@ -70,6 +70,7 @@ const TUNABLES = [
     ['MATE_CHANCE', 'Mate chance', 0, 1, 0.01],
     ['CROWD_MATE_STEP', 'Crowd penalty /ant', 0, 0.2, 0.005],
     ['CROWD_MATE_FLOOR', 'Crowd floor', 0, 1, 0.05],
+    ['QUEEN_MIN_ANTS', 'Queen needs ≥ ants', 1, 100, 1],
     ['QUEEN_HIGH', 'Queen arrives ≥', 50, 100, 1],
     ['QUEEN_LOW', 'Queen leaves <', 0, 60, 1],
     ['SADIST_SPAWN', 'Sadist queen <', 0, 60, 1],

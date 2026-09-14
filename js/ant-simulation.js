@@ -496,11 +496,13 @@ function tryBreeding(a) {
 function updateQueens() {
   const whites = countWhiteAnts(), reds = countRedAnts();
 
-  // The main colony's queen arrives only once the colony has been thriving for a
-  // sustained spell (not the instant the bar first touches the threshold), and
-  // leaves as the mood sours.
-  whiteQueenReadyMs = whiteHappiness >= TUNE.QUEEN_HIGH ? whiteQueenReadyMs + TICK_MS : 0;
-  if (whiteQueenReadyMs >= QUEEN_SUSTAIN_MS && !queens.white && whites > 0) queens.white = spawnQueen(false);
+  // The main colony's queen arrives only once the colony is both large enough
+  // and has been thriving for a sustained spell (not the instant the bar first
+  // touches the threshold, and never for a mere happy pair), and leaves as the
+  // mood sours.
+  const whiteReady = whiteHappiness >= TUNE.QUEEN_HIGH && whites >= TUNE.QUEEN_MIN_ANTS;
+  whiteQueenReadyMs = whiteReady ? whiteQueenReadyMs + TICK_MS : 0;
+  if (whiteQueenReadyMs >= QUEEN_SUSTAIN_MS && !queens.white) queens.white = spawnQueen(false);
   if (queens.white && whiteHappiness < TUNE.QUEEN_LOW) { queens.white = null; if (sadistMode) colonyMorale(false, TUNE.H_QUEEN_LEFT); }
 
   // The rival queen normally tracks the rival colony's own mood; in Sadist mode
@@ -510,8 +512,9 @@ function updateQueens() {
     if (whiteHappiness < TUNE.SADIST_SPAWN && !queens.red && ants.length > 0) queens.red = spawnQueen(true);
     if (queens.red && whiteHappiness > TUNE.SADIST_LEAVE) { queens.red = null; colonyMorale(true, TUNE.H_QUEEN_LEFT); }
   } else {
-    redQueenReadyMs = redHappiness >= TUNE.QUEEN_HIGH ? redQueenReadyMs + TICK_MS : 0;
-    if (redQueenReadyMs >= QUEEN_SUSTAIN_MS && !queens.red && reds > 0) queens.red = spawnQueen(true);
+    const redReady = redHappiness >= TUNE.QUEEN_HIGH && reds >= TUNE.QUEEN_MIN_ANTS;
+    redQueenReadyMs = redReady ? redQueenReadyMs + TICK_MS : 0;
+    if (redQueenReadyMs >= QUEEN_SUSTAIN_MS && !queens.red) queens.red = spawnQueen(true);
     if (queens.red && redHappiness < TUNE.QUEEN_LOW) queens.red = null;
   }
 
