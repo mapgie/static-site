@@ -21,15 +21,15 @@ Minimal static site.
 - `global.css` – Global styles  
 - `ant-farm.css` – Ant Farm specific styles  
 - `js/` – JavaScript modules  
-- `build-header.sh` – Generate `header-snippet.html`  
-- `check-and-inject.sh` – Inject header snippet into each HTML  
+- `.pipeline/build-header.sh` – Generate `header.html` from the pages in the repo root  
+- `.pipeline/check-and-inject.sh` – Inject `.pipeline/header-snippet.html` into each HTML page  
 - `.github/workflows/build-header.yaml` – CI task for header injection  
 
 ## Usage
 
 1. Install Netlify CLI (optional).  
-2. Run `./build-header.sh`.  
-3. Run `./check-and-inject.sh`.  
+2. Run `bash .pipeline/build-header.sh` from the repo root (or from inside `.pipeline/`).  
+3. Run `bash .pipeline/check-and-inject.sh`.  
 4. Deploy via Netlify or any static host.
 
 ## CI
