@@ -162,6 +162,27 @@ fold it away; each card remembers whether you left it open.
   fullness, breeding, queen thresholds, and more). Changes apply instantly and are
   saved; **Reset tuning** restores the defaults. Values marked `*` only affect
   newly born ants. Starts folded.
+- **Configurations** — save, load, export and compare named setups (see below).
 
-The whole world (ants, food, terrain, spawn points, and settings) is saved to the
-browser automatically.
+## Configurations
+
+Save a setup to revisit or compare it later. Two kinds:
+
+- **Configuration** — the reproducible parameters: every slider and tuning value,
+  plus the colony spawn points. Loading one re-applies those settings and spawn
+  points without disturbing the ants and food already on the board — so you can
+  re-run the same experiment.
+- **Full world** — a complete snapshot: the settings and spawn points *and* the
+  current ants, food, and terrain. Loading one restores that exact world.
+
+Each saved entry can be:
+
+- **Loaded** — applied to the running simulation.
+- **Exported** — downloaded as a `.antconfig.json` file, and **Imported** back on
+  any device (or shared with someone else).
+- **Compared** — tick two or more, then **Compare selected** opens a side-by-side
+  table of their settings, tuning values, and spawn-point counts (and, for full
+  worlds, saved population figures), with the rows that differ highlighted.
+
+Saved configurations persist in the browser separately from the live world, which
+(ants, food, terrain, spawn points, and settings) is still autosaved on its own.

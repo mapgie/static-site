@@ -19,6 +19,7 @@ window.addEventListener('DOMContentLoaded', () => {
   setupUI();
   buildTuning();
   $('tuning-reset').addEventListener('click', () => { TUNE = { ...TUNE_DEFAULTS }; buildTuning(); saveFarm(); });
+  setupConfigUI();
   setupCollapsibleCards();
   updateStats();
   requestAnimationFrame(animate);

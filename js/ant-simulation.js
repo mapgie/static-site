@@ -43,6 +43,9 @@ function pickAutoFood() {
 }
 
 function autoDropFood() {
+  // Don't rain food while paused or when the world is empty; reset the timer so
+  // adding the first ant doesn't trigger an instant dump.
+  if (animationPaused || ants.length === 0) { autoFoodTimer = 0; return; }
   autoFoodTimer += TICK_MS;
   if (autoFoodTimer < autoFoodNext) return;
   autoFoodTimer = 0;
