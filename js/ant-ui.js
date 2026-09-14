@@ -290,6 +290,14 @@ function setupUI() {
   on('mbar-add-red', 'click', () => $('add-red-ant').click());
   on('mbar-pause',   'click', () => { animationPaused = !animationPaused; syncPauseLabels(); });
 
+  // The bar's food and tool pickers mirror the panel selects both ways, so the
+  // two stay in step whichever one you use.
+  const mirror = (from, to) => { const s = $(to); if (s) s.value = $(from).value; };
+  on('mbar-food',        'change', () => mirror('mbar-food', 'food-type'));
+  on('food-type',        'change', () => mirror('food-type', 'mbar-food'));
+  on('mbar-tool',        'change', () => mirror('mbar-tool', 'environment-tool'));
+  on('environment-tool', 'change', () => mirror('environment-tool', 'mbar-tool'));
+
   on('pause-resume', 'click', () => { animationPaused = !animationPaused; syncPauseLabels(); });
 
   on('allow-red-breeding', 'change', e => { allowRedBreeding = e.target.checked; saveFarm(); });
