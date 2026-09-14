@@ -18,7 +18,9 @@ function createAnt(isRed = false, isQueen = false, x, y) {
     isRed, isQueen,
     baseLifespan: base,
     lifespan: isQueen ? Infinity : base * jitter,
+    age: 0,                                        // ms lived; drives the newborn grace period
     breedingTimer: Math.random() * matingSpeed,
+    matingJitter: 0.7 + Math.random() * 0.6,       // per-ant ×0.7–1.3 on the mating interval, so pairs don't sync
     spawnTimer: 0,
     // A hidden temperament and a jittered starting mood so no two ants are alike.
     happiness: clamp(TUNE.HAPPINESS_START + (Math.random() * 2 - 1) * TUNE.HAPPINESS_JITTER, 0, 100),
@@ -52,9 +54,10 @@ function collidesWall(x, y) {
 
 function spawnNear(parent, isRed) {
   // Newborns appear beside the parent, but never inside a wall: otherwise a
-  // chain of births could creep through to the other side.
+  // chain of births could creep through to the other side. A wider scatter
+  // keeps a breeding cluster from piling births onto one spot.
   const a = Math.random() * Math.PI * 2;
-  const d = 4 + Math.random() * 8;
+  const d = 10 + Math.random() * 20;
   let x = (parent.x + Math.cos(a) * d + canvas.width)  % canvas.width;
   let y = (parent.y + Math.sin(a) * d + canvas.height) % canvas.height;
   if (collidesWall(x, y)) { x = parent.x; y = parent.y; }
@@ -63,7 +66,7 @@ function spawnNear(parent, isRed) {
 
 function makeFood(x, y, type, extra = {}) {
   const f = { x, y, type, delivered: false, foundBy: null, age: 0 };
-  if (type === 'insect') Object.assign(f, { haulers: [], servings: INSECT_SERVINGS, dropOffset: null, stuck: 0, waited: 0, heading: 0 });
+  if (type === 'insect') Object.assign(f, { haulers: [], servings: insectServings(), dropOffset: null, stuck: 0, waited: 0, heading: 0 });
   Object.assign(f, extra);
   // units = trips left to haul this piece home; size = the brush it was drawn
   // with, so a fatter brush drops fatter food. Backfill both if not supplied.

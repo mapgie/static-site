@@ -159,6 +159,7 @@ function readSettingsFromControls() {
   penWidth           = +$('thickness-slider').value;
   foodDecayRate      = +$('decay-slider').value;
   showSpawnPoints    = $('show-spawn-points').checked;
+  if ($('auto-food')) autoFood = $('auto-food').checked;
   updateReadouts();
 }
 
@@ -181,6 +182,7 @@ function writeSettingsToControls() {
   $('thickness-slider').value       = penWidth;
   $('decay-slider').value           = foodDecayRate;
   $('show-spawn-points').checked    = showSpawnPoints;
+  if ($('auto-food')) $('auto-food').checked = autoFood;
   updateReadouts();
 }
 
@@ -278,6 +280,7 @@ function setupUI() {
   on('speed-slider-red',    'input', e => { redAntSpeed    = (+e.target.value) / 100; updateReadouts(); saveFarm(); });
   on('red-aggression-slider', 'input', e => { redAggressionLevel = +e.target.value; saveFarm(); });
   on('decay-slider', 'input', e => { foodDecayRate = +e.target.value; updateReadouts(); saveFarm(); });
+  on('auto-food', 'change', e => { autoFood = e.target.checked; saveFarm(); });
 
   on('undoStructure', 'click', () => {
     if (environmentHistory.length) {

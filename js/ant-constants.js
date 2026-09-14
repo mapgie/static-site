@@ -56,7 +56,7 @@ const TUNE_DEFAULTS = {
   H_WET: 1.5,        // per second while in water
   H_SLOW: 1.0,       // per second while slowed
   // Fullness / hunger (a separate axis from mood)
-  FULLNESS_DECAY: 3,     // fullness lost per second, becoming hunger
+  FULLNESS_DECAY: 1.5,   // fullness lost per second, becoming hunger
   FULLNESS_MEAL: 28,     // fullness a normal meal restores
   FULLNESS_FEAST: 40,    // ...a dead insect
   SATIATED_LEVEL: 65,    // fullness at/above which an ant counts as well-fed
@@ -70,8 +70,8 @@ const TUNE_DEFAULTS = {
   TEMPERAMENT_SPREAD: 0.3,   // width of the hidden per-ant temperament band
   // Breeding & queens
   MATE_CHANCE: 0.35,     // base chance a nearby pair breeds
-  CROWD_MATE_STEP: 0.04, // each nearby colony-mate trims that chance by this
-  CROWD_MATE_FLOOR: 0.5, // ...but never below this fraction of it
+  CROWD_MATE_STEP: 0.05, // each nearby colony-mate trims that chance by this
+  CROWD_MATE_FLOOR: 0.35,// ...but never below this fraction of it (denser = fewer births)
   QUEEN_HIGH: 75,        // a colony's bar at/above this summons its queen
   QUEEN_LOW: 40,         // ...and she leaves below this
   SADIST_SPAWN: 25,      // Sadist: rival queen arrives when main mood is below this
@@ -79,12 +79,30 @@ const TUNE_DEFAULTS = {
 };
 let TUNE = { ...TUNE_DEFAULTS };
 
-// Dead insects: too big for one ant, a feast for the colony.
-const INSECT_HAULERS  = 3;    // ants needed before a carcass moves
-const INSECT_SERVINGS = 5;    // how many ants can eat from one
+// Dead insects: too big for one ant, a feast for the colony. A carcass is
+// roughly 80% sugar / 20% protein (see applyMeal) and feeds a big crowd.
+const INSECT_HAULERS      = 3;   // ants needed before a carcass moves
+const INSECT_SERVINGS_MIN = 10;  // how many ants one carcass can feed...
+const INSECT_SERVINGS_MAX = 15;  // ...picked in this range per carcass
 const INSECT_RADIUS   = 9;
 const HAUL_PATIENCE   = 900;  // ticks a short-handed team waits before giving up
 const HAUL_COOLDOWN   = 900;  // ticks a giver-upper ignores carcasses afterwards
+
+function insectServings() {
+  return INSECT_SERVINGS_MIN + Math.floor(Math.random() * (INSECT_SERVINGS_MAX - INSECT_SERVINGS_MIN + 1));
+}
+
+// Grace: a newborn's happiness and fullness don't decay naturally for its first
+// minute of life (only poison/attack still bite). And a colony's mood must hold
+// at/above the queen threshold for a sustained spell before its queen appears.
+const NEWBORN_GRACE_MS = 60000;
+const QUEEN_SUSTAIN_MS = 8000;
+
+// Default "living world": food rains at random, weighted by rarity — sugar
+// often, protein seldom, a dead insect a rare treat. AUTO_FOOD_MS is the base
+// gap between drops (jittered each time).
+const AUTO_FOOD_WEIGHTS = { sugar: 60, fruit: 25, protein: 12, insect: 3 };
+const AUTO_FOOD_MS = 2600;
 
 // Per food type. FOOD_UNITS is how many separate trips a dropped piece takes to
 // haul home (its "drops"): a carrier lifts one unit per trip and the rest waits
@@ -92,7 +110,8 @@ const HAUL_COOLDOWN   = 900;  // ticks a giver-upper ignores carcasses afterward
 // FOOD_SPACING is how far apart a dragged brush scatters pieces — protein sits
 // wider than fruit, fruit wider than sugar, and a dead insect drops once per tap.
 const FOOD_UNITS   = { sugar: 3, fruit: 5, protein: 1, poison: 1, spoiled: 1, insect: 1 };
-const FOOD_FEEDS   = { sugar: 1, fruit: 1, protein: 2, spoiled: 1, insect: INSECT_SERVINGS };
+// Delivered servings for single-ant hauls; a dead insect sets its own (insectServings).
+const FOOD_FEEDS   = { sugar: 1, fruit: 1, protein: 2, spoiled: 1 };
 const FOOD_SPACING = { sugar: 22, fruit: 40, protein: 64, poison: 90, spoiled: 30, insect: Infinity };
 
 function initialUnits(type) { return FOOD_UNITS[type] || 1; }
