@@ -377,6 +377,14 @@ button#delete-structures:hover {
 /* Inline readouts inside slider labels */
 .controls-section .readout { display: inline; margin: 0; }
 
+.breakdown {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+}
+.breakdown b { color: #00b4d8; }
+.breakdown .hint { display: block; margin-top: 0.35rem; }
+
 /* --- Spawn point maintenance view --- */
 button.subtle {
   background: #555;

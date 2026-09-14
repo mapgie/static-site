@@ -16,7 +16,9 @@ Each colony has one or more **spawn points** (nests). New ants appear at a spawn
 point and food is hauled to the nearest one. Each colony is capped at 500 ants.
 
 Rival ants hunt and bite main-colony ants; their **Aggression** control sets how
-keenly they chase and how often a bite lands. A bite kills instantly.
+keenly they chase and how often a bite lands. A bite kills instantly. A **hungry**
+rival breaks off the hunt to look for food, so rivals must eat and can starve like
+any ant.
 
 Ants breed when a mate is nearby. **Overcrowding** — many colony-mates packed close
 — makes them a little less inclined to, so a dense clump grows more slowly.
@@ -95,8 +97,9 @@ the poison.
 
 ## Queens
 
-When a colony's happiness bar climbs high (≥ 75) a **queen** appears and periodically
-spawns extra ants; she leaves again when the bar drops (< 40).
+When a colony's happiness bar climbs high (≥ 75) a **queen** appears at one of the
+colony's spawn points and periodically spawns extra ants; she leaves again when the
+bar drops (< 40).
 
 **Sadist mode** (a Rival Ant control) changes what drives the rival queen: instead of
 tracking the rival colony's own mood, she is summoned by the **main** colony's misery
@@ -117,6 +120,9 @@ fold it away; each card remembers whether you left it open.
   thickness; undo or clear structures. Walls block ants; water slows and repels them.
 - **Danger Zone** — kill a colony, kill everything, or destroy the world.
 - **Stats** — live counts and each colony's happiness.
+- **Breakdown** — per-colony figures for spotting imbalance: average mood and
+  fullness, how many ants are hungry, poisoned, or hauling, each colony's stored
+  food, and how long the main colony has gone unattacked.
 
 The whole world (ants, food, terrain, spawn points, and settings) is saved to the
 browser automatically.

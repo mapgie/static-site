@@ -328,6 +328,12 @@ function createAntAtSpawn(isRed) {
   return spawnNear(randomSpawnPoint(isRed), isRed);
 }
 
+// A queen is born at one of her colony's spawn points, not out in the open.
+function spawnQueen(isRed) {
+  const s = randomSpawnPoint(isRed);
+  return createAnt(isRed, true, s.x, s.y);
+}
+
 // Pick a spot in the nest ring, as an offset so it applies to whichever nest
 // turns out to be nearest on the way home.
 function pickDropOffset(clearance = 4, isRed = false, x = 0, y = 0) {
@@ -1042,7 +1048,9 @@ function updateAnts() {
     if (a.wallCooldown > 0) {
       a.wallCooldown--;
     } else {
-      if (a.isRed && aggression > 0) {
+      // Well-fed rivals hunt; a hungry rival breaks off to look for food, so it
+      // depends on eating (and can starve) just like the main colony.
+      if (a.isRed && aggression > 0 && a.fullness >= a.hungerPoint) {
         prey = nearestWhiteAnt(a);
         if (prey) steerToward(a, prey.x, prey.y, 0.05 + aggression * 0.25);
       }
@@ -1175,16 +1183,16 @@ function updateQueens() {
   const whites = countWhiteAnts(), reds = countRedAnts();
 
   // The main colony's queen arrives when the colony is thriving, and leaves as it sours.
-  if (whiteHappiness >= 75 && !queens.white && whites > 0) queens.white = createAnt(false, true);
+  if (whiteHappiness >= 75 && !queens.white && whites > 0) queens.white = spawnQueen(false);
   if (queens.white && whiteHappiness < 40) { queens.white = null; if (sadistMode) colonyMorale(false, H_QUEEN_LEFT); }
 
   // The rival queen normally tracks the rival colony's own mood; in Sadist mode
   // she feeds on the main colony's misery instead.
   if (sadistMode) {
-    if (whiteHappiness < 25 && !queens.red && ants.length > 0) queens.red = createAnt(true, true);
+    if (whiteHappiness < 25 && !queens.red && ants.length > 0) queens.red = spawnQueen(true);
     if (queens.red && whiteHappiness > 60) { queens.red = null; colonyMorale(true, H_QUEEN_LEFT); }
   } else {
-    if (redHappiness >= 75 && !queens.red && reds > 0) queens.red = createAnt(true, true);
+    if (redHappiness >= 75 && !queens.red && reds > 0) queens.red = spawnQueen(true);
     if (queens.red && redHappiness < 40) queens.red = null;
   }
 
@@ -1374,6 +1382,37 @@ function updateStats() {
     `Yellow Ants: Alive ${w} | Born ${totalBornWhite} | Dead ${totalDeadWhite}<br>` +
     `Rival Ants: Alive ${r} | Born ${totalBornRed} | Dead ${totalDeadRed}<br>` +
     `Food: ${foods.length} (${atNest} at nest) | Happiness: ${Math.round(whiteHappiness)} | Rival: ${Math.round(redHappiness)}`;
+  updateBreakdown();
+}
+
+// Per-colony figures, to make the source of a happiness gap visible: average
+// mood and fullness, how many are hungry / poisoned / hauling, and the size of
+// each colony's own store. `main unattacked` shows whether the survival lift is
+// currently running (it pauses whenever a main ant is killed).
+function updateBreakdown() {
+  const el = $('breakdown');
+  if (!el) return;
+  const g = () => ({ n: 0, h: 0, f: 0, hungry: 0, pois: 0, carry: 0 });
+  const w = g(), r = g();
+  for (const a of ants) {
+    const c = a.isRed ? r : w;
+    c.n++; c.h += a.happiness; c.f += a.fullness;
+    if (a.fullness < a.hungerPoint) c.hungry++;
+    if (a.poisoned) c.pois++;
+    if (a.carrying) c.carry++;
+  }
+  let wStore = 0, rStore = 0;
+  for (const f of foods) if (f.delivered) { if (f.team) rStore++; else wStore++; }
+  const avg = (s, n) => (n ? Math.round(s / n) : '—');
+  const block = (label, c, store, queen) =>
+    `<b>${label}</b>${queen ? ' + queen' : ''}<br>` +
+    `ants ${c.n} · mood ${avg(c.h, c.n)} · full ${avg(c.f, c.n)}<br>` +
+    `hungry ${c.hungry} · sick ${c.pois} · hauling ${c.carry} · stored ${store}`;
+  const calm = Math.round(whiteCalmMs / 1000);
+  el.innerHTML =
+    block('Main', w, wStore, queens.white) + '<br>' +
+    block('Rival', r, rStore, queens.red) + '<br>' +
+    `<span class="hint">main unattacked ${calm}s ${whiteCalmMs > ATTACK_CALM_MS ? '· mood rising' : '· under attack'}</span>`;
 }
 
 // ---------------------------------------------------------------------------
