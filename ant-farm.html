@@ -99,6 +99,17 @@
         <button id="tuning-reset">Reset tuning</button>
       </div>
       <div class="controls-section">
+        <h2>Configurations</h2>
+        <p class="hint">Save your setup to load, export and compare later. A <b>configuration</b> stores the settings and spawn points; a <b>full world</b> also stores the current ants, food and terrain.</p>
+        <input type="text" id="config-name" placeholder="Name this setup&hellip;" maxlength="60">
+        <button id="config-save">Save configuration</button>
+        <button id="config-save-world" class="subtle">Save full world</button>
+        <div id="config-list" class="config-list"></div>
+        <button id="config-compare">Compare selected</button>
+        <button id="config-import" class="subtle">Import&hellip;</button>
+        <input type="file" id="config-import-input" accept=".json,application/json" hidden>
+      </div>
+      <div class="controls-section">
         <h2>User Controls</h2>
         <button id="pause-resume">Pause</button>
       </div>
@@ -129,6 +140,16 @@
       </div>
       <canvas id="antCanvas" width="1000" height="600" aria-label="Ant farm"></canvas>
     </div>
+    <div id="config-compare-modal" role="dialog" aria-modal="true" aria-label="Compare configurations">
+      <div class="compare-panel">
+        <div class="compare-head">
+          <h2>Compare configurations</h2>
+          <button id="config-compare-close" type="button" aria-label="Close">&times;</button>
+        </div>
+        <p class="hint">Rows where the configurations differ are highlighted.</p>
+        <div id="config-compare-body" class="compare-body"></div>
+      </div>
+    </div>
   </main>
 
   <script src="header.js"></script>
@@ -141,5 +162,6 @@
   <script src="js/ant-simulation.js"></script>
   <script src="js/ant-render.js"></script>
   <script src="js/ant-storage.js"></script>
+  <script src="js/ant-config.js"></script>
 </body>
 </html>
