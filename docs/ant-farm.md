@@ -2,8 +2,9 @@
 
 A two-colony ant simulation. You seed colonies, drop food, shape the terrain, and
 watch two populations forage, breed, fight, and rise or fall on their own moods.
-Everything runs client-side in `ant-farm.html` / `ant-farm.css` / `ant-farm.js`, and
-the world autosaves to `localStorage`.
+Everything runs client-side in `ant-farm.html` / `ant-farm.css` and the `js/ant-*.js`
+modules (constants, state, utils, entities, ui, simulation, render, storage), and the
+world autosaves to `localStorage`.
 
 ## Colonies
 
