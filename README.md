@@ -57,12 +57,14 @@ On push to `main`, GitHub Actions regenerates and reinjects header.
 ├── .header_checksum
 ├── ant-control-panel.html
 ├── build-header.sh
-├── js
-│   ├── ant-constants.js
-│   ├── ant-core.js
-│   ├── ant-farm.js
-│   ├── ant-storage.js
-│   ├── ant-ui.js
-│   └── ant-utils.js
+├── js                    # Ant Farm, split by concern (loaded in this order)
+│   ├── ant-constants.js  # config + food specs
+│   ├── ant-state.js      # mutable runtime state
+│   ├── ant-utils.js      # math, colony/canvas helpers, spatial grid
+│   ├── ant-entities.js   # ants, food & nest entities
+│   ├── ant-ui.js         # bootstrap, controls, tuning, maintenance view
+│   ├── ant-simulation.js # main loop & per-tick behaviour
+│   ├── ant-render.js     # canvas drawing, bars & stats
+│   └── ant-storage.js    # localStorage persistence
 └── .gitignore
 ```

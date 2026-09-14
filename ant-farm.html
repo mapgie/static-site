@@ -50,15 +50,16 @@
           <option value="poison">Poison</option>
         </select>
         <ul id="food-legend" class="legend">
-          <li><span class="swatch sugar"></span><span class="text">Sugar<span class="spoiler">: ants love it, lifespan up</span></span></li>
-          <li><span class="swatch fruit"></span><span class="text">Fruit<span class="spoiler">: bigger than sugar, spoils over time</span></span></li>
-          <li><span class="swatch protein"></span><span class="text">Protein<span class="spoiler">: bigger lifespan boost</span></span></li>
+          <li><span class="swatch sugar"></span><span class="text">Sugar<span class="spoiler">: least filling, three drops to haul, one fed each</span></span></li>
+          <li><span class="swatch fruit"></span><span class="text">Fruit<span class="spoiler">: five drops to haul, more filling, cures slowness</span></span></li>
+          <li><span class="swatch protein"></span><span class="text">Protein<span class="spoiler">: one heavy drop feeds two, adds speed and mating drive</span></span></li>
           <li><span class="swatch insect"></span><span class="text">Dead Insect<span class="spoiler">: feeds five, takes three ants to haul</span></span></li>
           <li><span class="swatch spoiled"></span><span class="text">Spoiled<span class="spoiler">: slows ants down, turns to poison</span></span></li>
-          <li><span class="swatch poison"></span><span class="text">Poison<span class="spoiler">: kills and spreads</span></span></li>
+          <li><span class="swatch poison"></span><span class="text">Poison<span class="spoiler">: one drop poisons a crowd, incurable</span></span></li>
         </ul>
         <label for="decay-slider">Food Decay Rate (<span id="decay-readout" class="readout"></span>):</label>
         <input type="range" id="decay-slider" min="1" max="100" value="25">
+        <label title="Food rains at random, weighted by rarity: sugar often, protein seldom, a dead insect a rare treat."><input type="checkbox" id="auto-food" checked> Auto food drops</label>
         <p class="hint">Click the canvas to drop food, or pick a tool and drag to draw. Ants carry food they find back to the nest ring around their nearest spawn point. Once dropped off, only another ant can eat it.</p>
       </div>
       <div class="controls-section">
@@ -117,7 +118,8 @@
         <button id="spawn-done">Done</button>
       </div>
     </div>
-    <button id="toggle-controls" type="button" aria-label="Hide controls" aria-expanded="true" title="Hide controls">&#9776;</button>
+    <div id="controls-backdrop"></div>
+    <button id="toggle-controls" type="button" aria-label="Show controls" aria-expanded="false" title="Show controls">&#9776;</button>
     <div class="canvas-container">
       <div id="happiness-bar-container" title="Colony happiness">
         <div id="happiness-bar"></div>
@@ -130,6 +132,14 @@
   </main>
 
   <script src="header.js"></script>
-  <script src="ant-farm.js"></script>
+  <!-- Ant Farm modules, loaded in dependency order (see js/ant-constants.js). -->
+  <script src="js/ant-constants.js"></script>
+  <script src="js/ant-state.js"></script>
+  <script src="js/ant-utils.js"></script>
+  <script src="js/ant-entities.js"></script>
+  <script src="js/ant-ui.js"></script>
+  <script src="js/ant-simulation.js"></script>
+  <script src="js/ant-render.js"></script>
+  <script src="js/ant-storage.js"></script>
 </body>
 </html>
