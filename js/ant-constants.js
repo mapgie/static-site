@@ -23,6 +23,7 @@ const SENSE_TRAIL = 60;
 const EAT_RANGE   = 8;
 const BITE_RANGE  = 8;
 const MATE_RANGE  = 30;
+const ARRIVE_RANGE = 18;  // ants ease off within this of their target, so they settle instead of orbiting
 
 // The nest: ants drop food off in a ring around the spawn point, never on it.
 const NEST_CORE   = 12;   // keep the spawn point itself clear (scales a little with size)
