@@ -24,17 +24,19 @@
         <input type="range" id="speed-slider-normal" min="50" max="200" value="110">
       </div>
       <div class="controls-section">
-        <h2>Red Ant Controls</h2>
-        <button id="add-red-ant">Add Red Ant</button>
-        <label for="lifespan-slider-red">Red Ant Lifespan (seconds):</label>
+        <h2>Rival Ant Controls</h2>
+        <button id="add-red-ant">Add Rival Ant</button>
+        <label for="lifespan-slider-red">Rival Ant Lifespan (seconds):</label>
         <input type="range" id="lifespan-slider-red" min="10" max="300" value="120">
-        <label for="speed-slider-red">Red Ant Speed (<span id="speed-readout-red" class="readout"></span>):</label>
+        <label for="speed-slider-red">Rival Ant Speed (<span id="speed-readout-red" class="readout"></span>):</label>
         <input type="range" id="speed-slider-red" min="50" max="200" value="105">
-        <label><input type="checkbox" id="allow-red-breeding" checked> Allow Red Ant Breeding</label>
-        <label for="red-aggression-slider">Red Ant Aggression:</label>
+        <label><input type="checkbox" id="allow-red-breeding" checked> Allow Rival Ant Breeding</label>
+        <label title="The rival queen appears when your colony is miserable, not when hers is thriving."><input type="checkbox" id="sadist-mode"> Sadist mode</label>
+        <label for="red-aggression-slider">Rival Ant Aggression:</label>
         <input type="range" id="red-aggression-slider" min="0" max="100" value="50">
       </div>
       <div class="controls-section">
+        <h2>Food</h2>
         <div class="label-row">
           <label for="food-type">Select Food:</label>
           <button type="button" id="food-info" class="info-btn" aria-expanded="false" aria-controls="food-legend" title="Reveal what each food does (spoiler)">i</button>
@@ -75,15 +77,25 @@
       </div>
       <div class="controls-section danger-zone">
         <h2 style="color:red;">Danger Zone</h2>
-        <button id="kill-red-ants" class="kill-all">Kill All Red Ants</button>
+        <button id="kill-red-ants" class="kill-all">Kill All Rival Ants</button>
         <button id="kill-all-ants" class="kill-all">Kill All Ants</button>
         <button id="destroy-world" class="kill-all">Destroy World</button>
       </div>
       <div id="stats" class="controls-section">
         Total Alive: 0<br>
         Yellow Ants: Alive 0 | Born 0 | Dead 0<br>
-        Red Ants: Alive 0 | Born 0 | Dead 0<br>
+        Rival Ants: Alive 0 | Born 0 | Dead 0<br>
         Food: 0 | Happiness: 50
+      </div>
+      <div class="controls-section">
+        <h2>Breakdown</h2>
+        <div id="breakdown" class="breakdown"></div>
+      </div>
+      <div class="controls-section" data-collapsed="true">
+        <h2>Tuning</h2>
+        <p class="hint">Live balance knobs — changes apply instantly and are saved. A <b>*</b> marks values that only affect newly born ants.</p>
+        <div id="tuning"></div>
+        <button id="tuning-reset">Reset tuning</button>
       </div>
       <div class="controls-section">
         <h2>User Controls</h2>
@@ -93,7 +105,7 @@
         <h2>Spawn Points</h2>
         <p class="hint">The game is paused while you edit. Drag a point to move it, click one to select it.</p>
         <button id="spawn-add-yellow">Add Ant Point</button>
-        <button id="spawn-add-red">Add Red Ant Point</button>
+        <button id="spawn-add-red">Add Rival Ant Point</button>
         <div class="spawn-selected">
           <span id="spawn-selected-label">Nothing selected. Click a point on the map.</span>
           <label for="spawn-size-slider">Size:</label>
@@ -107,8 +119,11 @@
     </div>
     <button id="toggle-controls" type="button" aria-label="Hide controls" aria-expanded="true" title="Hide controls">&#9776;</button>
     <div class="canvas-container">
-      <div id="happiness-bar-container">
+      <div id="happiness-bar-container" title="Colony happiness">
         <div id="happiness-bar"></div>
+      </div>
+      <div id="antagonist-bar-container" title="Antagonist happiness">
+        <div id="antagonist-bar"></div>
       </div>
       <canvas id="antCanvas" width="1000" height="600" aria-label="Ant farm"></canvas>
     </div>

@@ -1,0 +1,132 @@
+# Ant Farm
+
+A two-colony ant simulation. You seed colonies, drop food, shape the terrain, and
+watch two populations forage, breed, fight, and rise or fall on their own moods.
+Everything runs client-side in `ant-farm.html` / `ant-farm.css` / `ant-farm.js`, and
+the world autosaves to `localStorage`.
+
+## Colonies
+
+| | Healthy | Poisoned | Nest ring |
+|---|---|---|---|
+| **Main colony** (your ants) | pale yellow `#fff0b3` | amethyst slate `#7d6f9e` | pale yellow |
+| **Rival colony** (the antagonist) | muted jade `#3cb399` | amethyst light `#9f95b5` | jade |
+
+Each colony has one or more **spawn points** (nests). New ants appear at a spawn
+point and food is hauled to the nearest one. Each colony is capped at 500 ants.
+
+Rival ants hunt and bite main-colony ants; their **Aggression** control sets how
+keenly they chase and how often a bite lands. A bite kills instantly. A **hungry**
+rival breaks off the hunt to look for food, so rivals must eat and can starve like
+any ant.
+
+Ants breed when a mate is nearby. **Overcrowding** — many colony-mates packed close
+— makes them a little less inclined to, so a dense clump grows more slowly.
+
+## Food
+
+Drop food by clicking the canvas, or paint it with the **Food** environment tool.
+Ants carry loose food back to the nest, where it becomes part of the colony's
+**store**. Once delivered, only *another* ant may eat it.
+
+| Food | Colour | Effect on the eater |
+|---|---|---|
+| Sugar | `#f5f5f5` | +15% lifespan. Basic. Painting a line of sugar drops *spaced* pieces, not a solid pile. |
+| Fruit | `#ff8c00` | +20% lifespan. Ripens, then rots into Spoiled over time. |
+| Protein | `#ef9a9a` | +25% lifespan. |
+| Dead Insect | `#8d6e63` | +40% lifespan. Feeds five ants, and takes a team of three to haul home. |
+| Spoiled | `#3d5afe` | Slows the eater and shaves a little lifespan. Rots further into Poison. |
+| Poison | `#b040ff` | Poisons the eater (see below). |
+
+**Eating extends lifespan**, not just staving off starvation: each meal adds the
+percentage above, up to a ceiling of **twice** the ant's base lifespan. The **Food
+Decay Rate** slider controls how fast fruit ripens and spoiled food turns to poison.
+
+### Stockpiling
+
+The first piece delivered to a nest sets an anchor, and later pieces **pack adjacent
+to it**, so a colony's store grows as a tidy pile rather than a scattered ring.
+
+## Hunger and food stores
+
+Each ant has a **fullness** stat, separate from its mood, that drains over time into
+hunger. An ant only eats from the store when its fullness drops **below** its own
+(jittered) hunger point; while it is well-fed it keeps foraging and leaves the store
+alone. Because every ant's threshold is different, a content colony doesn't swarm
+returned food all at once — it builds up reserves instead. Eating refills fullness
+(and, as noted above, extends lifespan).
+
+## Happiness
+
+Every ant carries its **own** happiness, seeded with a jittered starting value and a
+hidden *temperament* that makes each ant swing more or less than its neighbours. Each
+colony's on-screen bar is the **average** mood of its living ants. There are two
+bars: the main colony's (top) and the rival colony's (below it).
+
+Happiness **rises** from:
+
+- eating (a bigger lift for protein, fruit, or insect)
+- being well-fed (fullness high)
+- mating (both parents)
+- delivering food to the nest (colony-building)
+- **main colony:** a slow background lift the longer the colony goes unattacked
+- **rival colony:** a boost for each ant it kills, in place of the survival lift
+
+Happiness **falls** from:
+
+- a constant background decay
+- a nearby colony-mate being killed (nearby witnesses take it hardest)
+- becoming poisoned (an immediate hit) and staying poisoned (slow ongoing decay)
+
+Rival happiness gains are deliberately **smaller** than the main colony's.
+
+**Sadist mode** piles on extra setbacks that don't apply in normal play: a colony
+takes a morale hit when its queen departs, and ants lose happiness while they're wet
+(in water) or slowed. These compounding miseries are reserved for the sadist.
+
+## Poison
+
+Poison spreads **only by eating**:
+
+- an ant that eats Poison food becomes poisoned (it no longer dies on the spot), or
+- a rival ant that bites an already-poisoned ant catches it.
+
+There is no proximity contagion. A poisoned ant ages faster, cannot breed, steadily
+loses happiness, and is drawn in its colony's amethyst shade. Eating good food cures
+the poison.
+
+## Queens
+
+When a colony's happiness bar climbs high (≥ 75) a **queen** appears at one of the
+colony's spawn points and periodically spawns extra ants; she leaves again when the
+bar drops (< 40).
+
+**Sadist mode** (a Rival Ant control) changes what drives the rival queen: instead of
+tracking the rival colony's own mood, she is summoned by the **main** colony's misery
+— she arrives when your ants are suffering and withdraws once they recover. Sadist
+mode also switches on the extra happiness setbacks described under Happiness.
+
+## Controls
+
+The control panel is a column of **collapsible cards** — click a card's heading to
+fold it away; each card remembers whether you left it open.
+
+- **Ant Controls** — add ants, open the spawn-point maintenance view, and set mating
+  conditions, lifespan, and speed for the main colony.
+- **Rival Ant Controls** — add rival ants; set their lifespan, speed, breeding,
+  aggression, and **Sadist mode**.
+- **Food** — pick a food type, see what each does, and set the decay rate.
+- **Environment Tools** — paint Food, Water, or Walls, or Bulldoze; set brush
+  thickness; undo or clear structures. Walls block ants; water slows and repels them.
+- **Danger Zone** — kill a colony, kill everything, or destroy the world.
+- **Stats** — live counts and each colony's happiness.
+- **Breakdown** — per-colony figures for spotting imbalance: average mood and
+  fullness, how many ants are hungry, poisoned, or hauling, each colony's stored
+  food, and how long the main colony has gone unattacked.
+- **Tuning** — live sliders for the balance numbers (happiness gains and losses,
+  fullness, breeding, queen thresholds, and more). Changes apply instantly and are
+  saved; **Reset tuning** restores the defaults. Values marked `*` only affect
+  newly born ants. Starts folded.
+
+The whole world (ants, food, terrain, spawn points, and settings) is saved to the
+browser automatically.
