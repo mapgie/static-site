@@ -35,7 +35,7 @@ Ants carry loose food back to the nest, where it becomes part of the colony's
 | Sugar | `#f5f5f5` | 3 | 1 each | Least filling. +15% lifespan. |
 | Fruit | `#ff8c00` | 5 | 1 each | More filling. +20% lifespan. Cures a slow. Ripens, then rots into Spoiled. |
 | Protein | `#ef9a9a` | 1 (heavy) | 2 | Most filling. +25% lifespan. Cures a slow and adds a burst of speed and mating drive. Slower to carry home. |
-| Dead Insect | `#8d6e63` | team of 3 hauls | 5 | +40% lifespan. Takes a team of three to move at all. |
+| Dead Insect | `#8d6e63` | team of 3 hauls | 10–15 | A carcass is ~80% sugar / 20% protein: each mouthful lands as one or the other. Takes a team of three to move at all. |
 | Spoiled | `#3d5afe` | 1 | 1 | Slows the eater and shaves a little lifespan. Rots further into Poison. |
 | Poison | `#b040ff` | 1 | 5–10 | Poisons everyone who eats from the drop (see below). |
 
@@ -53,6 +53,14 @@ insect drops only **once per press**. **Brush thickness** also sets each drop's
 **Eating extends lifespan**, not just staving off starvation: each meal adds the
 percentage above, up to a ceiling of **twice** the ant's base lifespan. The **Food
 Decay Rate** slider controls how fast fruit ripens and spoiled food turns to poison.
+
+### Auto food (the living world)
+
+By default the world feeds itself: food rains at random over time, weighted by
+rarity — **sugar** often, **fruit** less so, **protein** seldom, and a **dead
+insect** as a rare treat (poison and spoiled never fall on their own). Turn it off
+with the **Auto food drops** checkbox in the Food panel to hand-feed the colony
+yourself.
 
 ### Trails
 
@@ -74,6 +82,11 @@ hunger. An ant only eats from the store when its fullness drops **below** its ow
 alone. Because every ant's threshold is different, a content colony doesn't swarm
 returned food all at once — it builds up reserves instead. Eating refills fullness
 (and, as noted above, extends lifespan).
+
+**Newborn grace.** For its **first minute** of life, an ant's fullness and happiness
+don't drain on their own — only outside harm (poison, an attack) still bites. New
+ants get a chance to find their feet instead of being born straight into hunger, and
+a wave of newborns doesn't immediately starve.
 
 ## Happiness
 
@@ -118,9 +131,10 @@ seed a whole crowd.
 
 ## Queens
 
-When a colony's happiness bar climbs high (≥ 75) a **queen** appears at one of the
-colony's spawn points and periodically spawns extra ants; she leaves again when the
-bar drops (< 40).
+When a colony's happiness bar climbs high (≥ 75) **and holds there for a sustained
+spell** (about eight seconds), a **queen** appears at one of the colony's spawn points
+and periodically spawns extra ants; a brief spike no longer summons her on the spot.
+She leaves again when the bar drops (< 40).
 
 **Sadist mode** (a Rival Ant control) changes what drives the rival queen: instead of
 tracking the rival colony's own mood, she is summoned by the **main** colony's misery

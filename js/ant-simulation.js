@@ -13,6 +13,7 @@ function animate() {
   drawPheromones();
 
   if (!animationPaused) {
+    if (autoFood) autoDropFood();
     updateFoods();
     updateAnts();
     updateQueens();
@@ -28,6 +29,29 @@ function animate() {
 
   if ((statsTimer += TICK_MS) >= 250) { statsTimer = 0; updateStats(); }
   requestAnimationFrame(animate);
+}
+
+// ---------------------------------------------------------------------------
+// Auto food (the default "living world"): drops rain at random, weighted by
+// rarity — sugar often, protein seldom, a dead insect a rare treat.
+// ---------------------------------------------------------------------------
+function pickAutoFood() {
+  const entries = Object.entries(AUTO_FOOD_WEIGHTS);
+  let r = Math.random() * entries.reduce((s, [, w]) => s + w, 0);
+  for (const [type, w] of entries) if ((r -= w) < 0) return type;
+  return 'sugar';
+}
+
+function autoDropFood() {
+  autoFoodTimer += TICK_MS;
+  if (autoFoodTimer < autoFoodNext) return;
+  autoFoodTimer = 0;
+  autoFoodNext = AUTO_FOOD_MS * (0.6 + Math.random() * 0.8);   // jittered gap so drops aren't metronomic
+  if (foods.length >= MAX_FOOD || !canvas) return;
+  for (let tries = 0; tries < 8; tries++) {
+    const x = Math.random() * canvas.width, y = Math.random() * canvas.height;
+    if (!collidesWall(x, y)) { addFood(x, y, pickAutoFood(), { size: 5 }); break; }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -222,12 +246,9 @@ function dropOff(ant) {
 function applyMeal(ant, food) {
   const lift = pct => { ant.lifespan = Math.min(ant.lifespan + ant.baseLifespan * pct, ant.baseLifespan * 2); };
   switch (food.type) {
-    case 'insect':                       // a shared feast
-      lift(0.4);
-      ant.fullness = clamp(ant.fullness + TUNE.FULLNESS_FEAST, 0, 100);
-      bumpHappiness(ant, TUNE.H_EAT + TUNE.H_GOOD_FOOD);
-      ant.slowed = 0;
-      break;
+    case 'insect':                       // a carcass is ~80% sugar, 20% protein
+      applyMeal(ant, { type: Math.random() < 0.2 ? 'protein' : 'sugar' });
+      return;                            // each mouthful lands as one or the other
     case 'sugar':                        // least filling, a quick pick-me-up
       lift(0.15);
       ant.fullness = clamp(ant.fullness + TUNE.FULLNESS_MEAL * 0.6, 0, 100);
@@ -282,16 +303,23 @@ function updateAnts() {
     if (a.haulCooldown > 0) a.haulCooldown--;
     if (a.carrying) decay(a.carrying);   // fruit keeps ripening on the way home
 
+    // A newborn gets a grace period: for its first minute, happiness and fullness
+    // don't decay on their own. Only external harm (poison, an attack) still bites.
+    a.age += TICK_MS;
+    const inGrace = a.age < NEWBORN_GRACE_MS;
+
     // Mood drifts every tick: it decays, rises while well-fed, and (main colony
     // only) rises the longer the colony goes without being attacked.
     // Poison decays every stat: fullness drains faster too (mood and lifespan
     // already do, below).
-    a.fullness = clamp(a.fullness - TUNE.FULLNESS_DECAY * (a.poisoned ? 2 : 1) * (TICK_MS / 1000), 0, 100);
+    let fullDrain = a.poisoned ? TUNE.FULLNESS_DECAY : 0;   // poison bites through grace
+    if (!inGrace) fullDrain += TUNE.FULLNESS_DECAY;          // natural hunger, once grace is over
+    a.fullness = clamp(a.fullness - fullDrain * (TICK_MS / 1000), 0, 100);
 
     let gain = 0;
     if (a.fullness >= TUNE.SATIATED_LEVEL) gain += TUNE.H_SATIATED;    // well-fed, not merely long-lived
     if (!a.isRed && whiteCalmMs > TUNE.ATTACK_CALM_S * 1000) gain += TUNE.H_SURVIVE;
-    let decayRate = TUNE.HAPPINESS_DECAY + (a.poisoned ? TUNE.H_POISON_DECAY : 0);
+    let decayRate = (inGrace ? 0 : TUNE.HAPPINESS_DECAY) + (a.poisoned ? TUNE.H_POISON_DECAY : 0);
     if (sadistMode) {                        // extra misery only piles on for the sadist
       if (a.wet) decayRate += TUNE.H_WET;
       if (a.slowed > 0) decayRate += TUNE.H_SLOW;
@@ -308,7 +336,7 @@ function updateAnts() {
         if (a.lifespan <= 0) { killAnt(i); continue; }
         a.breedingTimer += TICK_MS * (a.mateBoost > 0 ? 2 : 1);
         if (a.mateBoost > 0) a.mateBoost--;
-        if (a.breedingTimer >= matingSpeed) { a.breedingTimer = 0; if (!a.poisoned) tryBreeding(a); }
+        if (a.breedingTimer >= matingSpeed * a.matingJitter) { a.breedingTimer = 0; if (!a.poisoned) tryBreeding(a); }
         continue;
       }
     }
@@ -426,10 +454,11 @@ function updateAnts() {
     a.lifespan -= TICK_MS * (a.poisoned ? 1.5 : 1);
     if (a.lifespan <= 0) { killAnt(i); continue; }
 
-    // Breeding — protein makes an ant keener, so its timer fills twice as fast.
+    // Breeding — each ant has its own interval (matingJitter) so pairs don't all
+    // fire at once; protein makes an ant keener, filling its timer twice as fast.
     a.breedingTimer += TICK_MS * (a.mateBoost > 0 ? 2 : 1);
     if (a.mateBoost > 0) a.mateBoost--;
-    if (a.breedingTimer >= matingSpeed) {
+    if (a.breedingTimer >= matingSpeed * a.matingJitter) {
       a.breedingTimer = 0;
       if (!a.poisoned) tryBreeding(a);
     }
@@ -464,17 +493,22 @@ function tryBreeding(a) {
 function updateQueens() {
   const whites = countWhiteAnts(), reds = countRedAnts();
 
-  // The main colony's queen arrives when the colony is thriving, and leaves as it sours.
-  if (whiteHappiness >= TUNE.QUEEN_HIGH && !queens.white && whites > 0) queens.white = spawnQueen(false);
+  // The main colony's queen arrives only once the colony has been thriving for a
+  // sustained spell (not the instant the bar first touches the threshold), and
+  // leaves as the mood sours.
+  whiteQueenReadyMs = whiteHappiness >= TUNE.QUEEN_HIGH ? whiteQueenReadyMs + TICK_MS : 0;
+  if (whiteQueenReadyMs >= QUEEN_SUSTAIN_MS && !queens.white && whites > 0) queens.white = spawnQueen(false);
   if (queens.white && whiteHappiness < TUNE.QUEEN_LOW) { queens.white = null; if (sadistMode) colonyMorale(false, TUNE.H_QUEEN_LEFT); }
 
   // The rival queen normally tracks the rival colony's own mood; in Sadist mode
   // she feeds on the main colony's misery instead.
   if (sadistMode) {
+    redQueenReadyMs = 0;
     if (whiteHappiness < TUNE.SADIST_SPAWN && !queens.red && ants.length > 0) queens.red = spawnQueen(true);
     if (queens.red && whiteHappiness > TUNE.SADIST_LEAVE) { queens.red = null; colonyMorale(true, TUNE.H_QUEEN_LEFT); }
   } else {
-    if (redHappiness >= TUNE.QUEEN_HIGH && !queens.red && reds > 0) queens.red = spawnQueen(true);
+    redQueenReadyMs = redHappiness >= TUNE.QUEEN_HIGH ? redQueenReadyMs + TICK_MS : 0;
+    if (redQueenReadyMs >= QUEEN_SUSTAIN_MS && !queens.red && reds > 0) queens.red = spawnQueen(true);
     if (queens.red && redHappiness < TUNE.QUEEN_LOW) queens.red = null;
   }
 

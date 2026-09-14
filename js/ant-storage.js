@@ -15,7 +15,7 @@ function saveFarm() {
       totalBornWhite, totalDeadWhite, totalBornRed, totalDeadRed,
       matingSpeed, normalAntLifespan, redAntLifespan,
       allowRedBreeding, sadistMode, redAggressionLevel, penWidth, foodDecayRate,
-      normalAntSpeed, redAntSpeed, tune: TUNE
+      normalAntSpeed, redAntSpeed, autoFood, tune: TUNE
     }));
   } catch (err) {
     console.warn('Could not save ant farm', err);
@@ -39,7 +39,8 @@ function loadFarm() {
     ...a,
     lifespan: a.isQueen || a.lifespan === null ? Infinity : a.lifespan,
     baseLifespan: a.baseLifespan || (a.isRed ? redAntLifespan : normalAntLifespan),
-    breedingTimer: 0, spawnTimer: 0, trail: 0, speedBoost: 0, mateBoost: 0
+    // Re-jitter the mating timer on load so a saved colony doesn't breed in one wave.
+    breedingTimer: Math.random() * matingSpeed, spawnTimer: 0, trail: 0, speedBoost: 0, mateBoost: 0
   });
 
   matingSpeed        = d.matingSpeed        || matingSpeed;
@@ -51,6 +52,7 @@ function loadFarm() {
   redAggressionLevel = d.redAggressionLevel !== undefined ? +d.redAggressionLevel : redAggressionLevel;
   penWidth           = d.penWidth || penWidth;
   foodDecayRate      = d.foodDecayRate || foodDecayRate;
+  autoFood           = d.autoFood !== undefined ? !!d.autoFood : autoFood;
   normalAntSpeed     = Number.isFinite(d.normalAntSpeed) ? clamp(d.normalAntSpeed, 0.5, 2) : normalAntSpeed;
   redAntSpeed        = Number.isFinite(d.redAntSpeed)    ? clamp(d.redAntSpeed,    0.5, 2) : redAntSpeed;
 
@@ -65,7 +67,7 @@ function loadFarm() {
         if (Number.isFinite(f.size))     extra.size = f.size;      // brush it was drawn with
         if (Number.isFinite(f.servings)) extra.servings = f.servings;
         if (f.type === 'insect') Object.assign(extra, {
-          haulers: Array.isArray(f.haulers) ? f.haulers : [], servings: f.servings || INSECT_SERVINGS,
+          haulers: Array.isArray(f.haulers) ? f.haulers : [], servings: f.servings || insectServings(),
           dropOffset: f.dropOffset || null, heading: f.heading || 0
         });
         return makeFood(f.x, f.y, f.type, extra);
