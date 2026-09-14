@@ -11,7 +11,7 @@ const GRID_CELL      = 32;
 
 const SENSE_FOOD  = 180;
 const SENSE_PREY  = 160;
-const SENSE_TRAIL = 45;
+const SENSE_TRAIL = 60;
 const EAT_RANGE   = 8;
 const BITE_RANGE  = 8;
 const MATE_RANGE  = 30;
@@ -22,7 +22,7 @@ const NEST_RADIUS = 40;   // default drop-off radius; each point can be resized
 const NEST_MIN_R  = 24;
 const NEST_MAX_R  = 120;
 const CARRY_RETRY = 1800; // ticks before a stuck carrier picks a new drop spot
-const SUGAR_SPACING = 22; // px between painted sugar pieces, so a dragged line scatters instead of piling
+const PROTEIN_BOOST_TICKS = 600; // ~10s of extra vigour and mating drive after eating protein
 
 // Live-tunable balance numbers. Everything the Tuning panel can nudge lives here
 // so it can be changed at runtime and saved; TUNABLES (further down) drives the UI.
@@ -77,6 +77,22 @@ const INSECT_SERVINGS = 5;    // how many ants can eat from one
 const INSECT_RADIUS   = 9;
 const HAUL_PATIENCE   = 900;  // ticks a short-handed team waits before giving up
 const HAUL_COOLDOWN   = 900;  // ticks a giver-upper ignores carcasses afterwards
+
+// Per food type. FOOD_UNITS is how many separate trips a dropped piece takes to
+// haul home (its "drops"): a carrier lifts one unit per trip and the rest waits
+// for the next ant. FOOD_FEEDS is how many nestmates one delivered drop feeds.
+// FOOD_SPACING is how far apart a dragged brush scatters pieces — protein sits
+// wider than fruit, fruit wider than sugar, and a dead insect drops once per tap.
+const FOOD_UNITS   = { sugar: 3, fruit: 5, protein: 1, poison: 1, spoiled: 1, insect: 1 };
+const FOOD_FEEDS   = { sugar: 1, fruit: 1, protein: 2, spoiled: 1, insect: INSECT_SERVINGS };
+const FOOD_SPACING = { sugar: 22, fruit: 40, protein: 64, poison: 90, spoiled: 30, insect: Infinity };
+
+function initialUnits(type) { return FOOD_UNITS[type] || 1; }
+
+// Poison is a slow bomb: one drop carried home poisons a whole crowd (5-10).
+function deliveredServings(type) {
+  return type === 'poison' ? 5 + Math.floor(Math.random() * 6) : (FOOD_FEEDS[type] || 1);
+}
 
 // ---------------------------------------------------------------------------
 // State
@@ -279,6 +295,8 @@ function createAnt(isRed = false, isQueen = false, x, y) {
     wet: false,
     poisoned: false,
     slowed: 0,
+    speedBoost: 0,      // ticks left moving faster after protein
+    mateBoost: 0,       // ticks left keen to mate after protein
     trail: 0,
     carrying: null,     // { type, age } while hauling food back to the nest
     dropOffset: null,   // where in the nest ring this ant will drop it
@@ -313,7 +331,12 @@ function spawnNear(parent, isRed) {
 function makeFood(x, y, type, extra = {}) {
   const f = { x, y, type, delivered: false, foundBy: null, age: 0 };
   if (type === 'insect') Object.assign(f, { haulers: [], servings: INSECT_SERVINGS, dropOffset: null, stuck: 0, waited: 0, heading: 0 });
-  return Object.assign(f, extra);
+  Object.assign(f, extra);
+  // units = trips left to haul this piece home; size = the brush it was drawn
+  // with, so a fatter brush drops fatter food. Backfill both if not supplied.
+  if (!Number.isFinite(f.units)) f.units = initialUnits(type);
+  if (!Number.isFinite(f.size))  f.size  = penWidth || 4;
+  return f;
 }
 
 function addFood(x, y, type, extra = {}) {
@@ -328,7 +351,8 @@ function foundByAnt(f, ant) {
 }
 
 function foodRadius(f) {
-  return f.type === 'insect' ? INSECT_RADIUS : f.type === 'fruit' ? 6 : 4;
+  const base = f.type === 'insect' ? INSECT_RADIUS : f.type === 'fruit' ? 6 : 4;
+  return base * clamp((f.size || 4) / 4, 0.6, 3);   // brush 4 is the baseline drop
 }
 
 // Manually added ants appear at one of their colony's spawn points (nudged
@@ -379,16 +403,16 @@ function dropTarget(ant) {
   return { x: anchor.x + Math.cos(ang) * r, y: anchor.y + Math.sin(ang) * r };
 }
 
-function layPheromone(x, y) {
+function layPheromone(x, y, strength = 1) {
   if (pheromones.length >= MAX_PHEROMONES) pheromones.shift();
-  pheromones.push({ x, y, strength: 1 });
+  pheromones.push({ x, y, strength });
 }
 
 function killAnt(index) {
   const a = ants[index];
   ants.splice(index, 1);
   // Whatever it was hauling lands where it fell, unclaimed.
-  if (a.carrying) addFood(a.x, a.y, a.carrying.type, { age: a.carrying.age });
+  if (a.carrying) addFood(a.x, a.y, a.carrying.type, { age: a.carrying.age, size: a.carrying.size, units: 1 });
   if (a.hauling) leaveTeam(a);
   if (a.isRed) totalDeadRed++;
   else totalDeadWhite++;
@@ -731,13 +755,12 @@ function handleDraw(e) {
     if (tool === 'wall' || tool === 'water') {
       environment.push({ x: ix, y: iy, type: tool, r: penWidth });
     } else if (tool === 'food') {
-      // Sugar scatters with spacing so a dragged line is dots, not a solid pile; other food paints densely.
-      if (foodType === 'sugar') {
-        if (lastFoodX === null || dist2(ix, iy, lastFoodX, lastFoodY) >= SUGAR_SPACING * SUGAR_SPACING) {
-          if (addFood(ix, iy, foodType)) { lastFoodX = ix; lastFoodY = iy; }
-        }
-      } else {
-        addFood(ix, iy, foodType);
+      // Every food scatters with its own spacing so a dragged line is spaced
+      // drops, not a solid pile: sugar close, fruit wider, protein wider still,
+      // and a dead insect (Infinity) only once per press.
+      const spacing = FOOD_SPACING[foodType] ?? 22;
+      if (lastFoodX === null || dist2(ix, iy, lastFoodX, lastFoodY) >= spacing * spacing) {
+        if (addFood(ix, iy, foodType)) { lastFoodX = ix; lastFoodY = iy; }
       }
     } else if (tool === 'bulldozer') {
       const r2 = (penWidth + 4) * (penWidth + 4);
@@ -1031,64 +1054,89 @@ function updateFoods() {
 function pickUp(ant, food) {
   const i = foods.indexOf(food);
   if (i === -1) return;
-  foods.splice(i, 1);
-  ant.carrying   = { type: food.type, age: food.age || 0 };
+  // A pile takes several trips: lift one unit and leave the rest for the next
+  // ant. Only the last unit clears the spot.
+  if (food.units > 1) food.units--;
+  else foods.splice(i, 1);
+  ant.carrying   = { type: food.type, age: food.age || 0, size: food.size || 4 };
   ant.dropOffset = pickDropOffset(4, ant.isRed, ant.x, ant.y);
   ant.carryTicks = 0;
   ant.trail = 90;                  // lay a trail from the find back to the nest
+  // Broadcast the find: a strong, slow-fading mark on the spot itself keeps the
+  // coordinate appealing while the trail lasts, so nestmates fall in line and
+  // process over to carry off whatever food is left.
+  layPheromone(food.x, food.y, 3);
   layPheromone(ant.x, ant.y);
 }
 
 function dropOff(ant) {
   const t = dropTarget(ant);
+  const c = ant.carrying;
+  // A delivered drop feeds a set number of nestmates: sugar and fruit one each,
+  // protein two, a poison drop a whole crowd. units:0 — it's a meal now, not a haul.
+  const extra = { delivered: true, foundBy: ant.id, age: c.age, team: ant.isRed,
+                  size: c.size, servings: deliveredServings(c.type), units: 0 };
   // If the nest is full the haul waits on the ant until there's room.
-  if (!addFood(t.x, t.y, ant.carrying.type, { delivered: true, foundBy: ant.id, age: ant.carrying.age, team: ant.isRed })) return;
+  if (!addFood(t.x, t.y, c.type, extra)) return;
   bumpHappiness(ant, TUNE.H_DELIVER);   // colony-building: food is home
   ant.carrying = null;
   ant.dropOffset = null;
   ant.carryTicks = 0;
 }
 
+// What a single serving does to the ant that eats it. Note poison is never
+// cured here: once an ant is poisoned, no meal clears it.
+function applyMeal(ant, food) {
+  const lift = pct => { ant.lifespan = Math.min(ant.lifespan + ant.baseLifespan * pct, ant.baseLifespan * 2); };
+  switch (food.type) {
+    case 'insect':                       // a shared feast
+      lift(0.4);
+      ant.fullness = clamp(ant.fullness + TUNE.FULLNESS_FEAST, 0, 100);
+      bumpHappiness(ant, TUNE.H_EAT + TUNE.H_GOOD_FOOD);
+      ant.slowed = 0;
+      break;
+    case 'sugar':                        // least filling, a quick pick-me-up
+      lift(0.15);
+      ant.fullness = clamp(ant.fullness + TUNE.FULLNESS_MEAL * 0.6, 0, 100);
+      bumpHappiness(ant, TUNE.H_EAT);
+      break;
+    case 'fruit':                        // more filling; clears a spoiled-food slow
+      lift(0.2);
+      ant.fullness = clamp(ant.fullness + TUNE.FULLNESS_MEAL, 0, 100);
+      bumpHappiness(ant, TUNE.H_EAT + TUNE.H_GOOD_FOOD);
+      ant.slowed = 0;
+      break;
+    case 'protein':                      // most filling; a burst of speed and mating drive
+      lift(0.25);
+      ant.fullness = clamp(ant.fullness + TUNE.FULLNESS_FEAST, 0, 100);
+      bumpHappiness(ant, TUNE.H_EAT + TUNE.H_GOOD_FOOD);
+      ant.slowed = 0;
+      ant.speedBoost = PROTEIN_BOOST_TICKS;
+      ant.mateBoost  = PROTEIN_BOOST_TICKS;
+      break;
+    case 'spoiled':                      // a slow and a small toll
+      ant.slowed = 300;
+      ant.lifespan -= ant.baseLifespan * 0.05;
+      break;
+    case 'poison':                       // an incurable poisoning
+      if (!ant.poisoned) { ant.poisoned = true; ant.lifespan *= 0.8; dropHappiness(ant, TUNE.H_POISON_HIT); }
+      break;
+  }
+}
+
 function eat(ant, food) {
   const i = foods.indexOf(food);
   if (i !== -1) foods.splice(i, 1);
 
-  switch (food.type) {
-    case 'insect': {
-      // One serving each: the eater joins the finders list so it can't come
-      // back for seconds, and the carcass stays until it's picked clean.
-      food.foundBy = Array.isArray(food.foundBy) ? food.foundBy : [];
-      food.foundBy.push(ant.id);
-      if (--food.servings > 0) foods.push(food);
-      ant.lifespan = Math.min(ant.lifespan + ant.baseLifespan * 0.4, ant.baseLifespan * 2);
-      ant.fullness = clamp(ant.fullness + TUNE.FULLNESS_FEAST, 0, 100);
-      bumpHappiness(ant, TUNE.H_EAT + TUNE.H_GOOD_FOOD);
-      ant.poisoned = false;
-      ant.slowed = 0;
-      return true;
-    }
-    case 'sugar':
-    case 'fruit':
-    case 'protein': {
-      const bonus = ant.baseLifespan * (food.type === 'protein' ? 0.25 : food.type === 'fruit' ? 0.2 : 0.15);
-      ant.lifespan = Math.min(ant.lifespan + bonus, ant.baseLifespan * 2);
-      ant.fullness = clamp(ant.fullness + TUNE.FULLNESS_MEAL, 0, 100);
-      bumpHappiness(ant, TUNE.H_EAT + (food.type === 'protein' || food.type === 'fruit' ? TUNE.H_GOOD_FOOD : 0));
-      ant.poisoned = false;
-      ant.slowed = 0;
-      return true;
-    }
-    case 'spoiled':
-      ant.slowed = 300;
-      ant.lifespan -= ant.baseLifespan * 0.05;
-      return true;
-    case 'poison': {
-      // Eating poisoned food poisons the eater. From there it only travels by
-      // being eaten again (a predator eating this ant while it's poisoned).
-      if (!ant.poisoned) { ant.poisoned = true; ant.lifespan *= 0.8; dropHappiness(ant, TUNE.H_POISON_HIT); }
-      return true;
-    }
-  }
+  applyMeal(ant, food);
+
+  // A delivered drop can feed more than one ant (protein two, poison a crowd).
+  // Log the eater so it can't come back for seconds, and keep the drop around
+  // until its servings run out.
+  const eaters = Array.isArray(food.foundBy) ? food.foundBy : (food.foundBy != null ? [food.foundBy] : []);
+  eaters.push(ant.id);
+  food.foundBy = eaters;
+  if (Number.isFinite(food.servings) && --food.servings > 0) foods.push(food);
   return true;
 }
 
@@ -1103,7 +1151,9 @@ function updateAnts() {
 
     // Mood drifts every tick: it decays, rises while well-fed, and (main colony
     // only) rises the longer the colony goes without being attacked.
-    a.fullness = clamp(a.fullness - TUNE.FULLNESS_DECAY * (TICK_MS / 1000), 0, 100);
+    // Poison decays every stat: fullness drains faster too (mood and lifespan
+    // already do, below).
+    a.fullness = clamp(a.fullness - TUNE.FULLNESS_DECAY * (a.poisoned ? 2 : 1) * (TICK_MS / 1000), 0, 100);
 
     let gain = 0;
     if (a.fullness >= TUNE.SATIATED_LEVEL) gain += TUNE.H_SATIATED;    // well-fed, not merely long-lived
@@ -1123,7 +1173,8 @@ function updateAnts() {
       else {
         a.lifespan -= TICK_MS * (a.poisoned ? 1.5 : 1);
         if (a.lifespan <= 0) { killAnt(i); continue; }
-        a.breedingTimer += TICK_MS;
+        a.breedingTimer += TICK_MS * (a.mateBoost > 0 ? 2 : 1);
+        if (a.mateBoost > 0) a.mateBoost--;
         if (a.breedingTimer >= matingSpeed) { a.breedingTimer = 0; if (!a.poisoned) tryBreeding(a); }
         continue;
       }
@@ -1156,14 +1207,21 @@ function updateAnts() {
           steerToward(a, target.x, target.y, keen);
         } else {
           const p = strongestTrail(a);
-          if (p) steerToward(a, p.x, p.y, 0.08);
+          if (p) steerToward(a, p.x, p.y, 0.14);   // follow the procession to the find
         }
       }
     }
 
-    // Movement with wall bounce and water avoidance
-    let speed = antSpeed(a.isRed, a.isQueen) * (a.slowed > 0 ? 0.6 : 1) * (a.poisoned ? 0.7 : 1);
+    // Movement with wall bounce and water avoidance. Protein leaves a burst of
+    // speed; carrying protein home is heavy going (slower, but not as slow as a
+    // spoiled-food slow).
+    let speed = antSpeed(a.isRed, a.isQueen)
+              * (a.slowed > 0 ? 0.6 : 1)
+              * (a.poisoned ? 0.7 : 1)
+              * (a.speedBoost > 0 ? 1.35 : 1)
+              * (a.carrying && a.carrying.type === 'protein' ? 0.8 : 1);
     if (a.slowed > 0) a.slowed--;
+    if (a.speedBoost > 0) a.speedBoost--;
 
     let nx = a.x + Math.cos(a.angle) * speed;
     let ny = a.y + Math.sin(a.angle) * speed;
@@ -1235,8 +1293,9 @@ function updateAnts() {
     a.lifespan -= TICK_MS * (a.poisoned ? 1.5 : 1);
     if (a.lifespan <= 0) { killAnt(i); continue; }
 
-    // Breeding
-    a.breedingTimer += TICK_MS;
+    // Breeding — protein makes an ant keener, so its timer fills twice as fast.
+    a.breedingTimer += TICK_MS * (a.mateBoost > 0 ? 2 : 1);
+    if (a.mateBoost > 0) a.mateBoost--;
     if (a.breedingTimer >= matingSpeed) {
       a.breedingTimer = 0;
       if (!a.poisoned) tryBreeding(a);
@@ -1390,6 +1449,13 @@ function drawFoods() {
     } else {
       ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
       ctx.fill();
+      if (!f.delivered && f.units > 1) {   // a pile that will take several trips
+        ctx.fillStyle = '#333';
+        ctx.font = '9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(f.units, f.x, f.y);
+      }
     }
     if (f.delivered) {           // ready to eat
       ctx.beginPath();
@@ -1408,7 +1474,7 @@ function drawPheromones() {
     if (p.strength <= 0) continue;
     pheromones[w++] = p;
     ctx.beginPath();
-    ctx.fillStyle = `rgba(255,230,0,${p.strength * 0.6})`;
+    ctx.fillStyle = `rgba(255,230,0,${Math.min(p.strength, 1) * 0.6})`;
     ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
     ctx.fill();
   }
@@ -1543,7 +1609,7 @@ function loadFarm() {
     ...a,
     lifespan: a.isQueen || a.lifespan === null ? Infinity : a.lifespan,
     baseLifespan: a.baseLifespan || (a.isRed ? redAntLifespan : normalAntLifespan),
-    breedingTimer: 0, spawnTimer: 0, trail: 0
+    breedingTimer: 0, spawnTimer: 0, trail: 0, speedBoost: 0, mateBoost: 0
   });
 
   matingSpeed        = d.matingSpeed        || matingSpeed;
@@ -1563,13 +1629,17 @@ function loadFarm() {
   queens.red   = d.queens && d.queens.red   ? reviveAnt(d.queens.red)   : null;
   nextAntId = Math.max(nextAntId, ...[...ants, queens.white, queens.red].map(a => (a && a.id) || 0)) + 1;
   foods        = Array.isArray(d.foods)
-    ? d.foods.map(f => makeFood(f.x, f.y, f.type, {
-        delivered: !!f.delivered, foundBy: f.foundBy ?? null, age: f.age || 0,
-        ...(f.type === 'insect' ? {
+    ? d.foods.map(f => {
+        const extra = { delivered: !!f.delivered, foundBy: f.foundBy ?? null, age: f.age || 0, team: !!f.team };
+        if (Number.isFinite(f.units))    extra.units = f.units;    // trips left to haul
+        if (Number.isFinite(f.size))     extra.size = f.size;      // brush it was drawn with
+        if (Number.isFinite(f.servings)) extra.servings = f.servings;
+        if (f.type === 'insect') Object.assign(extra, {
           haulers: Array.isArray(f.haulers) ? f.haulers : [], servings: f.servings || INSECT_SERVINGS,
-          dropOffset: f.dropOffset || null, heading: f.heading || 0, team: !!f.team
-        } : {})
-      }))
+          dropOffset: f.dropOffset || null, heading: f.heading || 0
+        });
+        return makeFood(f.x, f.y, f.type, extra);
+      })
     : [];
   pruneHaulers();
   for (const f of foods) if (f.haulers) for (const id of f.haulers) {

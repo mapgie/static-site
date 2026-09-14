@@ -29,18 +29,36 @@ Drop food by clicking the canvas, or paint it with the **Food** environment tool
 Ants carry loose food back to the nest, where it becomes part of the colony's
 **store**. Once delivered, only *another* ant may eat it.
 
-| Food | Colour | Effect on the eater |
-|---|---|---|
-| Sugar | `#f5f5f5` | +15% lifespan. Basic. Painting a line of sugar drops *spaced* pieces, not a solid pile. |
-| Fruit | `#ff8c00` | +20% lifespan. Ripens, then rots into Spoiled over time. |
-| Protein | `#ef9a9a` | +25% lifespan. |
-| Dead Insect | `#8d6e63` | +40% lifespan. Feeds five ants, and takes a team of three to haul home. |
-| Spoiled | `#3d5afe` | Slows the eater and shaves a little lifespan. Rots further into Poison. |
-| Poison | `#b040ff` | Poisons the eater (see below). |
+| Food | Colour | Drops (trips to haul) | Feeds | Effect on the eater |
+|---|---|---|---|---|
+| Sugar | `#f5f5f5` | 3 | 1 each | Least filling. +15% lifespan. |
+| Fruit | `#ff8c00` | 5 | 1 each | More filling. +20% lifespan. Cures a slow. Ripens, then rots into Spoiled. |
+| Protein | `#ef9a9a` | 1 (heavy) | 2 | Most filling. +25% lifespan. Cures a slow and adds a burst of speed and mating drive. Slower to carry home. |
+| Dead Insect | `#8d6e63` | team of 3 hauls | 5 | +40% lifespan. Takes a team of three to move at all. |
+| Spoiled | `#3d5afe` | 1 | 1 | Slows the eater and shaves a little lifespan. Rots further into Poison. |
+| Poison | `#b040ff` | 1 | 5–10 | Poisons everyone who eats from the drop (see below). |
+
+**Drops and trips.** A dropped piece is a small pile that takes several **trips** to
+haul home: an ant lifts one unit and the rest waits for the next carrier, so a
+sugar pile needs three trips and a fruit pile five. Protein is a single heavy drop —
+one trip — but a delivered protein feeds *two* nestmates. A number on a loose pile
+shows how many trips it has left.
+
+**Painting.** A dragged brush scatters spaced drops, not a solid line, and each food
+has its own spacing: sugar sits closest, fruit wider, protein wider still, and a dead
+insect drops only **once per press**. **Brush thickness** also sets each drop's
+*size* — a fatter brush drops fatter food.
 
 **Eating extends lifespan**, not just staving off starvation: each meal adds the
 percentage above, up to a ceiling of **twice** the ant's base lifespan. The **Food
 Decay Rate** slider controls how fast fruit ripens and spoiled food turns to poison.
+
+### Trails
+
+When an ant finds food and carries it home it lays a **trail** and marks the find
+itself, so the spot stays appealing while the trail fades. Nestmates that cross the
+trail fall in line and process over to the food, carrying off the rest of the pile
+trip by trip until it is gone or the trail dies away.
 
 ### Stockpiling
 
@@ -91,9 +109,11 @@ Poison spreads **only by eating**:
 - an ant that eats Poison food becomes poisoned (it no longer dies on the spot), or
 - a rival ant that bites an already-poisoned ant catches it.
 
-There is no proximity contagion. A poisoned ant ages faster, cannot breed, steadily
-loses happiness, and is drawn in its colony's amethyst shade. Eating good food cures
-the poison.
+There is no proximity contagion, and there is **no cure**: no meal clears a poisoning
+once it takes hold. A poisoned ant decays on every axis — it ages faster, loses
+fullness and happiness faster, cannot breed at all — and is drawn in its colony's
+amethyst shade. One delivered poison drop feeds 5–10 nestmates, so a single haul can
+seed a whole crowd.
 
 ## Queens
 
