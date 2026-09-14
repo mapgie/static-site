@@ -7,6 +7,11 @@
 window.addEventListener('DOMContentLoaded', () => {
   canvas = $('antCanvas');
   ctx    = canvas.getContext('2d');
+  // On phones the controls start as a closed drawer so the map gets the full
+  // width; on wider screens they sit inline and this class is a no-op.
+  if (window.matchMedia('(max-width: 767px)').matches) {
+    document.querySelector('main').classList.add('controls-hidden');
+  }
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
   readSettingsFromControls();
@@ -124,6 +129,21 @@ function setupCollapsibleCards() {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
     });
   });
+}
+
+// Open or close the controls drawer (small screens) and keep the toggle's
+// glyph and labels in step. On wide screens the panel shows regardless.
+function setControlsHidden(hidden) {
+  document.querySelector('main').classList.toggle('controls-hidden', hidden);
+  const btn = $('toggle-controls');
+  if (btn) {
+    btn.textContent = hidden ? '☰' : '✕';   // ☰ / ✕
+    btn.setAttribute('aria-expanded', String(!hidden));
+    const label = hidden ? 'Show controls' : 'Hide controls';
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+  }
+  resizeCanvas();
 }
 
 function resizeCanvas() {
@@ -257,14 +277,10 @@ function setupUI() {
     updateStats(); saveFarm();
   });
 
-  on('toggle-controls', 'click', e => {
-    const hidden = document.querySelector('main').classList.toggle('controls-hidden');
-    e.currentTarget.setAttribute('aria-expanded', String(!hidden));
-    const label = hidden ? 'Show controls' : 'Hide controls';
-    e.currentTarget.title = label;
-    e.currentTarget.setAttribute('aria-label', label);
-    resizeCanvas();
+  on('toggle-controls', 'click', () => {
+    setControlsHidden(!document.querySelector('main').classList.contains('controls-hidden'));
   });
+  on('controls-backdrop', 'click', () => setControlsHidden(true));
 
   on('pause-resume', 'click', e => {
     animationPaused = !animationPaused;
