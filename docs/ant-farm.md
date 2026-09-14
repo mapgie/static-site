@@ -123,6 +123,10 @@ fold it away; each card remembers whether you left it open.
 - **Breakdown** — per-colony figures for spotting imbalance: average mood and
   fullness, how many ants are hungry, poisoned, or hauling, each colony's stored
   food, and how long the main colony has gone unattacked.
+- **Tuning** — live sliders for the balance numbers (happiness gains and losses,
+  fullness, breeding, queen thresholds, and more). Changes apply instantly and are
+  saved; **Reset tuning** restores the defaults. Values marked `*` only affect
+  newly born ants. Starts folded.
 
 The whole world (ants, food, terrain, spawn points, and settings) is saved to the
 browser automatically.

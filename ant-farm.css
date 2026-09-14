@@ -385,6 +385,21 @@ button#delete-structures:hover {
 .breakdown b { color: #00b4d8; }
 .breakdown .hint { display: block; margin-top: 0.35rem; }
 
+#tuning { max-height: 340px; overflow-y: auto; padding-right: 0.3rem; }
+.tune-group {
+  color: #00b4d8;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0.7rem 0 0.15rem;
+}
+.tune-group:first-child { margin-top: 0; }
+.tune-row { margin-bottom: 0.35rem; }
+.tune-head { display: flex; justify-content: space-between; font-size: 0.82rem; gap: 0.5rem; }
+.tune-val { color: #ccc; font-variant-numeric: tabular-nums; }
+.tune-row input[type="range"] { width: 100%; margin: 0.1rem 0 0; }
+#tuning-reset { margin-top: 0.6rem; }
+
 /* --- Spawn point maintenance view --- */
 button.subtle {
   background: #555;
