@@ -21,6 +21,7 @@ function createAnt(isRed = false, isQueen = false, x, y) {
     age: 0,                                        // ms lived; drives the newborn grace period
     breedingTimer: Math.random() * matingSpeed,
     matingJitter: 0.7 + Math.random() * 0.6,       // per-ant ×0.7–1.3 on the mating interval, so pairs don't sync
+    mateUrge: TUNE.MATE_URGE_MIN + Math.random() * (TUNE.MATE_URGE_MAX - TUNE.MATE_URGE_MIN),  // happiness it must reach to be willing to mate ("horniness")
     spawnTimer: 0,
     // A hidden temperament and a jittered starting mood so no two ants are alike.
     happiness: clamp(TUNE.HAPPINESS_START + (Math.random() * 2 - 1) * TUNE.HAPPINESS_JITTER, 0, 100),

@@ -67,9 +67,13 @@ const TUNABLES = [
     ['TEMPERAMENT_SPREAD', 'Temperament spread', 0, 1, 0.05],
   ]],
   ['Breeding · queens', [
+    ['MATE_URGE_MIN', 'Horniness min * (mood)', 0, 100, 1],
+    ['MATE_URGE_MAX', 'Horniness max * (mood)', 0, 100, 1],
     ['MATE_CHANCE', 'Mate chance', 0, 1, 0.01],
     ['CROWD_MATE_STEP', 'Crowd penalty /ant', 0, 0.2, 0.005],
     ['CROWD_MATE_FLOOR', 'Crowd floor', 0, 1, 0.05],
+    ['POP_CAPACITY', 'Ideal colony size', 10, 500, 5],
+    ['QUEEN_MIN_ANTS', 'Queen needs ≥ ants', 1, 100, 1],
     ['QUEEN_HIGH', 'Queen arrives ≥', 50, 100, 1],
     ['QUEEN_LOW', 'Queen leaves <', 0, 60, 1],
     ['SADIST_SPAWN', 'Sadist queen <', 0, 60, 1],
@@ -225,14 +229,14 @@ function setupUI() {
   on('add-ant', 'click', () => {
     if (countWhiteAnts() < MAX_WHITE_ANTS) {
       ants.push(createAntAtSpawn(false));
-      totalBornWhite++;
+      totalBornWhite++; spawnedWhite++;
       updateStats(); saveFarm();
     }
   });
   on('add-red-ant', 'click', () => {
     if (countRedAnts() < MAX_RED_ANTS) {
       ants.push(createAntAtSpawn(true));
-      totalBornRed++;
+      totalBornRed++; spawnedRed++;
       updateStats(); saveFarm();
     }
   });
@@ -274,6 +278,7 @@ function setupUI() {
     spawnPoints = { yellow: [], red: [] };
     whiteHappiness = redHappiness = 50; whiteCalmMs = 0;
     totalBornWhite = totalDeadWhite = totalBornRed = totalDeadRed = 0;
+    matedWhite = spawnedWhite = matedRed = spawnedRed = 0;
     markEnvDirty();
     updateStats(); saveFarm();
   });

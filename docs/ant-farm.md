@@ -21,8 +21,14 @@ keenly they chase and how often a bite lands. A bite kills instantly. A **hungry
 rival breaks off the hunt to look for food, so rivals must eat and can starve like
 any ant.
 
-Ants breed when a mate is nearby. **Overcrowding** — many colony-mates packed close
-— makes them a little less inclined to, so a dense clump grows more slowly.
+Ants breed only when **both** partners are *in the mood* — each has its own hidden
+happiness threshold (its "horniness", jittered per ant), so they don't all become
+ready at once — they **encounter** each other nearby, and a probability roll passes.
+The young start below that threshold, so they must mature and cheer up before they
+can breed. Both parents then rest before mating again, and **overcrowding** trims the
+odds, so a colony grows in a paced trickle rather than exploding in waves. A live
+readout over the map shows each colony's count and how many were **born** (mating)
+versus **spawned** (a queen or your Add-Ant button).
 
 ## Food
 
@@ -92,8 +98,14 @@ a wave of newborns doesn't immediately starve.
 
 Every ant carries its **own** happiness, seeded with a jittered starting value and a
 hidden *temperament* that makes each ant swing more or less than its neighbours. Each
-colony's on-screen bar is the **average** mood of its living ants. There are two
-bars: the main colony's (top) and the rival colony's (below it).
+colony's on-screen bar is the average mood of its living ants **scaled by colony
+size**: a lone ant tops out near 50%, the bar can reach 100% only once the colony
+approaches its **ideal size** (`POP_CAPACITY`, default 100), and past that point
+**overpopulation** eases it back down. So the bar reflects both how content the ants
+are and whether the colony is a healthy size — two happy ants read as ~50%, not full.
+(The Breakdown panel still shows the raw average mood, so you can see individual
+contentment separately.) There are two bars: the main colony's (top) and the rival
+colony's (below it).
 
 Happiness **rises** from:
 

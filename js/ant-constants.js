@@ -69,11 +69,19 @@ const TUNE_DEFAULTS = {
   FULLNESS_START: 60,
   FULLNESS_JITTER: 15,
   TEMPERAMENT_SPREAD: 0.3,   // width of the hidden per-ant temperament band
+  // Colony scale: the bar is average mood scaled by size — a lone ant tops out
+  // near 50%, a colony at capacity can reach 100%, and beyond it overpopulation
+  // eases it back down.
+  POP_CAPACITY: 100,
   // Breeding & queens
-  MATE_CHANCE: 0.35,     // base chance a nearby pair breeds
+  MATE_URGE_MIN: 65,     // an ant will only mate once its own happiness clears a personal
+  MATE_URGE_MAX: 95,     // threshold in this band ("horniness"); above newborn start mood, so
+                         // the young must mature and cheer up before they can breed
+  MATE_CHANCE: 0.35,     // base chance a willing, encountered pair actually breeds
   CROWD_MATE_STEP: 0.05, // each nearby colony-mate trims that chance by this
   CROWD_MATE_FLOOR: 0.35,// ...but never below this fraction of it (denser = fewer births)
-  QUEEN_HIGH: 75,        // a colony's bar at/above this summons its queen
+  QUEEN_MIN_ANTS: 12,    // ...but only once the colony is at least this many strong
+  QUEEN_HIGH: 75,        // a colony's bar at/above this (sustained) summons its queen
   QUEEN_LOW: 40,         // ...and she leaves below this
   SADIST_SPAWN: 25,      // Sadist: rival queen arrives when main mood is below this
   SADIST_LEAVE: 60,      // ...and leaves once main mood recovers above this

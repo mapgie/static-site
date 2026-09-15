@@ -85,15 +85,26 @@ function colonyMorale(isRed, amount) {
   for (const o of ants) if (o.isRed === isRed) dropHappiness(o, amount);
 }
 
-// Each colony's bar is the average mood of its living ants.
+// How much of its mood a colony can actually express, by size. A lone ant tops
+// out near 0.5; it rises to 1.0 at the ideal capacity; past capacity,
+// overpopulation eases it back down toward a floor.
+function populationFactor(count) {
+  const cap = Math.max(2, TUNE.POP_CAPACITY);
+  if (count <= 1) return 0.5;
+  if (count <= cap) return 0.5 + 0.5 * (count - 1) / (cap - 1);
+  return clamp(1 - 0.6 * (count - cap) / cap, 0.35, 1);
+}
+
+// Each colony's bar is its average mood scaled by how well-sized the colony is,
+// so two content ants read as ~50% and a colony at capacity can reach 100%.
 function aggregateHappiness() {
   let ws = 0, wn = 0, rs = 0, rn = 0;
   for (const a of ants) {
     if (a.isRed) { rs += a.happiness; rn++; }
     else         { ws += a.happiness; wn++; }
   }
-  whiteHappiness = wn ? ws / wn : 50;
-  redHappiness   = rn ? rs / rn : 50;
+  whiteHappiness = wn ? (ws / wn) * populationFactor(wn) : 50;
+  redHappiness   = rn ? (rs / rn) * populationFactor(rn) : 50;
 }
 
 // Loose food is worth picking up; delivered food is worth eating, unless this
@@ -319,9 +330,14 @@ function updateAnts() {
     if (!inGrace) fullDrain += TUNE.FULLNESS_DECAY;          // natural hunger, once grace is over
     a.fullness = clamp(a.fullness - fullDrain * (TICK_MS / 1000), 0, 100);
 
+    // Grace is neutral: during it, mood only moves from eating, mating or harm —
+    // the passive well-fed / survival drift is held off, so a young colony
+    // doesn't auto-cheer its way to a full bar while it just sits there.
     let gain = 0;
-    if (a.fullness >= TUNE.SATIATED_LEVEL) gain += TUNE.H_SATIATED;    // well-fed, not merely long-lived
-    if (!a.isRed && whiteCalmMs > TUNE.ATTACK_CALM_S * 1000) gain += TUNE.H_SURVIVE;
+    if (!inGrace) {
+      if (a.fullness >= TUNE.SATIATED_LEVEL) gain += TUNE.H_SATIATED;    // well-fed, not merely long-lived
+      if (!a.isRed && whiteCalmMs > TUNE.ATTACK_CALM_S * 1000) gain += TUNE.H_SURVIVE;
+    }
     let decayRate = (inGrace ? 0 : TUNE.HAPPINESS_DECAY) + (a.poisoned ? TUNE.H_POISON_DECAY : 0);
     if (sadistMode) {                        // extra misery only piles on for the sadist
       if (a.wet) decayRate += TUNE.H_WET;
@@ -481,13 +497,16 @@ function tryBreeding(a) {
     if (!allowRedBreeding || countRedAnts() >= MAX_RED_ANTS) return;
   } else if (countWhiteAnts() >= MAX_WHITE_ANTS) return;
 
+  if (a.happiness < a.mateUrge) return;   // not in the mood — must clear its own horniness threshold
+
   const r2 = MATE_RANGE * MATE_RANGE;
   let mate = null, crowd = 0;
   for (const o of ants) {
     if (o === a || o.isRed !== a.isRed) continue;
     if (dist2(o.x, o.y, a.x, a.y) < r2) {
       crowd++;                              // every close colony-mate counts toward crowding
-      if (!o.poisoned && !mate) mate = o;
+      // A willing partner: not poisoned and content enough to be in the mood itself.
+      if (!mate && !o.poisoned && o.happiness >= o.mateUrge) mate = o;
     }
   }
   if (!mate) return;
@@ -495,20 +514,23 @@ function tryBreeding(a) {
   const chance = TUNE.MATE_CHANCE * Math.max(TUNE.CROWD_MATE_FLOOR, 1 - crowd * TUNE.CROWD_MATE_STEP);
   if (Math.random() < chance) {
     ants.push(spawnNear(a, a.isRed));
-    if (a.isRed) totalBornRed++; else totalBornWhite++;
+    if (a.isRed) { totalBornRed++; matedRed++; } else { totalBornWhite++; matedWhite++; }
     bumpHappiness(a, TUNE.H_MATE);
     bumpHappiness(mate, TUNE.H_MATE);
+    a.breedingTimer = mate.breedingTimer = 0;   // both parents rest before mating again
   }
 }
 
 function updateQueens() {
   const whites = countWhiteAnts(), reds = countRedAnts();
 
-  // The main colony's queen arrives only once the colony has been thriving for a
-  // sustained spell (not the instant the bar first touches the threshold), and
-  // leaves as the mood sours.
-  whiteQueenReadyMs = whiteHappiness >= TUNE.QUEEN_HIGH ? whiteQueenReadyMs + TICK_MS : 0;
-  if (whiteQueenReadyMs >= QUEEN_SUSTAIN_MS && !queens.white && whites > 0) queens.white = spawnQueen(false);
+  // The main colony's queen arrives only once the colony is both large enough
+  // and has been thriving for a sustained spell (not the instant the bar first
+  // touches the threshold, and never for a mere happy pair), and leaves as the
+  // mood sours.
+  const whiteReady = whiteHappiness >= TUNE.QUEEN_HIGH && whites >= TUNE.QUEEN_MIN_ANTS;
+  whiteQueenReadyMs = whiteReady ? whiteQueenReadyMs + TICK_MS : 0;
+  if (whiteQueenReadyMs >= QUEEN_SUSTAIN_MS && !queens.white) queens.white = spawnQueen(false);
   if (queens.white && whiteHappiness < TUNE.QUEEN_LOW) { queens.white = null; if (sadistMode) colonyMorale(false, TUNE.H_QUEEN_LEFT); }
 
   // The rival queen normally tracks the rival colony's own mood; in Sadist mode
@@ -518,8 +540,9 @@ function updateQueens() {
     if (whiteHappiness < TUNE.SADIST_SPAWN && !queens.red && ants.length > 0) queens.red = spawnQueen(true);
     if (queens.red && whiteHappiness > TUNE.SADIST_LEAVE) { queens.red = null; colonyMorale(true, TUNE.H_QUEEN_LEFT); }
   } else {
-    redQueenReadyMs = redHappiness >= TUNE.QUEEN_HIGH ? redQueenReadyMs + TICK_MS : 0;
-    if (redQueenReadyMs >= QUEEN_SUSTAIN_MS && !queens.red && reds > 0) queens.red = spawnQueen(true);
+    const redReady = redHappiness >= TUNE.QUEEN_HIGH && reds >= TUNE.QUEEN_MIN_ANTS;
+    redQueenReadyMs = redReady ? redQueenReadyMs + TICK_MS : 0;
+    if (redQueenReadyMs >= QUEEN_SUSTAIN_MS && !queens.red) queens.red = spawnQueen(true);
     if (queens.red && redHappiness < TUNE.QUEEN_LOW) queens.red = null;
   }
 
@@ -530,7 +553,7 @@ function updateQueens() {
     q.spawnTimer = 0;
     if (q.isRed ? reds < MAX_RED_ANTS : whites < MAX_WHITE_ANTS) {
       ants.push(spawnNear(q, q.isRed));
-      if (q.isRed) totalBornRed++; else totalBornWhite++;
+      if (q.isRed) { totalBornRed++; spawnedRed++; } else { totalBornWhite++; spawnedWhite++; }
     }
   }
 }
