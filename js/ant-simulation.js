@@ -319,9 +319,14 @@ function updateAnts() {
     if (!inGrace) fullDrain += TUNE.FULLNESS_DECAY;          // natural hunger, once grace is over
     a.fullness = clamp(a.fullness - fullDrain * (TICK_MS / 1000), 0, 100);
 
+    // Grace is neutral: during it, mood only moves from eating, mating or harm —
+    // the passive well-fed / survival drift is held off, so a young colony
+    // doesn't auto-cheer its way to a full bar while it just sits there.
     let gain = 0;
-    if (a.fullness >= TUNE.SATIATED_LEVEL) gain += TUNE.H_SATIATED;    // well-fed, not merely long-lived
-    if (!a.isRed && whiteCalmMs > TUNE.ATTACK_CALM_S * 1000) gain += TUNE.H_SURVIVE;
+    if (!inGrace) {
+      if (a.fullness >= TUNE.SATIATED_LEVEL) gain += TUNE.H_SATIATED;    // well-fed, not merely long-lived
+      if (!a.isRed && whiteCalmMs > TUNE.ATTACK_CALM_S * 1000) gain += TUNE.H_SURVIVE;
+    }
     let decayRate = (inGrace ? 0 : TUNE.HAPPINESS_DECAY) + (a.poisoned ? TUNE.H_POISON_DECAY : 0);
     if (sadistMode) {                        // extra misery only piles on for the sadist
       if (a.wet) decayRate += TUNE.H_WET;
