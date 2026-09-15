@@ -20,6 +20,7 @@ const GRID_CELL      = 32;
 const SENSE_FOOD  = 180;
 const SENSE_PREY  = 160;
 const SENSE_TRAIL = 60;
+const SENSE_SMELL = 26;   // how close food must be before an ant "smells" it (poor vision — trails carry farther)
 const EAT_RANGE   = 8;
 const BITE_RANGE  = 8;
 const MATE_RANGE  = 30;

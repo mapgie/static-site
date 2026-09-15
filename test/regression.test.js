@@ -68,28 +68,36 @@ test('both parents rest (cooldown) after a successful mating', () => {
   assert.ok(cooled, 'a successful mating zeroes both parents\' breeding timers');
 });
 
-test('trail priority: an ant follows a trail over distant food, but still grabs food in reach', () => {
+test('foraging by smell: distant food yields to a trail, close food trumps it, food in reach is grabbed', () => {
   const g = freshApi();
   g.rebuildEnvGrid();
 
-  // Distant food + a trail: the ant should steer toward the trail, not the food.
+  // Distant food (beyond smell) + a trail: the ant follows the trail (north).
   const a = g.createAnt(false, false, 500, 300);
   a.fullness = 100; a.age = 1e6; a.carrying = null; a.wallCooldown = 0; a.angle = 0;
   g.ants = [a];
-  g.foods = [g.makeFood(600, 300, 'sugar')];          // ~100px east (sensed, not in reach)
-  g.pheromones = [{ x: 500, y: 255, strength: 1 }];   // a trail 45px north (within SENSE_TRAIL)
+  g.foods = [g.makeFood(600, 300, 'sugar')];          // ~100px east — sensed for pickup, but out of smell
+  g.pheromones = [{ x: 500, y: 255, strength: 1 }];   // trail 45px north
   g.updateAnts();
-  // heading should have swung toward north (negative-y ≈ angle -PI/2), not east (0)
-  assert.ok(Math.sin(a.angle) < 0, `ant turned toward the trail (north), angle=${a.angle}`);
+  assert.ok(Math.sin(a.angle) < 0, `distant food: ant follows the trail (north), angle=${a.angle}`);
 
-  // Food within reach is still picked up even with a trail present.
+  // Food within smell trumps the trail: the ant turns toward the food (south).
   const b = g.createAnt(false, false, 500, 300);
-  b.fullness = 100; b.age = 1e6; b.carrying = null; b.wallCooldown = 0;
+  b.fullness = 100; b.age = 1e6; b.carrying = null; b.wallCooldown = 0; b.angle = 0;
   g.ants = [b];
+  g.foods = [g.makeFood(500, 320, 'sugar')];          // 20px south — within SENSE_SMELL
+  g.pheromones = [{ x: 500, y: 255, strength: 1 }];   // trail north
+  g.updateAnts();
+  assert.ok(Math.sin(b.angle) > 0, `close food: smell trumps the trail (south), angle=${b.angle}`);
+
+  // Food in reach is picked up regardless.
+  const c = g.createAnt(false, false, 500, 300);
+  c.fullness = 100; c.age = 1e6; c.carrying = null; c.wallCooldown = 0;
+  g.ants = [c];
   g.foods = [g.makeFood(503, 300, 'sugar')];          // within EAT_RANGE
   g.pheromones = [{ x: 500, y: 255, strength: 1 }];
   g.updateAnts();
-  assert.ok(b.carrying && b.carrying.type === 'sugar', 'food in reach grabbed despite the trail');
+  assert.ok(c.carrying && c.carrying.type === 'sugar', 'food in reach grabbed');
 });
 
 // The food-placement rule and mating apply in BOTH modes.

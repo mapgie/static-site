@@ -381,18 +381,21 @@ function updateAnts() {
         steerToward(a, t.x, t.y, 0.25);
         if (++a.carryTicks > CARRY_RETRY) { a.dropOffset = pickDropOffset(4, a.isRed, a.x, a.y); a.carryTicks = 0; }
       } else if (!prey) {
-        // Prefer walking a trail (join the procession) over darting solo at
-        // distant food. We still note the nearest food so the ant grabs anything
-        // in reach — it just won't break off the column to chase far-off crumbs.
+        // Ants forage by smell, not sight. Food only pulls when it's very close
+        // (as if it carried a faint scent of its own); at that range it trumps a
+        // trail. Farther off, a pheromone trail wins; with neither, the ant just
+        // wanders until it stumbles onto a scent. `target` is still the nearest
+        // food so the pickup check below can grab anything in reach.
         target = nearestFood(a);
+        const smell = target && dist2(target.x, target.y, a.x, a.y) < SENSE_SMELL * SENSE_SMELL ? target : null;
         const p = strongestTrail(a);
-        if (p) {
+        if (smell) {
+          const keen = { sugar: 0.25, fruit: 0.22, protein: 0.2, insect: 0.2 }[smell.type] || 0.12;
+          steerToward(a, smell.x, smell.y, keen);
+          chase = smell;
+        } else if (p) {
           steerToward(a, p.x, p.y, 0.10);
           chase = p;
-        } else if (target) {
-          const keen = { sugar: 0.25, fruit: 0.22, protein: 0.2, insect: 0.2 }[target.type] || 0.12;
-          steerToward(a, target.x, target.y, keen);
-          chase = target;
         }
       }
     }

@@ -70,12 +70,13 @@ yourself.
 
 ### Trails
 
-When an ant finds food and carries it home it lays a **trail** and marks the find
-itself, so the spot stays appealing while the trail fades. A foraging ant **prefers
-to follow a trail** over striking out solo toward distant food, so nestmates fall in
-line and process over to the find, carrying off the rest of the pile trip by trip
-until it is gone or the trail dies away. (It still grabs any food within reach — it
-just won't break the column to chase far-off crumbs.)
+Ants forage by **smell, not sight**. Food only pulls an ant when it is very close —
+as if each morsel carried a faint scent of its own — and at that range the scent
+**trumps** everything. Farther off, a **pheromone trail** wins, so nestmates fall in
+line and process over to a find, carrying off the pile trip by trip; with neither
+scent nor trail nearby, an ant simply **wanders** until it stumbles onto one. When an
+ant does find food and carry it home it lays a trail and marks the spot, keeping it
+appealing while the trail fades. (Food within reach is always grabbed.)
 
 ### Stockpiling
 
