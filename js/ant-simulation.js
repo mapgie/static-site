@@ -381,14 +381,18 @@ function updateAnts() {
         steerToward(a, t.x, t.y, 0.25);
         if (++a.carryTicks > CARRY_RETRY) { a.dropOffset = pickDropOffset(4, a.isRed, a.x, a.y); a.carryTicks = 0; }
       } else if (!prey) {
+        // Prefer walking a trail (join the procession) over darting solo at
+        // distant food. We still note the nearest food so the ant grabs anything
+        // in reach — it just won't break off the column to chase far-off crumbs.
         target = nearestFood(a);
-        if (target) {
+        const p = strongestTrail(a);
+        if (p) {
+          steerToward(a, p.x, p.y, 0.10);
+          chase = p;
+        } else if (target) {
           const keen = { sugar: 0.25, fruit: 0.22, protein: 0.2, insect: 0.2 }[target.type] || 0.12;
           steerToward(a, target.x, target.y, keen);
           chase = target;
-        } else {
-          const p = strongestTrail(a);
-          if (p) { steerToward(a, p.x, p.y, 0.10); chase = p; }   // follow the procession to the find
         }
       }
     }

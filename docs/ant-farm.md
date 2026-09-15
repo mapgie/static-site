@@ -71,9 +71,11 @@ yourself.
 ### Trails
 
 When an ant finds food and carries it home it lays a **trail** and marks the find
-itself, so the spot stays appealing while the trail fades. Nestmates that cross the
-trail fall in line and process over to the food, carrying off the rest of the pile
-trip by trip until it is gone or the trail dies away.
+itself, so the spot stays appealing while the trail fades. A foraging ant **prefers
+to follow a trail** over striking out solo toward distant food, so nestmates fall in
+line and process over to the find, carrying off the rest of the pile trip by trip
+until it is gone or the trail dies away. (It still grabs any food within reach — it
+just won't break the column to chase far-off crumbs.)
 
 ### Stockpiling
 

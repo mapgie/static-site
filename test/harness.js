@@ -25,7 +25,8 @@ const FUNCS = [
   'populationFactor', 'aggregateHappiness', 'tryBreeding', 'deliveredServings',
   'insectServings', 'initialUnits', 'foodSpawnAllowed', 'digSoil', 'collidesWall',
   'createAnt', 'addFood', 'makeFood', 'autoDropFood', 'pickAutoFood',
-  'rebuildEnvGrid', 'markEnvDirty', 'forEachEnvNear'
+  'rebuildEnvGrid', 'markEnvDirty', 'forEachEnvNear', 'updateAnts',
+  'nearestFood', 'strongestTrail'
 ];
 
 function freshApi() {

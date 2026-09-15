@@ -68,6 +68,30 @@ test('both parents rest (cooldown) after a successful mating', () => {
   assert.ok(cooled, 'a successful mating zeroes both parents\' breeding timers');
 });
 
+test('trail priority: an ant follows a trail over distant food, but still grabs food in reach', () => {
+  const g = freshApi();
+  g.rebuildEnvGrid();
+
+  // Distant food + a trail: the ant should steer toward the trail, not the food.
+  const a = g.createAnt(false, false, 500, 300);
+  a.fullness = 100; a.age = 1e6; a.carrying = null; a.wallCooldown = 0; a.angle = 0;
+  g.ants = [a];
+  g.foods = [g.makeFood(600, 300, 'sugar')];          // ~100px east (sensed, not in reach)
+  g.pheromones = [{ x: 500, y: 255, strength: 1 }];   // a trail 45px north (within SENSE_TRAIL)
+  g.updateAnts();
+  // heading should have swung toward north (negative-y ≈ angle -PI/2), not east (0)
+  assert.ok(Math.sin(a.angle) < 0, `ant turned toward the trail (north), angle=${a.angle}`);
+
+  // Food within reach is still picked up even with a trail present.
+  const b = g.createAnt(false, false, 500, 300);
+  b.fullness = 100; b.age = 1e6; b.carrying = null; b.wallCooldown = 0;
+  g.ants = [b];
+  g.foods = [g.makeFood(503, 300, 'sugar')];          // within EAT_RANGE
+  g.pheromones = [{ x: 500, y: 255, strength: 1 }];
+  g.updateAnts();
+  assert.ok(b.carrying && b.carrying.type === 'sugar', 'food in reach grabbed despite the trail');
+});
+
 // The food-placement rule and mating apply in BOTH modes.
 for (const mode of [true, false]) {
   test(`both modes (worldBuilding=${mode}): food avoids terrain and mating still gated`, () => {
