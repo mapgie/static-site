@@ -225,7 +225,7 @@ function pickUp(ant, food) {
   // Broadcast the find: a strong, slow-fading mark on the spot itself keeps the
   // coordinate appealing while the trail lasts, so nestmates fall in line and
   // process over to carry off whatever food is left.
-  layPheromone(food.x, food.y, 3);
+  layPheromone(food.x, food.y, 1.5);   // a modest mark, not a magnet that ants orbit
   layPheromone(ant.x, ant.y);
 }
 
@@ -349,7 +349,7 @@ function updateAnts() {
 
     // Decide what to chase. Right after a wall bump this is paused so the ant peels
     // away instead of steering straight back into the wall and grinding to a stop.
-    let target = null, prey = null;
+    let target = null, prey = null, chase = null;
     if (a.wallCooldown > 0) {
       a.wallCooldown--;
     } else {
@@ -357,7 +357,7 @@ function updateAnts() {
       // depends on eating (and can starve) just like the main colony.
       if (a.isRed && aggression > 0 && a.fullness >= a.hungerPoint) {
         prey = nearestWhiteAnt(a);
-        if (prey) steerToward(a, prey.x, prey.y, 0.05 + aggression * 0.25);
+        if (prey) { steerToward(a, prey.x, prey.y, 0.05 + aggression * 0.25); chase = prey; }
       }
       if (!prey && a.carrying) {
         // Haul it home
@@ -369,9 +369,10 @@ function updateAnts() {
         if (target) {
           const keen = { sugar: 0.25, fruit: 0.22, protein: 0.2, insect: 0.2 }[target.type] || 0.12;
           steerToward(a, target.x, target.y, keen);
+          chase = target;
         } else {
           const p = strongestTrail(a);
-          if (p) steerToward(a, p.x, p.y, 0.14);   // follow the procession to the find
+          if (p) { steerToward(a, p.x, p.y, 0.10); chase = p; }   // follow the procession to the find
         }
       }
     }
@@ -386,6 +387,13 @@ function updateAnts() {
               * (a.carrying && a.carrying.type === 'protein' ? 0.8 : 1);
     if (a.slowed > 0) a.slowed--;
     if (a.speedBoost > 0) a.speedBoost--;
+
+    // Arrival: ease off as it nears whatever it's chasing, so it settles onto
+    // the spot instead of overshooting and orbiting it in a tight cluster.
+    if (chase) {
+      const d2 = dist2(chase.x, chase.y, a.x, a.y);
+      if (d2 < ARRIVE_RANGE * ARRIVE_RANGE) speed *= 0.4;
+    }
 
     let nx = a.x + Math.cos(a.angle) * speed;
     let ny = a.y + Math.sin(a.angle) * speed;

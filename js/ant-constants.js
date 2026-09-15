@@ -23,6 +23,7 @@ const SENSE_TRAIL = 60;
 const EAT_RANGE   = 8;
 const BITE_RANGE  = 8;
 const MATE_RANGE  = 30;
+const ARRIVE_RANGE = 18;  // ants ease off within this of their target, so they settle instead of orbiting
 
 // The nest: ants drop food off in a ring around the spawn point, never on it.
 const NEST_CORE   = 12;   // keep the spawn point itself clear (scales a little with size)
@@ -101,9 +102,10 @@ const QUEEN_SUSTAIN_MS = 8000;
 
 // Default "living world": food rains at random, weighted by rarity — sugar
 // often, protein seldom, a dead insect a rare treat. AUTO_FOOD_MS is the base
-// gap between drops (jittered each time).
+// gap between drops (jittered 0.6–1.4×), so a drop lands roughly every 7–17s —
+// an occasional ambient drip, not a downpour.
 const AUTO_FOOD_WEIGHTS = { sugar: 60, fruit: 25, protein: 12, insect: 3 };
-const AUTO_FOOD_MS = 2600;
+const AUTO_FOOD_MS = 12000;
 
 // Per food type. FOOD_UNITS is how many separate trips a dropped piece takes to
 // haul home (its "drops"): a carrier lifts one unit per trip and the rest waits

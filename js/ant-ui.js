@@ -284,10 +284,22 @@ function setupUI() {
   });
   on('controls-backdrop', 'click', () => setControlsHidden(true));
 
-  on('pause-resume', 'click', e => {
-    animationPaused = !animationPaused;
-    e.target.textContent = animationPaused ? 'Resume' : 'Pause';
-  });
+  // Mobile quick bar: the main buttons stay visible beside the map; Menu opens
+  // the full controls drawer. Add/Rival reuse the real handlers.
+  on('mbar-menu',    'click', () => setControlsHidden(false));
+  on('mbar-add',     'click', () => $('add-ant').click());
+  on('mbar-add-red', 'click', () => $('add-red-ant').click());
+  on('mbar-pause',   'click', () => { animationPaused = !animationPaused; syncPauseLabels(); });
+
+  // The bar's food and tool pickers mirror the panel selects both ways, so the
+  // two stay in step whichever one you use.
+  const mirror = (from, to) => { const s = $(to); if (s) s.value = $(from).value; };
+  on('mbar-food',        'change', () => mirror('mbar-food', 'food-type'));
+  on('food-type',        'change', () => mirror('food-type', 'mbar-food'));
+  on('mbar-tool',        'change', () => mirror('mbar-tool', 'environment-tool'));
+  on('environment-tool', 'change', () => mirror('environment-tool', 'mbar-tool'));
+
+  on('pause-resume', 'click', () => { animationPaused = !animationPaused; syncPauseLabels(); });
 
   on('allow-red-breeding', 'change', e => { allowRedBreeding = e.target.checked; saveFarm(); });
   on('sadist-mode', 'change', e => { sadistMode = e.target.checked; saveFarm(); });
@@ -403,10 +415,15 @@ function exitMaintenance() {
   saveFarm();
 }
 
+// Keep both Pause buttons (the panel's and the mobile quick bar's) in step.
+function syncPauseLabels() {
+  const t = animationPaused ? 'Resume' : 'Pause';
+  for (const id of ['pause-resume', 'mbar-pause']) { const b = $(id); if (b) b.textContent = t; }
+}
+
 function setPaused(p) {
   animationPaused = p;
-  const b = $('pause-resume');
-  if (b) b.textContent = p ? 'Resume' : 'Pause';
+  syncPauseLabels();
 }
 
 function selectPoint(s) {
