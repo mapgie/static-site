@@ -92,8 +92,14 @@ a wave of newborns doesn't immediately starve.
 
 Every ant carries its **own** happiness, seeded with a jittered starting value and a
 hidden *temperament* that makes each ant swing more or less than its neighbours. Each
-colony's on-screen bar is the **average** mood of its living ants. There are two
-bars: the main colony's (top) and the rival colony's (below it).
+colony's on-screen bar is the average mood of its living ants **scaled by colony
+size**: a lone ant tops out near 50%, the bar can reach 100% only once the colony
+approaches its **ideal size** (`POP_CAPACITY`, default 100), and past that point
+**overpopulation** eases it back down. So the bar reflects both how content the ants
+are and whether the colony is a healthy size — two happy ants read as ~50%, not full.
+(The Breakdown panel still shows the raw average mood, so you can see individual
+contentment separately.) There are two bars: the main colony's (top) and the rival
+colony's (below it).
 
 Happiness **rises** from:
 

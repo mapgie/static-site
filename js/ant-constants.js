@@ -69,6 +69,10 @@ const TUNE_DEFAULTS = {
   FULLNESS_START: 60,
   FULLNESS_JITTER: 15,
   TEMPERAMENT_SPREAD: 0.3,   // width of the hidden per-ant temperament band
+  // Colony scale: the bar is average mood scaled by size — a lone ant tops out
+  // near 50%, a colony at capacity can reach 100%, and beyond it overpopulation
+  // eases it back down.
+  POP_CAPACITY: 100,
   // Breeding & queens
   MATE_CHANCE: 0.35,     // base chance a nearby pair breeds
   CROWD_MATE_STEP: 0.05, // each nearby colony-mate trims that chance by this

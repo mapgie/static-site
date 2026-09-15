@@ -85,15 +85,26 @@ function colonyMorale(isRed, amount) {
   for (const o of ants) if (o.isRed === isRed) dropHappiness(o, amount);
 }
 
-// Each colony's bar is the average mood of its living ants.
+// How much of its mood a colony can actually express, by size. A lone ant tops
+// out near 0.5; it rises to 1.0 at the ideal capacity; past capacity,
+// overpopulation eases it back down toward a floor.
+function populationFactor(count) {
+  const cap = Math.max(2, TUNE.POP_CAPACITY);
+  if (count <= 1) return 0.5;
+  if (count <= cap) return 0.5 + 0.5 * (count - 1) / (cap - 1);
+  return clamp(1 - 0.6 * (count - cap) / cap, 0.35, 1);
+}
+
+// Each colony's bar is its average mood scaled by how well-sized the colony is,
+// so two content ants read as ~50% and a colony at capacity can reach 100%.
 function aggregateHappiness() {
   let ws = 0, wn = 0, rs = 0, rn = 0;
   for (const a of ants) {
     if (a.isRed) { rs += a.happiness; rn++; }
     else         { ws += a.happiness; wn++; }
   }
-  whiteHappiness = wn ? ws / wn : 50;
-  redHappiness   = rn ? rs / rn : 50;
+  whiteHappiness = wn ? (ws / wn) * populationFactor(wn) : 50;
+  redHappiness   = rn ? (rs / rn) * populationFactor(rn) : 50;
 }
 
 // Loose food is worth picking up; delivered food is worth eating, unless this
