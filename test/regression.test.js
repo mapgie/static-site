@@ -100,6 +100,92 @@ test('foraging by smell: distant food yields to a trail, close food trumps it, f
   assert.ok(c.carrying && c.carrying.type === 'sugar', 'food in reach grabbed');
 });
 
+test('typed pheromones: layPheromone tags a kind; queries filter by kind and range', () => {
+  const g = freshApi();
+  const a = g.createAnt(false, false, 500, 300);
+  g.pheromones = [];
+  g.layPheromone(500, 320, 1, 'danger');   // 20px south
+  g.layPheromone(500, 340, 1);             // default kind = trail, 40px south
+  assert.strictEqual(g.pheromones[0].kind, 'danger');
+  assert.strictEqual(g.pheromones[1].kind, 'trail');
+
+  assert.strictEqual(g.strongestPheromone(a, 'danger', 100).kind, 'danger');
+  assert.strictEqual(g.strongestPheromone(a, 'trail', 100).kind, 'trail');
+  assert.strictEqual(g.strongestTrail(a).kind, 'trail');       // trail query ignores the danger mark
+  assert.strictEqual(g.strongestPheromone(a, 'danger', 10), null);  // danger is out of this range
+});
+
+test('danger response: flee by default, swarm only when a strong, steady colony\'s nest is at risk', () => {
+  const g = freshApi();
+  g.addSpawnPoint(false, 500, 300);        // the main colony's nest
+  const near = { x: 520, y: 310 };         // danger laid at the nest
+  const far  = { x: 900, y: 550 };         // danger out in the field
+
+  // Strong (>=8), steady (mood high) colony.
+  g.ants = [];
+  for (let i = 0; i < 8; i++) { const a = g.createAnt(false, false, 500, 300); a.happiness = 70; g.ants.push(a); }
+  assert.strictEqual(g.dangerReaction(g.ants[0], near), 'swarm', 'threatened nest, strong colony -> rally');
+  assert.strictEqual(g.dangerReaction(g.ants[0], far), 'flee', 'danger far from the nest -> flee');
+
+  // A rattled ant flees even at the nest.
+  g.ants[0].happiness = 20;
+  assert.strictEqual(g.dangerReaction(g.ants[0], near), 'flee', 'low-mood ant flees');
+
+  // Too few ants to make a stand.
+  g.ants = [g.createAnt(false, false, 500, 300)]; g.ants[0].happiness = 90;
+  assert.strictEqual(g.dangerReaction(g.ants[0], near), 'flee', 'a small colony scatters');
+});
+
+test('a white ant that senses danger flees it (steers away, with a speed jolt)', () => {
+  const g = freshApi();
+  g.rebuildEnvGrid();
+  const a = g.createAnt(false, false, 500, 300);
+  a.fullness = 100; a.age = 1e6; a.carrying = null; a.wallCooldown = 0; a.angle = 0; a.speedBoost = 0;
+  g.ants = [a];
+  g.foods = [];
+  g.pheromones = [{ x: 500, y: 250, strength: 2, kind: 'danger' }];   // 50px north
+  g.updateAnts();
+  assert.ok(Math.sin(a.angle) > 0, `ant turns away from the danger (south), angle=${a.angle}`);
+  assert.ok(a.speedBoost > 0, 'fleeing gives a burst of speed');
+});
+
+test('a rival kill counts as "killed", lays a danger scent; a natural death does not', () => {
+  const g = freshApi();
+  g.rebuildEnvGrid();
+  g.redAggressionLevel = 100;              // aggression = 1: the bite always lands
+  const red   = g.createAnt(true,  false, 500, 300); red.fullness = 100; red.age = 1e6;
+  const white = g.createAnt(false, false, 503, 300); white.fullness = 100; white.age = 1e6;
+  g.ants = [red, white];
+  g.pheromones = [];
+  g.killedWhite = 0;
+  g.updateAnts();
+  assert.strictEqual(g.ants.length, 1, 'the white ant was killed');
+  assert.strictEqual(g.killedWhite, 1, 'counted as killed by a rival');
+  assert.ok(g.pheromones.some(p => p.kind === 'danger'), 'a danger scent was laid where it fell');
+
+  // A death of old age is a death, not a kill.
+  const g2 = freshApi();
+  g2.rebuildEnvGrid();
+  const old = g2.createAnt(false, false, 500, 300); old.age = 1e6; old.lifespan = 1; old.fullness = 100;
+  g2.ants = [old];
+  g2.killedWhite = 0;
+  g2.updateAnts();
+  assert.strictEqual(g2.ants.length, 0, 'the ant died');
+  assert.strictEqual(g2.killedWhite, 0, 'a natural death is not a kill');
+});
+
+test('a colony eats only its OWN delivered stockpile', () => {
+  const g = freshApi();
+  const a = g.createAnt(false, false, 500, 300); a.fullness = 0; a.hungerPoint = 50;  // hungry
+  g.ants = [a];
+  const enemy = g.makeFood(510, 300, 'sugar'); enemy.delivered = true; enemy.team = true;  enemy.foundBy = null;
+  g.foods = [enemy];
+  assert.strictEqual(g.nearestFood(a), null, 'a rival store is not food to the main colony');
+  const own = g.makeFood(510, 300, 'sugar'); own.delivered = true; own.team = false; own.foundBy = null;
+  g.foods = [enemy, own];
+  assert.strictEqual(g.nearestFood(a), own, 'the colony\'s own store is fair game');
+});
+
 // The food-placement rule and mating apply in BOTH modes.
 for (const mode of [true, false]) {
   test(`both modes (worldBuilding=${mode}): food avoids terrain and mating still gated`, () => {

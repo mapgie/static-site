@@ -42,6 +42,8 @@ let totalBornRed   = 0, totalDeadRed   = 0;
 // Of the born total, how many came from mating vs. were spawned (queen / hand-added).
 let matedWhite = 0, spawnedWhite = 0;
 let matedRed   = 0, spawnedRed   = 0;
+// Of the dead total, how many were killed by a rival (vs. died of hunger / age / poison).
+let killedWhite = 0, killedRed = 0;
 
 let canvas, ctx;
 let lastX = null, lastY = null;

@@ -33,8 +33,10 @@ versus **spawned** (a queen or your Add-Ant button).
 ## Food
 
 Drop food by clicking the canvas, or paint it with the **Food** environment tool.
-Ants carry loose food back to the nest, where it becomes part of the colony's
-**store**. Once delivered, only *another* ant may eat it.
+Ants carry loose food back to the nest, where it becomes part of that colony's
+**store**. Once delivered, only *another ant of the same colony* may eat it — a
+colony never feeds on its rival's stockpile, so one colony's reserves never prop up
+the other's mood.
 
 | Food | Colour | Drops (trips to haul) | Feeds | Effect on the eater |
 |---|---|---|---|---|
@@ -68,15 +70,40 @@ insect** as a rare treat (poison and spoiled never fall on their own). Turn it o
 with the **Auto food drops** checkbox in the Food panel to hand-feed the colony
 yourself.
 
-### Trails
+### Trails, scent, and wandering
 
 Ants forage by **smell, not sight**. Food only pulls an ant when it is very close —
 as if each morsel carried a faint scent of its own — and at that range the scent
 **trumps** everything. Farther off, a **pheromone trail** wins, so nestmates fall in
 line and process over to a find, carrying off the pile trip by trip; with neither
-scent nor trail nearby, an ant simply **wanders** until it stumbles onto one. When an
-ant does find food and carry it home it lays a trail and marks the spot, keeping it
-appealing while the trail fades. (Food within reach is always grabbed.)
+scent nor trail nearby, an ant simply **wanders** — a small random turn each tick, a
+drunkard's walk with no goal — until it stumbles onto one. When an ant does find food
+and carry it home it lays a trail and marks the spot, keeping it appealing while the
+trail fades. (Food within reach is always grabbed.)
+
+### Pheromones and reactions
+
+There is no event system or messaging: ants coordinate entirely through the shared
+**pheromone field** (stigmergy). Every reaction is a scent one ant drops and another
+reads back when it passes near. Marks are **typed**:
+
+- **Trail** (yellow) — laid on a food find, as above.
+- **Danger** (red) — laid where a colony-mate is **killed by a rival**. It carries
+  farther than a food trail.
+
+A main-colony ant that catches a danger scent **reacts before it thinks about food**.
+What it does depends on its mood, the colony's size, and whether the nest itself is
+threatened:
+
+- **Flee** (the default) — turn and run from the scent, with a jolt of speed.
+- **Swarm** — if the danger is laid at the colony's own **nest or queen**, *and* the
+  colony is large and steady enough (enough ants, decent morale), the ants instead
+  **rally home** to defend it rather than scattering.
+
+Standing and fighting off an attacker, and walling off a breached entry, are the next
+phase (they wait on ant-vs-ant combat and the World Building construction work); for
+now *swarm* pulls defenders back to the nest. Rival ants are the aggressors and never
+react to danger.
 
 ### Stockpiling
 
@@ -189,7 +216,8 @@ fold it away; each card remembers whether you left it open.
 - **Environment Tools** — paint Food, Water, or Walls, or Bulldoze; set brush
   thickness; undo or clear structures. Walls block ants; water slows and repels them.
 - **Danger Zone** — kill a colony, kill everything, or destroy the world.
-- **Stats** — live counts and each colony's happiness.
+- **Stats** — live counts and each colony's happiness. Deaths are split into
+  **killed** (by a rival) and **died** (hunger, age, or poison), for each colony.
 - **Breakdown** — per-colony figures for spotting imbalance: average mood and
   fullness, how many ants are hungry, poisoned, or hauling, each colony's stored
   food, and how long the main colony has gone unattacked.

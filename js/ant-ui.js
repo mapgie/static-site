@@ -281,6 +281,7 @@ function setupUI() {
     whiteHappiness = redHappiness = 50; whiteCalmMs = 0;
     totalBornWhite = totalDeadWhite = totalBornRed = totalDeadRed = 0;
     matedWhite = spawnedWhite = matedRed = spawnedRed = 0;
+    killedWhite = killedRed = 0;
     markEnvDirty();
     updateStats(); saveFarm();
   });

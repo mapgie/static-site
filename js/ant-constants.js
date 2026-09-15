@@ -21,6 +21,15 @@ const SENSE_FOOD  = 180;
 const SENSE_PREY  = 160;
 const SENSE_TRAIL = 60;
 const SENSE_SMELL = 26;   // how close food must be before an ant "smells" it (poor vision — trails carry farther)
+const SENSE_DANGER = 90;  // how far a 'danger' pheromone (a mate killed nearby) reaches — wider than a food trail
+
+// Danger response. A main-colony ant that senses danger flees, unless its nest
+// or queen is under threat and the colony is strong and steady enough to rally
+// home and stand its ground (swarm). Swarm-into-combat and barricading are the
+// next phase; for now swarm means "regroup at the nest to defend it".
+const SWARM_MIN_COLONY = 8;   // fewer than this and even a threatened nest just scatters
+const SWARM_MIN_MOOD   = 55;  // a rattled ant (low happiness) flees rather than rallies
+const NEST_DEFEND_R    = 120; // danger within this of a spawn point / queen counts as the nest being at risk
 const EAT_RANGE   = 8;
 const BITE_RANGE  = 8;
 const MATE_RANGE  = 30;

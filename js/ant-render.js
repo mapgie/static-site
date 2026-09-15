@@ -121,8 +121,11 @@ function drawPheromones() {
     if (p.strength <= 0) continue;
     pheromones[w++] = p;
     ctx.beginPath();
-    ctx.fillStyle = `rgba(255,230,0,${Math.min(p.strength, 1) * 0.6})`;
-    ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+    const a = Math.min(p.strength, 1) * 0.6;
+    // Trails are the familiar yellow; a danger scent glows red so a threatened
+    // stretch of the map reads at a glance.
+    ctx.fillStyle = p.kind === 'danger' ? `rgba(255,60,40,${a})` : `rgba(255,230,0,${a})`;
+    ctx.arc(p.x, p.y, p.kind === 'danger' ? 3 : 2, 0, Math.PI * 2);
     ctx.fill();
   }
   pheromones.length = w;
@@ -182,15 +185,17 @@ function updateStats() {
   const atNest = foods.reduce((n, f) => n + (f.delivered ? 1 : 0), 0);
   el.innerHTML =
     `Total Alive: ${ants.length}<br>` +
-    `Yellow Ants: Alive ${w} | Born ${totalBornWhite} | Dead ${totalDeadWhite}<br>` +
-    `Rival Ants: Alive ${r} | Born ${totalBornRed} | Dead ${totalDeadRed}<br>` +
+    `Yellow Ants: Alive ${w} | Born ${totalBornWhite} | Dead ${totalDeadWhite} (${killedWhite} killed)<br>` +
+    `Rival Ants: Alive ${r} | Born ${totalBornRed} | Dead ${totalDeadRed} (${killedRed} killed)<br>` +
     `Food: ${foods.length} (${atNest} at nest) | Happiness: ${Math.round(whiteHappiness)} | Rival: ${Math.round(redHappiness)}`;
 
   const hud = $('hud-stats');
   if (hud) {
-    let html = `<span class="yellow">🐜 <b>${w}</b> · born ${matedWhite} · spawned ${spawnedWhite} · died ${totalDeadWhite}</span>`;
+    const wOther = Math.max(0, totalDeadWhite - killedWhite);
+    const rOther = Math.max(0, totalDeadRed - killedRed);
+    let html = `<span class="yellow">🐜 <b>${w}</b> · born ${matedWhite} · spawned ${spawnedWhite} · killed ${killedWhite} · died ${wOther}</span>`;
     if (r > 0 || totalBornRed > 0) {
-      html += `<br><span class="rival">✦ <b>${r}</b> · born ${matedRed} · spawned ${spawnedRed} · died ${totalDeadRed}</span>`;
+      html += `<br><span class="rival">✦ <b>${r}</b> · born ${matedRed} · spawned ${spawnedRed} · killed ${killedRed} · died ${rOther}</span>`;
     }
     hud.innerHTML = html;
   }

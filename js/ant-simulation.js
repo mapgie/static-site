@@ -113,6 +113,7 @@ function nearestFood(ant) {
   let best = null, bd = SENSE_FOOD * SENSE_FOOD;
   const hungry = ant.fullness < ant.hungerPoint;
   for (const f of foods) {
+    if (f.delivered && f.team !== ant.isRed) continue;   // a colony eats only its OWN stockpile
     if (f.delivered && foundByAnt(f, ant)) continue;
     if (f.delivered && !hungry) continue;   // well-fed ants forage but leave the store for later
     if (f.type === 'insect' && !f.delivered) {
@@ -135,13 +136,40 @@ function nearestWhiteAnt(ant) {
   return best;
 }
 
-function strongestTrail(ant) {
+// The strongest pheromone of a given kind within range of an ant. Foraging reads
+// 'trail'; the danger response reads 'danger'. Kind-less legacy marks read as
+// 'trail' so an old save still steers ants along its scent.
+function strongestPheromone(ant, kind, range) {
   let best = null, bs = 0.05;
-  const r2 = SENSE_TRAIL * SENSE_TRAIL;
+  const r2 = range * range;
   for (const p of pheromones) {
+    if ((p.kind || 'trail') !== kind) continue;
     if (p.strength > bs && dist2(p.x, p.y, ant.x, ant.y) < r2) { bs = p.strength; best = p; }
   }
   return best;
+}
+
+function strongestTrail(ant) { return strongestPheromone(ant, 'trail', SENSE_TRAIL); }
+
+// How a main-colony ant answers a danger scent. Rivals are the aggressors and
+// never react. Everyone flees by default; a strong, steady colony instead rallies
+// home ('swarm') when the danger is laid at its own nest or queen. (Standing and
+// fighting, and walling off a breach, come with combat and construction later —
+// for now swarm just pulls defenders back to the nest.)
+function dangerReaction(ant, danger) {
+  if (ant.isRed || ant.isQueen) return 'flee';
+  let whites = 0;
+  for (const o of ants) if (!o.isRed) whites++;
+  const strong = whites >= SWARM_MIN_COLONY && ant.happiness >= SWARM_MIN_MOOD;
+  if (!strong) return 'flee';
+  const r2 = NEST_DEFEND_R * NEST_DEFEND_R;
+  let nestAtRisk = queens.white && dist2(queens.white.x, queens.white.y, danger.x, danger.y) < r2;
+  if (!nestAtRisk) {
+    for (const s of colonySpawnPoints(false)) {
+      if (dist2(s.x, s.y, danger.x, danger.y) < r2) { nestAtRisk = true; break; }
+    }
+  }
+  return nestAtRisk ? 'swarm' : 'flee';
 }
 
 function decay(f) {
@@ -375,11 +403,24 @@ function updateAnts() {
         prey = nearestWhiteAnt(a);
         if (prey) { steerToward(a, prey.x, prey.y, 0.05 + aggression * 0.25); chase = prey; }
       }
+      // A main-colony ant that isn't hunting or hauling answers a danger scent
+      // before it thinks about food: flee it, or rally home if the nest's at risk.
+      let danger = null, react = null;
+      if (!prey && !a.carrying && !a.isRed && !a.isQueen) {
+        danger = strongestPheromone(a, 'danger', SENSE_DANGER);
+        if (danger) react = dangerReaction(a, danger);
+      }
       if (!prey && a.carrying) {
         // Haul it home
         const t = dropTarget(a);
         steerToward(a, t.x, t.y, 0.25);
         if (++a.carryTicks > CARRY_RETRY) { a.dropOffset = pickDropOffset(4, a.isRed, a.x, a.y); a.carryTicks = 0; }
+      } else if (react === 'flee') {
+        steerAway(a, danger.x, danger.y, 0.3);
+        a.speedBoost = Math.max(a.speedBoost, 30);   // a jolt of adrenaline carries it clear
+      } else if (react === 'swarm') {
+        const s = nearestSpawnPoint(a.isRed, a.x, a.y);
+        steerToward(a, s.x, s.y, 0.15); chase = s;   // regroup at the nest to defend it
       } else if (!prey) {
         // Ants forage by smell, not sight. Food only pulls when it's very close
         // (as if it carried a faint scent of its own); at that range it trumps a
@@ -466,6 +507,8 @@ function updateAnts() {
         bumpHappiness(a, TUNE.H_ATTACK);   // the antagonist's reward for a kill
         whiteCalmMs = 0;              // the main colony has just been attacked
         moraleHit(prey.x, prey.y, prey.isRed, TUNE.H_ALLY_LOST);   // its colony-mates take it hard
+        layPheromone(prey.x, prey.y, 3, 'danger');   // a scent of death nearby: mates flee or rally
+        if (prey.isRed) killedRed++; else killedWhite++;   // a kill, not a natural death
         killAnt(pi);
         if (pi < i) i--;           // array shifted under us
       }

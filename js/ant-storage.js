@@ -25,6 +25,7 @@ function serializeWorld() {
     foods, environment, spawnPoints, showSpawnPoints,
     totalBornWhite, totalDeadWhite, totalBornRed, totalDeadRed,
     matedWhite, spawnedWhite, matedRed, spawnedRed,
+    killedWhite, killedRed,
     ...collectSettings()
   };
 }
@@ -118,6 +119,8 @@ function applyWorld(d) {
   spawnedWhite = d.spawnedWhite || 0;
   matedRed     = d.matedRed     || 0;
   spawnedRed   = d.spawnedRed   || 0;
+  killedWhite  = d.killedWhite  || 0;
+  killedRed    = d.killedRed    || 0;
 }
 
 // Restore a complete payload (settings + spawn points + world).

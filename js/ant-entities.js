@@ -173,9 +173,13 @@ function dropTarget(ant) {
   return { x: anchor.x + Math.cos(ang) * r, y: anchor.y + Math.sin(ang) * r };
 }
 
-function layPheromone(x, y, strength = 1) {
+// Ants coordinate by scent, not messages: every reaction is a pheromone dropped
+// here and read back by whoever passes near (see strongestPheromone). 'trail'
+// (the default) marks a food find; 'danger' is laid where a mate was killed and
+// drives the flee/rally response.
+function layPheromone(x, y, strength = 1, kind = 'trail') {
   if (pheromones.length >= MAX_PHEROMONES) pheromones.shift();
-  pheromones.push({ x, y, strength });
+  pheromones.push({ x, y, strength, kind });
 }
 
 function killAnt(index) {
