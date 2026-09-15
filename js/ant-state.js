@@ -39,6 +39,9 @@ let foodDecayRate      = 25;     // 1..100, slider; see decayStageMs()
 
 let totalBornWhite = 0, totalDeadWhite = 0;
 let totalBornRed   = 0, totalDeadRed   = 0;
+// Of the born total, how many came from mating vs. were spawned (queen / hand-added).
+let matedWhite = 0, spawnedWhite = 0;
+let matedRed   = 0, spawnedRed   = 0;
 
 let canvas, ctx;
 let lastX = null, lastY = null;

@@ -326,6 +326,24 @@ button#delete-structures:hover {
   transition: width 0.2s, background 0.2s;
 }
 
+/* Live population readout, tucked under the bars over the map. */
+#hud-stats {
+  position: absolute;
+  top: calc(var(--canvas-pad) + 46px);
+  left: calc(var(--canvas-pad) + 10px);
+  z-index: 10;
+  pointer-events: none;
+  font-size: 11px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  color: #cfcfcf;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+  white-space: nowrap;
+}
+#hud-stats .yellow { color: #fff0b3; }
+#hud-stats .rival  { color: #3cb399; }
+#hud-stats b { color: #fff; font-weight: 600; }
+
 /* --- Mode Selector (Tools & Foods) --- */
 .mode-selector {
   display: flex;

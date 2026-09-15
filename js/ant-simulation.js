@@ -497,13 +497,16 @@ function tryBreeding(a) {
     if (!allowRedBreeding || countRedAnts() >= MAX_RED_ANTS) return;
   } else if (countWhiteAnts() >= MAX_WHITE_ANTS) return;
 
+  if (a.happiness < a.mateUrge) return;   // not in the mood — must clear its own horniness threshold
+
   const r2 = MATE_RANGE * MATE_RANGE;
   let mate = null, crowd = 0;
   for (const o of ants) {
     if (o === a || o.isRed !== a.isRed) continue;
     if (dist2(o.x, o.y, a.x, a.y) < r2) {
       crowd++;                              // every close colony-mate counts toward crowding
-      if (!o.poisoned && !mate) mate = o;
+      // A willing partner: not poisoned and content enough to be in the mood itself.
+      if (!mate && !o.poisoned && o.happiness >= o.mateUrge) mate = o;
     }
   }
   if (!mate) return;
@@ -511,9 +514,10 @@ function tryBreeding(a) {
   const chance = TUNE.MATE_CHANCE * Math.max(TUNE.CROWD_MATE_FLOOR, 1 - crowd * TUNE.CROWD_MATE_STEP);
   if (Math.random() < chance) {
     ants.push(spawnNear(a, a.isRed));
-    if (a.isRed) totalBornRed++; else totalBornWhite++;
+    if (a.isRed) { totalBornRed++; matedRed++; } else { totalBornWhite++; matedWhite++; }
     bumpHappiness(a, TUNE.H_MATE);
     bumpHappiness(mate, TUNE.H_MATE);
+    a.breedingTimer = mate.breedingTimer = 0;   // both parents rest before mating again
   }
 }
 
@@ -549,7 +553,7 @@ function updateQueens() {
     q.spawnTimer = 0;
     if (q.isRed ? reds < MAX_RED_ANTS : whites < MAX_WHITE_ANTS) {
       ants.push(spawnNear(q, q.isRed));
-      if (q.isRed) totalBornRed++; else totalBornWhite++;
+      if (q.isRed) { totalBornRed++; spawnedRed++; } else { totalBornWhite++; spawnedWhite++; }
     }
   }
 }

@@ -182,6 +182,15 @@ function updateStats() {
     `Yellow Ants: Alive ${w} | Born ${totalBornWhite} | Dead ${totalDeadWhite}<br>` +
     `Rival Ants: Alive ${r} | Born ${totalBornRed} | Dead ${totalDeadRed}<br>` +
     `Food: ${foods.length} (${atNest} at nest) | Happiness: ${Math.round(whiteHappiness)} | Rival: ${Math.round(redHappiness)}`;
+
+  const hud = $('hud-stats');
+  if (hud) {
+    let html = `<span class="yellow">🐜 <b>${w}</b> · born ${matedWhite} · spawned ${spawnedWhite} · died ${totalDeadWhite}</span>`;
+    if (r > 0 || totalBornRed > 0) {
+      html += `<br><span class="rival">✦ <b>${r}</b> · born ${matedRed} · spawned ${spawnedRed} · died ${totalDeadRed}</span>`;
+    }
+    hud.innerHTML = html;
+  }
   updateBreakdown();
 }
 

@@ -24,6 +24,7 @@ function serializeWorld() {
     queens: { white: queens.white && serialiseAnt(queens.white), red: queens.red && serialiseAnt(queens.red) },
     foods, environment, spawnPoints, showSpawnPoints,
     totalBornWhite, totalDeadWhite, totalBornRed, totalDeadRed,
+    matedWhite, spawnedWhite, matedRed, spawnedRed,
     ...collectSettings()
   };
 }
@@ -112,6 +113,10 @@ function applyWorld(d) {
   totalDeadWhite = d.totalDeadWhite || 0;
   totalBornRed   = d.totalBornRed   || 0;
   totalDeadRed   = d.totalDeadRed   || 0;
+  matedWhite   = d.matedWhite   || 0;
+  spawnedWhite = d.spawnedWhite || 0;
+  matedRed     = d.matedRed     || 0;
+  spawnedRed   = d.spawnedRed   || 0;
 }
 
 // Restore a complete payload (settings + spawn points + world).

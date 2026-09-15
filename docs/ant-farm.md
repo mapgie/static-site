@@ -21,8 +21,14 @@ keenly they chase and how often a bite lands. A bite kills instantly. A **hungry
 rival breaks off the hunt to look for food, so rivals must eat and can starve like
 any ant.
 
-Ants breed when a mate is nearby. **Overcrowding** — many colony-mates packed close
-— makes them a little less inclined to, so a dense clump grows more slowly.
+Ants breed only when **both** partners are *in the mood* — each has its own hidden
+happiness threshold (its "horniness", jittered per ant), so they don't all become
+ready at once — they **encounter** each other nearby, and a probability roll passes.
+The young start below that threshold, so they must mature and cheer up before they
+can breed. Both parents then rest before mating again, and **overcrowding** trims the
+odds, so a colony grows in a paced trickle rather than exploding in waves. A live
+readout over the map shows each colony's count and how many were **born** (mating)
+versus **spawned** (a queen or your Add-Ant button).
 
 ## Food
 
