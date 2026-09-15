@@ -53,7 +53,7 @@ function autoDropFood() {
   if (foods.length >= MAX_FOOD || !canvas) return;
   for (let tries = 0; tries < 8; tries++) {
     const x = Math.random() * canvas.width, y = Math.random() * canvas.height;
-    if (!collidesWall(x, y)) { addFood(x, y, pickAutoFood(), { size: 5 }); break; }
+    if (foodSpawnAllowed(x, y)) { addFood(x, y, pickAutoFood(), { size: 5 }); break; }
   }
 }
 

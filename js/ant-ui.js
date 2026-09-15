@@ -185,6 +185,7 @@ function readSettingsFromControls() {
   foodDecayRate      = +$('decay-slider').value;
   showSpawnPoints    = $('show-spawn-points').checked;
   if ($('auto-food')) autoFood = $('auto-food').checked;
+  if ($('world-building')) worldBuilding = $('world-building').checked;
   updateReadouts();
 }
 
@@ -208,6 +209,7 @@ function writeSettingsToControls() {
   $('decay-slider').value           = foodDecayRate;
   $('show-spawn-points').checked    = showSpawnPoints;
   if ($('auto-food')) $('auto-food').checked = autoFood;
+  if ($('world-building')) $('world-building').checked = worldBuilding;
   updateReadouts();
 }
 
@@ -315,6 +317,7 @@ function setupUI() {
   on('red-aggression-slider', 'input', e => { redAggressionLevel = +e.target.value; saveFarm(); });
   on('decay-slider', 'input', e => { foodDecayRate = +e.target.value; updateReadouts(); saveFarm(); });
   on('auto-food', 'change', e => { autoFood = e.target.checked; saveFarm(); });
+  on('world-building', 'change', e => { worldBuilding = e.target.checked; saveFarm(); });
 
   on('undoStructure', 'click', () => {
     if (environmentHistory.length) {

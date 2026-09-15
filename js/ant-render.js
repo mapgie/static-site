@@ -11,6 +11,9 @@ function drawEnvironment() {
     if (o.type === 'wall') {
       ctx.fillStyle = '#888';
       ctx.arc(o.x, o.y, r, 0, Math.PI * 2);
+    } else if (o.type === 'soil') {
+      ctx.fillStyle = SOIL_COLOR;
+      ctx.arc(o.x, o.y, r, 0, Math.PI * 2);
     } else {
       ctx.fillStyle = 'rgba(0,180,255,0.6)';
       ctx.arc(o.x, o.y, r + 2, 0, Math.PI * 2);

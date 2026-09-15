@@ -153,6 +153,26 @@ tracking the rival colony's own mood, she is summoned by the **main** colony's m
 — she arrives when your ants are suffering and withdraws once they recover. Sadist
 mode also switches on the extra happiness setbacks described under Happiness.
 
+## World Building (in progress)
+
+**World Building Mode** (a control card; on by default for now) unlocks a nesting
+layer on top of the classic sandbox. Foundation in place so far:
+
+- Ants dig **soil** — a slow in-situ action (a few ticks per block) that raises a
+  brown block. Soil blocks movement like a wall, but only soil-built shapes will be
+  recognised as rooms (painted walls can extend structures ad hoc). Soil can be
+  mined anywhere.
+- **Auto food never lands on soil, walls, water, or a queen** — drops stay in the
+  open.
+
+Coming next (phased): ants auto-build a **designated entry**, then a **pantry**,
+then a **nursery** and **throne room** placed as far as possible from the rival
+spawn, all linked by **tunnels**; blocking breached entries; and laying **eggs** in
+the nursery. Room caps: 1 throne room, 3 nurseries, any number of pantries.
+
+Turning the mode **off** returns the classic sandbox. Both modes are covered by the
+test suite (`npm test`).
+
 ## Controls
 
 The control panel is a column of **collapsible cards** — click a card's heading to

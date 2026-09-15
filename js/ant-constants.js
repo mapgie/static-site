@@ -33,6 +33,13 @@ const NEST_MAX_R  = 120;
 const CARRY_RETRY = 1800; // ticks before a stuck carrier picks a new drop spot
 const PROTEIN_BOOST_TICKS = 600; // ~10s of extra vigour and mating drive after eating protein
 
+// World building: in this mode ants dig soil — a slow in-situ action — into brown
+// blocks that wall off nest rooms. Soil can be mined anywhere; painted walls can
+// extend structures ad hoc but aren't recognised as rooms.
+const SOIL_COLOR = '#6b4423';
+const SOIL_R     = 5;    // radius of a placed soil block
+const DIG_TICKS  = 3;    // in-situ digging ticks to raise one soil block
+
 // Live-tunable balance numbers. Everything the Tuning panel can nudge lives here
 // so it can be changed at runtime and saved; TUNABLES (further down) drives the UI.
 const TUNE_DEFAULTS = {

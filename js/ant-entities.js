@@ -43,14 +43,47 @@ function createAnt(isRed = false, isQueen = false, x, y) {
   };
 }
 
+// Walls and (dug) soil both block movement.
 function collidesWall(x, y) {
   let hit = false;
   forEachEnvNear(x, y, 40, o => {
-    if (hit || o.type !== 'wall') return;
+    if (hit || (o.type !== 'wall' && o.type !== 'soil')) return;
     const r = (o.r || 4) + 3;
     if (dist2(o.x, o.y, x, y) < r * r) hit = true;
   });
   return hit;
+}
+
+// Where auto-food may land: not on solid terrain (wall/soil), not in water, and
+// not on top of a queen. Keeps drops out of structures and off the royals.
+function foodSpawnAllowed(x, y) {
+  let ok = true;
+  forEachEnvNear(x, y, 40, o => {
+    if (!ok) return;
+    const r = (o.r || 4) + 4;
+    if (dist2(o.x, o.y, x, y) < r * r) ok = false;   // wall, soil or water all exclude
+  });
+  if (!ok) return false;
+  for (const q of [queens.white, queens.red]) {
+    if (q && dist2(q.x, q.y, x, y) < 16 * 16) return false;
+  }
+  return true;
+}
+
+// Raise one soil block at (x,y): a brown wall the colony builds with. Refuses to
+// stack on terrain already there or to bury a spawn point's clear core.
+function digSoil(x, y) {
+  x = clamp(x, 0, canvas.width);
+  y = clamp(y, 0, canvas.height);
+  if (collidesWall(x, y)) return false;
+  for (const isRed of [false, true]) {
+    for (const s of colonySpawnPoints(isRed)) {
+      if (dist2(s.x, s.y, x, y) < nestCore(s) * nestCore(s)) return false;
+    }
+  }
+  environment.push({ x, y, type: 'soil', r: SOIL_R });
+  markEnvDirty();
+  return true;
 }
 
 function spawnNear(parent, isRed) {

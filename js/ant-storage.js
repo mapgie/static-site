@@ -11,7 +11,7 @@ function collectSettings() {
   return {
     matingSpeed, normalAntLifespan, redAntLifespan,
     allowRedBreeding, sadistMode, redAggressionLevel, penWidth, foodDecayRate,
-    normalAntSpeed, redAntSpeed, autoFood, tune: { ...TUNE }
+    normalAntSpeed, redAntSpeed, autoFood, worldBuilding, tune: { ...TUNE }
   };
 }
 
@@ -52,6 +52,7 @@ function applySettings(d) {
   penWidth           = d.penWidth || penWidth;
   foodDecayRate      = d.foodDecayRate || foodDecayRate;
   autoFood           = d.autoFood !== undefined ? !!d.autoFood : autoFood;
+  worldBuilding      = d.worldBuilding !== undefined ? !!d.worldBuilding : worldBuilding;
   normalAntSpeed     = Number.isFinite(d.normalAntSpeed) ? clamp(d.normalAntSpeed, 0.5, 2) : normalAntSpeed;
   redAntSpeed        = Number.isFinite(d.redAntSpeed)    ? clamp(d.redAntSpeed,    0.5, 2) : redAntSpeed;
 }

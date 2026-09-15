@@ -48,6 +48,8 @@ let lastX = null, lastY = null;
 let lastFoodX = null, lastFoodY = null;   // last painted sugar piece, for drop spacing
 let penWidth = 4;
 
+let worldBuilding  = true;   // World Building Mode: ants dig soil and build rooms (on by default for now)
+
 let envGrid   = new Map();
 let envDirty  = true;
 let statsTimer = 0;
