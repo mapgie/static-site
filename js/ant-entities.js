@@ -39,7 +39,8 @@ function createAnt(isRed = false, isQueen = false, x, y) {
     carryTicks: 0,
     hauling: null,      // the carcass this ant is on a team for
     haulCooldown: 0,    // ticks left ignoring carcasses after a team gave up
-    wallCooldown: 0     // ticks left peeling away from a wall before chasing again
+    wallCooldown: 0,    // ticks left peeling away from a wall before chasing again
+    digTimer: 0         // ticks spent digging the wall block it's standing on
   };
 }
 
@@ -83,6 +84,89 @@ function digSoil(x, y) {
   }
   environment.push({ x, y, type: 'soil', r: SOIL_R });
   markEnvDirty();
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Nest rooms (World Building Mode)
+// ---------------------------------------------------------------------------
+// A room is a planned circle the colony walls in with soil, leaving a doorway
+// gap. Ants dig its wall blocks over time; when every block is raised it's built.
+
+function roomCount(team, type) {
+  let n = 0;
+  for (const r of rooms) if (r.team === team && r.type === type) n++;
+  return n;
+}
+function builtRoom(team, type) {
+  for (const r of rooms) if (r.team === team && r.type === type && r.built) return r;
+  return null;
+}
+function hasBuiltRoom(team, type) { return !!builtRoom(team, type); }
+
+// The colony's primary nest, and the direction that points away from its rival —
+// where the nursery and throne want to sit.
+function nestAnchor(team) { return colonySpawnPoints(team)[0]; }
+function awayFromRival(team) {
+  const a = nestAnchor(team), enemy = nestAnchor(!team);
+  return Math.atan2(a.y - enemy.y, a.x - enemy.x);
+}
+
+// Wall-block sites evenly around a room, skipping the doorway arc at gapAngle.
+function roomWallSites(cx, cy, r, gapAngle) {
+  const n = Math.max(8, Math.round((2 * Math.PI * r) / ROOM_SITE_STEP));
+  const sites = [];
+  for (let k = 0; k < n; k++) {
+    const ang = (k / n) * Math.PI * 2;
+    const off = Math.abs(((ang - gapAngle + Math.PI) % (Math.PI * 2)) - Math.PI);
+    if (off < ROOM_GAP_ARC / 2) continue;   // leave the doorway open
+    sites.push({ x: clamp(cx + Math.cos(ang) * r, 0, canvas.width),
+                 y: clamp(cy + Math.sin(ang) * r, 0, canvas.height), done: false, tries: 0 });
+  }
+  return sites;
+}
+
+function makeRoom(team, type, cx, cy, gapAngle, manual = false) {
+  const spec = ROOM_SPECS[type];
+  return {
+    id: nextRoomId++, team, type, manual,
+    x: clamp(cx, 0, canvas.width), y: clamp(cy, 0, canvas.height), r: spec.r,
+    gapAngle, order: manual ? -1 : spec.order,   // user-nudged rooms build first
+    sites: roomWallSites(cx, cy, spec.r, gapAngle),
+    built: false
+  };
+}
+
+// Where a room of this type sits: ringed around the nest, biased by type so the
+// nursery and throne end up on the side away from the rival.
+const ROOM_PLACE_ANGLE = { throne: 0, nursery: 0.9, pantry: -0.9, entry: Math.PI };
+function placeRoom(team, type, angle) {
+  const a = nestAnchor(team);
+  const dist = a.r + ROOM_SPECS[type].r + 12;
+  const cx = a.x + Math.cos(angle) * dist, cy = a.y + Math.sin(angle) * dist;
+  return makeRoom(team, type, cx, cy, angle + Math.PI);   // doorway faces back toward the nest
+}
+
+// Auto-build planner: lay out one of each room type (once) for a colony that's
+// big enough, respecting caps. Cheap to call every tick — it no-ops once planned.
+function planNest(team) {
+  if (!worldBuilding) return;
+  const count = team ? countRedAnts() : countWhiteAnts();
+  if (count < MIN_BUILD_ANTS) return;
+  const away = awayFromRival(team);
+  for (const type of ROOM_ORDER) {
+    if (roomCount(team, type) === 0) rooms.push(placeRoom(team, type, away + (ROOM_PLACE_ANGLE[type] || 0)));
+  }
+}
+
+// A user-nudged room from the +Entrance / +Food store buttons: added at a fresh
+// angle and flagged to build next. Respects the per-type cap.
+function addRoomManual(team, type) {
+  if (roomCount(team, type) >= (ROOM_CAPS[type] ?? Infinity)) return false;
+  const spread = (roomCount(team, type) * 0.8) + (Math.random() * 0.6 - 0.3);
+  rooms.push(placeRoom(team, type, awayFromRival(team) + spread));
+  rooms[rooms.length - 1].manual = true;
+  rooms[rooms.length - 1].order = -1;
   return true;
 }
 

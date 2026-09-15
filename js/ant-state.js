@@ -9,6 +9,9 @@ let foods              = [];
 let pheromones         = [];
 let environment        = [];
 let environmentHistory = [];
+let rooms              = [];   // planned / built nest rooms (World Building Mode)
+let nextRoomId         = 1;
+let nurseryNoticeUntil = 0;    // ms timestamp until which the "needs a nursery" nudge shows
 let queens             = { white: null, red: null };
 let spawnPoints        = { yellow: [], red: [] };   // per colony; empty = canvas centre
 let showSpawnPoints    = false;  // during play; the maintenance view always shows them

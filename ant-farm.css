@@ -344,6 +344,9 @@ button#delete-structures:hover {
 #hud-stats .rival  { color: #3cb399; }
 #hud-stats b { color: #fff; font-weight: 600; }
 
+#nest-actions { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+#nest-actions button { flex: 1 1 auto; }
+
 /* Show/hide the on-canvas overlay (bars + population readout). */
 #hud-toggle {
   position: absolute;

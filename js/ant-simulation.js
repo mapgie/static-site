@@ -7,6 +7,7 @@
 function animate() {
   if (envDirty) rebuildEnvGrid();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawRooms();
   drawEnvironment();
   if (showSpawnPoints || maintenance) drawSpawnPoints(maintenance);
   drawFoods();
@@ -14,6 +15,7 @@ function animate() {
 
   if (!animationPaused) {
     if (autoFood) autoDropFood();
+    if (worldBuilding) planNest(false);   // the main colony lays out and builds its nest
     updateFoods();
     updateAnts();
     updateQueens();
@@ -25,6 +27,7 @@ function animate() {
   if (queens.white) drawAnt(queens.white);
   if (queens.red)   drawAnt(queens.red);
   for (const a of ants) drawAnt(a);
+  drawCanvasNotice();
   if (maintenance) drawMaintenanceBanner();
 
   if ((statsTimer += TICK_MS) >= 250) { statsTimer = 0; updateStats(); }
@@ -175,6 +178,24 @@ function dangerReaction(ant, danger) {
     }
   }
   return nestAtRisk ? 'swarm' : 'flee';
+}
+
+// The wall block an idle builder should work next: the nearest undug site of its
+// colony's lowest-order unbuilt room, within reach. Lowest order first, so the
+// entry goes up before the pantry, the pantry before the nursery, and so on.
+function buildTaskFor(a) {
+  if (!worldBuilding || a.isRed || a.isQueen) return null;
+  const mine = rooms.filter(r => r.team === a.isRed && !r.built).sort((x, y) => x.order - y.order);
+  for (const room of mine) {
+    let best = null, bd = BUILD_SENSE * BUILD_SENSE;
+    for (const s of room.sites) {
+      if (s.done) continue;
+      const d = dist2(s.x, s.y, a.x, a.y);
+      if (d < bd) { bd = d; best = s; }
+    }
+    if (best) return { room, site: best };
+  }
+  return null;
 }
 
 function decay(f) {
@@ -415,6 +436,9 @@ function updateAnts() {
         danger = strongestPheromone(a, 'danger', SENSE_DANGER);
         if (danger) react = dangerReaction(a, danger);
       }
+      // Well-fed idle ants pitch in on the nest; hungry ones fall through to forage.
+      let build = null;
+      if (!prey && !a.carrying && !react && a.fullness >= a.hungerPoint) build = buildTaskFor(a);
       if (!prey && a.carrying) {
         // Haul it home
         const t = dropTarget(a);
@@ -426,6 +450,17 @@ function updateAnts() {
       } else if (react === 'swarm') {
         const s = nearestSpawnPoint(a.isRed, a.x, a.y);
         steerToward(a, s.x, s.y, 0.15); chase = s;   // regroup at the nest to defend it
+      } else if (build) {
+        // Walk to the wall block and raise it after a few ticks in place.
+        steerToward(a, build.site.x, build.site.y, 0.2); chase = build.site;
+        if (dist2(build.site.x, build.site.y, a.x, a.y) < (SOIL_R + EAT_RANGE) * (SOIL_R + EAT_RANGE)) {
+          if (++a.digTimer >= DIG_TICKS) {
+            a.digTimer = 0;
+            const dug = digSoil(build.site.x, build.site.y);
+            if (dug || collidesWall(build.site.x, build.site.y) || ++build.site.tries > 5) build.site.done = true;
+            if (build.room.sites.every(s => s.done)) build.room.built = true;
+          }
+        } else a.digTimer = 0;
       } else if (!prey) {
         // Ants forage by smell, not sight. Food only pulls when it's very close
         // (as if it carried a faint scent of its own); at that range it trumps a
@@ -551,6 +586,14 @@ function tryBreeding(a) {
   if (a.isRed) {
     if (!allowRedBreeding || countRedAnts() >= MAX_RED_ANTS) return;
   } else if (countWhiteAnts() >= MAX_WHITE_ANTS) return;
+
+  // Once a colony is past a certain size, growth needs somewhere to raise the
+  // young: no built nursery, no more births (World Building Mode only). A brief
+  // on-canvas nudge tells the player why the colony has stopped growing.
+  if (worldBuilding && !a.isRed && countWhiteAnts() >= TUNE.NURSERY_REQUIRED_ABOVE && !hasBuiltRoom(false, 'nursery')) {
+    nurseryNoticeUntil = Date.now() + ROOM_MSG_MS;
+    return;
+  }
 
   if (a.happiness < a.mateUrge) return;   // not in the mood — must clear its own horniness threshold
 

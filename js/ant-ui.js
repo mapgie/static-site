@@ -74,6 +74,7 @@ const TUNABLES = [
     ['CROWD_MATE_FLOOR', 'Crowd floor', 0, 1, 0.05],
     ['POP_CAPACITY', 'Ideal colony size', 10, 500, 5],
     ['QUEEN_MIN_ANTS', 'Queen needs ≥ ants', 1, 100, 1],
+    ['NURSERY_REQUIRED_ABOVE', 'Nursery needed > ants', 1, 200, 1],
     ['QUEEN_HIGH', 'Queen arrives ≥', 50, 100, 1],
     ['QUEEN_LOW', 'Queen leaves <', 0, 60, 1],
     ['SADIST_SPAWN', 'Sadist queen <', 0, 60, 1],
@@ -292,6 +293,7 @@ function setupUI() {
 
   on('destroy-world', 'click', () => {
     ants = []; foods = []; pheromones = []; environment = []; environmentHistory = [];
+    rooms = []; nextRoomId = 1; nurseryNoticeUntil = 0;
     queens.white = queens.red = null;
     spawnPoints = { yellow: [], red: [] };
     whiteHappiness = redHappiness = 50; whiteCalmMs = 0;
@@ -345,6 +347,11 @@ function setupUI() {
   on('decay-slider', 'input', e => { foodDecayRate = +e.target.value; updateReadouts(); saveFarm(); });
   on('auto-food', 'change', e => { autoFood = e.target.checked; saveFarm(); });
   on('world-building', 'change', e => { worldBuilding = e.target.checked; saveFarm(); });
+
+  // Nudge the auto-builder: queue an extra entrance or food store for the ants
+  // to dig. Respects room caps (an entry/pantry is uncapped).
+  on('add-entry',  'click', () => { if (addRoomManual(false, 'entry'))  saveFarm(); });
+  on('add-pantry', 'click', () => { if (addRoomManual(false, 'pantry')) saveFarm(); });
 
   on('undoStructure', 'click', () => {
     if (environmentHistory.length) {

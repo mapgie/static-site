@@ -56,6 +56,24 @@ const SOIL_COLOR = '#6b4423';
 const SOIL_R     = 5;    // radius of a placed soil block
 const DIG_TICKS  = 3;    // in-situ digging ticks to raise one soil block
 
+// Nest rooms. The colony auto-builds a walled complex: it plans room sites, then
+// idle ants dig the soil walls block by block, leaving a doorway gap facing the
+// nest. Build order is entry → pantry → nursery → throne; the nursery and throne
+// are placed as far from the rival spawn as the layout allows.
+const ROOM_ORDER = ['entry', 'pantry', 'nursery', 'throne'];
+const ROOM_SPECS = {
+  entry:   { r: 24, order: 0, label: 'Entry',   color: '#c9a227' },
+  pantry:  { r: 34, order: 1, label: 'Pantry',  color: '#7ea63c' },
+  nursery: { r: 40, order: 2, label: 'Nursery', color: '#c86fb0' },
+  throne:  { r: 30, order: 3, label: 'Throne',  color: '#c98a27' },
+};
+const ROOM_CAPS      = { entry: Infinity, pantry: Infinity, nursery: 3, throne: 1 };
+const ROOM_GAP_ARC   = 0.7;   // radians of doorway left open in each room's wall
+const ROOM_SITE_STEP = SOIL_R * 1.7;  // spacing of wall blocks around the room
+const MIN_BUILD_ANTS = 6;     // the colony only starts building once it's this many strong
+const BUILD_SENSE    = 220;   // how far an idle ant will walk to work an unbuilt room
+const ROOM_MSG_MS    = 4000;  // how long the "needs a nursery" nudge shows
+
 // Live-tunable balance numbers. Everything the Tuning panel can nudge lives here
 // so it can be changed at runtime and saved; TUNABLES (further down) drives the UI.
 const TUNE_DEFAULTS = {
@@ -104,6 +122,7 @@ const TUNE_DEFAULTS = {
   CROWD_MATE_STEP: 0.05, // each nearby colony-mate trims that chance by this
   CROWD_MATE_FLOOR: 0.35,// ...but never below this fraction of it (denser = fewer births)
   QUEEN_MIN_ANTS: 12,    // ...but only once the colony is at least this many strong
+  NURSERY_REQUIRED_ABOVE: 10,  // past this many ants, a colony must have a built nursery to keep breeding
   QUEEN_HIGH: 75,        // a colony's bar at/above this (sustained) summons its queen
   QUEEN_LOW: 40,         // ...and she leaves below this
   SADIST_SPAWN: 25,      // Sadist: rival queen arrives when main mood is below this

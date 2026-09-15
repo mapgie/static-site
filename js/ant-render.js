@@ -22,6 +22,64 @@ function drawEnvironment() {
   }
 }
 
+// Planned / built nest rooms: a tinted disc with a labelled ring. A planned room
+// is dashed and faint; once its walls are up it reads solid. The soil walls
+// themselves are drawn by drawEnvironment.
+function drawRooms() {
+  if (!worldBuilding || !rooms.length) return;
+  ctx.save();
+  for (const room of rooms) {
+    const spec = ROOM_SPECS[room.type];
+    const col = (spec && spec.color) || '#c9a227';
+    ctx.beginPath();
+    ctx.arc(room.x, room.y, room.r, 0, Math.PI * 2);
+    ctx.fillStyle = hexToRgba(col, room.built ? 0.16 : 0.07);
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash(room.built ? [] : [4, 4]);
+    ctx.strokeStyle = hexToRgba(col, room.built ? 0.9 : 0.5);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = hexToRgba(col, room.built ? 1 : 0.7);
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText((spec && spec.label) || room.type, room.x, room.y + 4);
+  }
+  ctx.restore();
+}
+
+function hexToRgba(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
+// A transient nudge over the map (e.g. "the colony needs a nursery to grow").
+function drawCanvasNotice() {
+  if (Date.now() >= nurseryNoticeUntil) return;
+  const msg = 'The colony needs a built nursery to keep growing';
+  ctx.save();
+  ctx.font = '13px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  const w = ctx.measureText(msg).width + 24;
+  const cx = canvas.width / 2, y = 16;
+  ctx.fillStyle = 'rgba(20,20,20,0.8)';
+  ctx.strokeStyle = 'rgba(200,111,176,0.9)';
+  roundRect(cx - w / 2, y, w, 26, 6); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#f2d6ea';
+  ctx.fillText(msg, cx, y + 17);
+  ctx.restore();
+}
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
 function getFoodColor(type) {
   switch (type) {
     case 'protein': return '#ef9a9a';

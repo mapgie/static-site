@@ -189,22 +189,36 @@ mode also switches on the extra happiness setbacks described under Happiness.
 ## World Building (in progress)
 
 **World Building Mode** (a control card; on by default for now) unlocks a nesting
-layer on top of the classic sandbox. Foundation in place so far:
+layer on top of the classic sandbox.
 
-- Ants dig **soil** — a slow in-situ action (a few ticks per block) that raises a
-  brown block. Soil blocks movement like a wall, but only soil-built shapes will be
-  recognised as rooms (painted walls can extend structures ad hoc). Soil can be
-  mined anywhere.
-- **Auto food never lands on soil, walls, water, or a queen** — drops stay in the
-  open.
+**Digging.** Ants raise **soil** — a slow in-situ action (a few ticks per block)
+that turns a spot into a brown block. Soil blocks movement like a wall, but only
+soil the colony builds is recognised as a room wall (painted walls can extend
+structures ad hoc). Soil can be mined anywhere. **Auto food never lands on soil,
+walls, water, or a queen.**
 
-Coming next (phased): ants auto-build a **designated entry**, then a **pantry**,
-then a **nursery** and **throne room** placed as far as possible from the rival
-spawn, all linked by **tunnels**; blocking breached entries; and laying **eggs** in
-the nursery. Room caps: 1 throne room, 3 nurseries, any number of pantries.
+**Auto-built nest.** Once the colony is a handful of ants strong, it lays out a
+walled nest and its well-fed idle workers dig the walls block by block, leaving a
+doorway gap facing inward. Rooms go up in order — **entry → pantry → nursery →
+throne** — and the **nursery and throne are placed on the side away from the rival
+spawn**. Each room shows on the map as a labelled disc: dashed while it's still
+being dug, solid once its walls are up. Room caps: **1 throne, 3 nurseries, any
+number of pantries**. Hungry ants keep foraging while the rest build.
 
-Turning the mode **off** returns the classic sandbox. Both modes are covered by the
-test suite (`npm test`).
+**Nursery-gated growth.** Past a threshold (default **10** ants, tunable under
+*Nursery needed > ants*), a colony **can't breed without a built nursery** — a brief
+on-canvas nudge says so when growth stalls. Below the threshold it breeds as usual.
+
+**Nudging the build.** The World Building card has **+ Entrance** and **+ Food
+store** buttons: each queues another room of that type for the ants to dig next
+(respecting the caps).
+
+Coming next (phased): explicit **tunnels** linking the rooms; ants walling off a
+**breached entry** under attack; and laying **eggs** in a finished nursery that
+hatch on a timer.
+
+Turning the mode **off** returns the classic sandbox (no rooms, no nursery gate).
+Both modes are covered by the test suite (`npm test`).
 
 ## Controls
 
