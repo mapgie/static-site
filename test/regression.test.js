@@ -121,9 +121,9 @@ test('danger response: flee by default, swarm only when a strong, steady colony\
   const near = { x: 520, y: 310 };         // danger laid at the nest
   const far  = { x: 900, y: 550 };         // danger out in the field
 
-  // Strong (>=8), steady (mood high) colony.
+  // Strong (>= queen threshold), steady (mood high) colony.
   g.ants = [];
-  for (let i = 0; i < 8; i++) { const a = g.createAnt(false, false, 500, 300); a.happiness = 70; g.ants.push(a); }
+  for (let i = 0; i < g.TUNE.QUEEN_MIN_ANTS; i++) { const a = g.createAnt(false, false, 500, 300); a.happiness = 70; g.ants.push(a); }
   assert.strictEqual(g.dangerReaction(g.ants[0], near), 'swarm', 'threatened nest, strong colony -> rally');
   assert.strictEqual(g.dangerReaction(g.ants[0], far), 'flee', 'danger far from the nest -> flee');
 
@@ -178,12 +178,25 @@ test('a colony eats only its OWN delivered stockpile', () => {
   const g = freshApi();
   const a = g.createAnt(false, false, 500, 300); a.fullness = 0; a.hungerPoint = 50;  // hungry
   g.ants = [a];
-  const enemy = g.makeFood(510, 300, 'sugar'); enemy.delivered = true; enemy.team = true;  enemy.foundBy = null;
+  const enemy = g.makeFood(700, 300, 'sugar'); enemy.delivered = true; enemy.team = true;  enemy.foundBy = null;
   g.foods = [enemy];
-  assert.strictEqual(g.nearestFood(a), null, 'a rival store is not food to the main colony');
+  assert.strictEqual(g.nearestFood(a), null, 'a rival store across the map is not food to the main colony');
   const own = g.makeFood(510, 300, 'sugar'); own.delivered = true; own.team = false; own.foundBy = null;
   g.foods = [enemy, own];
   assert.strictEqual(g.nearestFood(a), own, 'the colony\'s own store is fair game');
+});
+
+test('a rival raids an enemy stockpile only from inside the pantry, not at range', () => {
+  const g = freshApi();
+  const r = g.createAnt(true, false, 500, 300); r.fullness = 0; r.hungerPoint = 50;  // a hungry rival
+  g.ants = [r];
+  // The main colony's store, far from the rival: not a target (no homing through walls / at range).
+  const store = g.makeFood(700, 300, 'sugar'); store.delivered = true; store.team = false; store.foundBy = null;
+  g.foods = [store];
+  assert.strictEqual(g.nearestFood(r), null, 'a distant enemy store is invisible to the raider');
+  // Once the rival is standing in the pantry (on the food), it can eat/steal it.
+  r.x = 705; r.y = 300;
+  assert.strictEqual(g.nearestFood(r), store, 'inside the pantry, the enemy store is fair plunder');
 });
 
 // The food-placement rule and mating apply in BOTH modes.

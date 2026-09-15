@@ -113,9 +113,14 @@ function nearestFood(ant) {
   let best = null, bd = SENSE_FOOD * SENSE_FOOD;
   const hungry = ant.fullness < ant.hungerPoint;
   for (const f of foods) {
-    if (f.delivered && f.team !== ant.isRed) continue;   // a colony eats only its OWN stockpile
-    if (f.delivered && foundByAnt(f, ant)) continue;
-    if (f.delivered && !hungry) continue;   // well-fed ants forage but leave the store for later
+    if (f.delivered) {
+      if (f.team === ant.isRed) {
+        if (foundByAnt(f, ant)) continue;   // its own store, but not a piece it hauled in
+      } else if (dist2(f.x, f.y, ant.x, ant.y) > RAID_RANGE * RAID_RANGE) {
+        continue;   // a rival raids an enemy store only from inside the pantry, never at range
+      }
+      if (!hungry) continue;   // well-fed ants forage but leave the store (own or raided) for later
+    }
     if (f.type === 'insect' && !f.delivered) {
       if (ant.haulCooldown > 0) continue;                       // just gave up on one
       if (f.haulers.length && f.team !== ant.isRed) continue;   // one colour per team
@@ -160,7 +165,7 @@ function dangerReaction(ant, danger) {
   if (ant.isRed || ant.isQueen) return 'flee';
   let whites = 0;
   for (const o of ants) if (!o.isRed) whites++;
-  const strong = whites >= SWARM_MIN_COLONY && ant.happiness >= SWARM_MIN_MOOD;
+  const strong = whites >= TUNE.QUEEN_MIN_ANTS && ant.happiness >= SWARM_MIN_MOOD;
   if (!strong) return 'flee';
   const r2 = NEST_DEFEND_R * NEST_DEFEND_R;
   let nestAtRisk = queens.white && dist2(queens.white.x, queens.white.y, danger.x, danger.y) < r2;

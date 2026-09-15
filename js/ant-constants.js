@@ -25,11 +25,17 @@ const SENSE_DANGER = 90;  // how far a 'danger' pheromone (a mate killed nearby)
 
 // Danger response. A main-colony ant that senses danger flees, unless its nest
 // or queen is under threat and the colony is strong and steady enough to rally
-// home and stand its ground (swarm). Swarm-into-combat and barricading are the
-// next phase; for now swarm means "regroup at the nest to defend it".
-const SWARM_MIN_COLONY = 8;   // fewer than this and even a threatened nest just scatters
-const SWARM_MIN_MOOD   = 55;  // a rattled ant (low happiness) flees rather than rallies
-const NEST_DEFEND_R    = 120; // danger within this of a spawn point / queen counts as the nest being at risk
+// home and stand its ground (swarm). "Strong enough" tracks the queen threshold
+// (TUNE.QUEEN_MIN_ANTS) — a colony big enough to have crowned a queen is big
+// enough to make a stand. Swarm-into-combat and barricading are the next phase;
+// for now swarm means "regroup at the nest to defend it".
+const SWARM_MIN_MOOD = 55;    // a rattled ant (low happiness) flees rather than rallies
+const NEST_DEFEND_R  = 120;   // danger within this of a spawn point / queen counts as the nest being at risk
+
+// A rival can plunder the main colony's stockpile, but only once it is physically
+// in the pantry — right on top of the food. It never homes in on an enemy store
+// from across the map or through walls; it has to breach and be standing there.
+const RAID_RANGE = 18;
 const EAT_RANGE   = 8;
 const BITE_RANGE  = 8;
 const MATE_RANGE  = 30;

@@ -34,9 +34,11 @@ versus **spawned** (a queen or your Add-Ant button).
 
 Drop food by clicking the canvas, or paint it with the **Food** environment tool.
 Ants carry loose food back to the nest, where it becomes part of that colony's
-**store**. Once delivered, only *another ant of the same colony* may eat it — a
-colony never feeds on its rival's stockpile, so one colony's reserves never prop up
-the other's mood.
+**store**. Once delivered, an ant normally eats only from its *own* colony's
+stockpile, so one colony's reserves don't prop up the other's mood. The exception is
+a **raid**: a rival that gets physically *inside* the enemy pantry — standing right
+on the stored food — can eat it. Ants never home in on an enemy store from across
+the map or reach it through walls; a raider has to breach and be there.
 
 | Food | Colour | Drops (trips to haul) | Feeds | Effect on the eater |
 |---|---|---|---|---|
@@ -97,8 +99,9 @@ threatened:
 
 - **Flee** (the default) — turn and run from the scent, with a jolt of speed.
 - **Swarm** — if the danger is laid at the colony's own **nest or queen**, *and* the
-  colony is large and steady enough (enough ants, decent morale), the ants instead
-  **rally home** to defend it rather than scattering.
+  colony is large enough to have crowned a queen (the same `QUEEN_MIN_ANTS`
+  threshold) with decent morale, the ants instead **rally home** to defend it rather
+  than scattering.
 
 Standing and fighting off an attacker, and walling off a breached entry, are the next
 phase (they wait on ant-vs-ant combat and the World Building construction work); for
@@ -207,6 +210,10 @@ test suite (`npm test`).
 
 The control panel is a column of **collapsible cards** — click a card's heading to
 fold it away; each card remembers whether you left it open.
+
+An **eye toggle** in the top-right corner of the map folds the on-canvas overlay
+(the happiness bars and the population readout) away for a clean view, and back;
+your choice is remembered.
 
 - **Ant Controls** — add ants, open the spawn-point maintenance view, and set mating
   conditions, lifespan, and speed for the main colony.

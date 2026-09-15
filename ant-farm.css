@@ -344,6 +344,32 @@ button#delete-structures:hover {
 #hud-stats .rival  { color: #3cb399; }
 #hud-stats b { color: #fff; font-weight: 600; }
 
+/* Show/hide the on-canvas overlay (bars + population readout). */
+#hud-toggle {
+  position: absolute;
+  top: calc(var(--canvas-pad) + 10px);
+  right: calc(var(--canvas-pad) + 10px);
+  z-index: 11;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid #555;
+  border-radius: 6px;
+  background: rgba(20, 20, 20, 0.55);
+  color: #cfcfcf;
+  cursor: pointer;
+}
+#hud-toggle:hover { background: rgba(40, 40, 40, 0.8); color: #fff; }
+#hud-toggle .eye-shut { display: none; }
+.canvas-container.hud-hidden #hud-toggle .eye-open { display: none; }
+.canvas-container.hud-hidden #hud-toggle .eye-shut { display: inline; }
+.canvas-container.hud-hidden #hud-stats,
+.canvas-container.hud-hidden #happiness-bar-container,
+.canvas-container.hud-hidden #antagonist-bar-container { display: none; }
+
 /* --- Mode Selector (Tools & Foods) --- */
 .mode-selector {
   display: flex;

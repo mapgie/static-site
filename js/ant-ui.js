@@ -151,6 +151,22 @@ function setControlsHidden(hidden) {
   resizeCanvas();
 }
 
+// Show or hide the on-canvas overlay (happiness bars + population readout), and
+// keep the eye toggle's glyph, label and state in step. Remembered per browser.
+const HUD_HIDE_KEY = 'antFarmHudHidden';
+function setHudHidden(hidden) {
+  const wrap = document.querySelector('.canvas-container');
+  if (wrap) wrap.classList.toggle('hud-hidden', hidden);
+  const btn = $('hud-toggle');
+  if (btn) {
+    btn.setAttribute('aria-pressed', String(hidden));
+    const label = hidden ? 'Show stats' : 'Hide stats';
+    btn.title = label;
+    btn.setAttribute('aria-label', label + ' overlay');
+  }
+  try { localStorage.setItem(HUD_HIDE_KEY, hidden ? '1' : '0'); } catch (e) { /* private mode */ }
+}
+
 function resizeCanvas() {
   const container = canvas.parentElement;
   const cs = getComputedStyle(container);
@@ -290,6 +306,16 @@ function setupUI() {
     setControlsHidden(!document.querySelector('main').classList.contains('controls-hidden'));
   });
   on('controls-backdrop', 'click', () => setControlsHidden(true));
+
+  // Eye toggle: fold the on-canvas overlay away for a clean map. Restore the
+  // last choice on load (defaults to shown).
+  on('hud-toggle', 'click', () => {
+    const hidden = document.querySelector('.canvas-container').classList.contains('hud-hidden');
+    setHudHidden(!hidden);
+  });
+  let hudHidden = false;
+  try { hudHidden = localStorage.getItem(HUD_HIDE_KEY) === '1'; } catch (e) { /* private mode */ }
+  setHudHidden(hudHidden);
 
   // Mobile quick bar: the main buttons stay visible beside the map; Menu opens
   // the full controls drawer. Add/Rival reuse the real handlers.
