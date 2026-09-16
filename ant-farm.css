@@ -512,41 +512,11 @@ main.spawn-mode #antagonist-bar-container,
 main.spawn-mode #hud-stats { display: none; }
 
 /* --- On-canvas spawn editing (works with the side menu closed) --- */
-.canvas-overlay-btn {
-  position: absolute;
-  top: calc(var(--canvas-pad) + 10px);
-  right: calc(var(--canvas-pad) + 10px);
-  z-index: 12;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.4rem;
-  height: 2.4rem;
-  padding: 0;
-  border: 1px solid #555;
-  border-radius: 8px;
-  background: rgba(20,20,20,0.72);
-  color: #ddd;
-  font-size: 1.15rem;
-  line-height: 1;
-  cursor: pointer;
-}
-.canvas-overlay-btn:hover {
-  background: rgba(0,180,216,0.28);
-  border-color: #00b4d8;
-  color: #fff;
-}
-.canvas-overlay-btn[aria-pressed="true"] {
-  background: #00b4d8;
-  border-color: #00b4d8;
-  color: #fff;
-}
-
 #spawn-quickbar {
   position: absolute;
   top: calc(var(--canvas-pad) + 10px);
   left: calc(var(--canvas-pad) + 10px);
-  right: calc(var(--canvas-pad) + 3.6rem);   /* clear of the corner toggle */
+  right: calc(var(--canvas-pad) + 10px);
   z-index: 12;
   display: flex;
   flex-wrap: wrap;

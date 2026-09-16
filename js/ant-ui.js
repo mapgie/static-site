@@ -267,9 +267,7 @@ function setupUI() {
   on('spawn-size-slider', 'change', () => saveFarm());
   on('show-spawn-points', 'change', e => { showSpawnPoints = e.target.checked; saveFarm(); });
 
-  // On-canvas spawn editing: the corner toggle enters/leaves the maintenance
-  // view, and the floating strip drives it without the side menu open.
-  on('spawn-edit-toggle', 'click', () => { maintenance ? exitMaintenance() : enterMaintenance(); });
+  // The floating strip drives the maintenance view without the side menu open.
   on('sq-add-yellow',     'click', () => addPointFromPanel(false));
   on('sq-add-red',        'click', () => addPointFromPanel(true));
   on('sq-randomise',      'click', randomiseSpawnPoints);
@@ -411,13 +409,6 @@ function handleDraw(e) {
 // ---------------------------------------------------------------------------
 function setMaintenanceChrome(active) {
   const qb = $('spawn-quickbar'); if (qb) qb.hidden = !active;
-  const tg = $('spawn-edit-toggle');
-  if (tg) {
-    tg.setAttribute('aria-pressed', String(active));
-    const label = active ? 'Done editing spawn points' : 'Edit spawn points';
-    tg.title = label;
-    tg.setAttribute('aria-label', label);
-  }
 }
 
 function enterMaintenance() {
