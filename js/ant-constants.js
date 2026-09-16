@@ -66,7 +66,7 @@ const TUNE_DEFAULTS = {
   // New-ant seed
   HAPPINESS_START: 50,
   HAPPINESS_JITTER: 12,
-  FULLNESS_START: 60,
+  FULLNESS_START: 75,
   FULLNESS_JITTER: 15,
   TEMPERAMENT_SPREAD: 0.3,   // width of the hidden per-ant temperament band
   // Colony scale: the bar is average mood scaled by size — a lone ant tops out
@@ -111,7 +111,7 @@ const QUEEN_SUSTAIN_MS = 8000;
 // often, protein seldom, a dead insect a rare treat. AUTO_FOOD_MS is the base
 // gap between drops (jittered 0.6–1.4×), so a drop lands roughly every 7–17s —
 // an occasional ambient drip, not a downpour.
-const AUTO_FOOD_WEIGHTS = { sugar: 60, fruit: 25, protein: 12, insect: 3 };
+const AUTO_FOOD_WEIGHTS = { sugar: 73, fruit: 12, protein: 12, insect: 3 };
 const AUTO_FOOD_MS = 12000;
 
 // Per food type. FOOD_UNITS is how many separate trips a dropped piece takes to

@@ -505,6 +505,55 @@ main.spawn-mode #antCanvas.grabbing {
   cursor: grabbing;
 }
 
+/* Keep the edit view uncluttered: the mood bars and population HUD step aside
+   while spawn points are being arranged. */
+main.spawn-mode #happiness-bar-container,
+main.spawn-mode #antagonist-bar-container,
+main.spawn-mode #hud-stats { display: none; }
+
+/* --- On-canvas spawn editing (works with the side menu closed) --- */
+#spawn-quickbar {
+  position: absolute;
+  top: calc(var(--canvas-pad) + 10px);
+  left: calc(var(--canvas-pad) + 10px);
+  right: calc(var(--canvas-pad) + 10px);
+  z-index: 12;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.5rem;
+  background: rgba(18,18,18,0.86);
+  border: 1px solid #00b4d8;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+}
+#spawn-quickbar[hidden] { display: none; }
+#spawn-quickbar button {
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  border: none;
+  border-radius: 5px;
+  background: #333;
+  color: #eee;
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+#spawn-quickbar button:hover:not(:disabled) { background: #00b4d8; color: #fff; }
+#spawn-quickbar button:disabled { opacity: 0.4; cursor: not-allowed; }
+#spawn-quickbar #sq-done { background: #00b4d8; color: #fff; }
+#spawn-quickbar #sq-smaller,
+#spawn-quickbar #sq-bigger { min-width: 1.9rem; font-weight: bold; font-size: 0.95rem; }
+#spawn-quickbar .sq-selected {
+  min-width: 3.2rem;
+  padding: 0 0.2rem;
+  color: #bbb;
+  font-size: 0.72rem;
+  text-align: center;
+}
+
 /* --- Food info toggle (spoilers hidden by default) --- */
 .label-row {
   display: flex;
