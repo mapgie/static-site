@@ -79,10 +79,11 @@
       <div class="controls-section">
         <h2>World Building</h2>
         <label title="Ants dig soil into brown walls and build nest rooms."><input type="checkbox" id="world-building" checked> World Building Mode</label>
-        <p class="hint">On: the colony auto-builds rooms (entry, pantry, nursery, throne) out of dug soil. Past ~10 ants a built nursery is needed to keep growing. Off: the classic sandbox.</p>
+        <p class="hint">On: the colony auto-builds a sealed nest (entry, pantry, nursery, throne) linked by corridors through empty connector rooms; ants come and go only through the entry. Past ~10 ants a built nursery is needed to keep growing. Off: the classic sandbox.</p>
         <div id="nest-actions">
-          <button id="add-entry" type="button" title="Queue another designated entry for the ants to dig">+ Entrance</button>
-          <button id="add-pantry" type="button" title="Queue another food store for the ants to dig">+ Food store</button>
+          <button id="add-entry" type="button" title="Place another entrance (connects to an empty room)">+ Entrance</button>
+          <button id="add-pantry" type="button" title="Place another food store (connects to a pantry or empty room)">+ Food store</button>
+          <button id="add-empty" type="button" title="Place an empty room — a connector node to route new pathways">+ Empty room</button>
         </div>
       </div>
       <div class="controls-section danger-zone">

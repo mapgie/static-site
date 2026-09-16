@@ -75,7 +75,10 @@ function drawRooms() {
   // A room the player is dragging into place: dashed ghost, red if it overlaps.
   if (placingRoom) {
     const spec = ROOM_SPECS[placingRoom.type];
-    const bad = placementBlocked(false, placingRoom.x, placingRoom.y, spec.r);
+    const overlaps = placementBlocked(false, placingRoom.x, placingRoom.y, spec.r);
+    const orphan = rooms.some(r => r.team === false) &&
+                   !nearestConnectable(false, placingRoom.type, placingRoom.x, placingRoom.y);
+    const bad = overlaps || orphan;
     ctx.beginPath();
     ctx.arc(placingRoom.x, placingRoom.y, spec.r, 0, Math.PI * 2);
     ctx.fillStyle = bad ? 'rgba(255,60,40,0.12)' : hexToRgba(spec.color, 0.12);
@@ -88,7 +91,7 @@ function drawRooms() {
     ctx.fillStyle = bad ? 'rgba(255,120,110,1)' : hexToRgba(spec.color, 1);
     ctx.font = '11px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(bad ? 'overlaps' : spec.label, placingRoom.x, placingRoom.y + 4);
+    ctx.fillText(overlaps ? 'overlaps' : orphan ? 'no link' : spec.label, placingRoom.x, placingRoom.y + 4);
   }
   ctx.restore();
 }

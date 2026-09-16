@@ -193,7 +193,6 @@ function nearestUndug(a, sites) {
   let best = null, bd = BUILD_SENSE * BUILD_SENSE;
   for (const s of sites) {
     if (s.done) continue;
-    if (spotOccupied(s.x, s.y)) continue;   // skip a block an ant is standing on; come back when it clears
     const d = dist2(s.x, s.y, a.x, a.y);
     if (d < bd) { bd = d; best = s; }
   }
@@ -517,29 +516,24 @@ function updateAnts() {
         const s = nearestSpawnPoint(a.isRed, a.x, a.y);
         steerToward(a, s.x, s.y, 0.15); chase = s;   // regroup at the nest to defend it
       } else if (build) {
-        // Head for the block's open-side approach point; once the ant is anywhere
-        // at the room it settles and raises the nearest undug block — so even a
-        // site it can't stand exactly on (walled in by its neighbours) still gets
-        // built, and the room can't stall a couple of blocks short.
-        const s = build.site, ax = s.ax ?? s.x, ay = s.ay ?? s.y;
-        steerToward(a, ax, ay, 0.2); chase = { x: ax, y: ay };
-        if (dist2(ax, ay, a.x, a.y) < 34 * 34) {   // near the block's open-side approach
-          holdStill = true;   // stay by the block instead of drifting off...
+        // Walk the wall's line: head onto the next undug block, pause to work it,
+        // and lay the soil right where the ant stands — the ant is then nudged off
+        // it, so the wall forms behind the ant as it moves along, block by block.
+        const s = build.site;
+        steerToward(a, s.x, s.y, 0.2); chase = { x: s.x, y: s.y };
+        if (dist2(s.x, s.y, a.x, a.y) < DIG_REACH * DIG_REACH) {
+          holdStill = true;                      // stand on the spot while it digs...
           a.buildStuck = 0;
-          // ...but sit right at it and jiggle a touch, so it reads as working.
-          a.x = clamp(ax + (Math.random() - 0.5) * 2.4, 0, canvas.width);
-          a.y = clamp(ay + (Math.random() - 0.5) * 2.4, 0, canvas.height);
-          a.angle = Math.atan2(s.y - a.y, s.x - a.x);   // face the block it's raising
+          a.angle += (Math.random() - 0.5) * 0.6;  // ...with a little wiggle so it reads as working
           if (++a.digTimer >= BUILD_TICKS) {
             a.digTimer = 0;
-            const dug = digSoil(s.x, s.y, true);   // room soil: rendered as a smooth wall
-            if (dug || collidesWall(s.x, s.y)) s.done = true;
-            else if (!spotOccupied(s.x, s.y) && ++s.tries > 4) s.done = true;   // give up only if it's truly unreachable, not just an ant in the way
+            const dug = digSoil(s.x, s.y, true);   // lays soil at its feet; the shove bumps it onward
+            if (dug || collidesWall(s.x, s.y) || ++s.tries > 4) s.done = true;
             refreshBuilt(build.room);
           }
         } else {
-          // Can't get to this block for a while (walled off / unreachable): give up
-          // on it so the room can't deadlock the rest of the nest.
+          // Can't reach this block for a while (walled off): give up on it so the
+          // room can't deadlock (the force-complete backstop also covers this).
           a.digTimer = 0;
           if ((a.buildStuck = (a.buildStuck || 0) + 1) > 130) { s.done = true; refreshBuilt(build.room); a.buildStuck = 0; }
         }

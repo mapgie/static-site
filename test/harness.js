@@ -35,10 +35,11 @@ const FUNCS = [
   'planNest', 'addRoomManual', 'roomCount', 'hasBuiltRoom', 'builtRoom',
   'buildTaskFor', 'countWhiteAnts', 'countRedAnts', 'refreshBuilt',
   'barricadeRoom', 'layEgg', 'updateEggs', 'updateThreats',
-  'placementBlocked', 'canAddRoom', 'buildRoomAt', 'findRoomSpot',
+  'placementBlocked', 'canAddRoom', 'buildRoomAt', 'growNest', 'connectRooms',
+  'canConnect', 'addGap', 'nearestConnectable',
   'roomRadius', 'stealFood', 'maybeSadistPoison', 'decay', 'dropTarget', 'dropOff',
-  'updateFoods', 'inAnyRoom', 'burrowHole', 'linkNurseryThrone', 'gapArcFor',
-  'doorwayPoint', 'channelWalls', 'corridorWalls', 'collidesWall', 'updateQueens'
+  'updateFoods', 'inAnyRoom', 'burrowHole', 'gapArcFor',
+  'doorwayPoint', 'corridorWalls', 'collidesWall', 'updateQueens'
 ];
 
 function freshApi() {

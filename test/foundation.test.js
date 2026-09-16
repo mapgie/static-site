@@ -79,10 +79,11 @@ test('planNest lays out one of each room only when the colony is big enough and 
 
   colony(g, 6);
   g.planNest(false);
-  const types = g.rooms.map(r => r.type).sort().join(',');
-  assert.strictEqual(types, 'entry,nursery,pantry,throne');
+  const kinds = new Set(g.rooms.map(r => r.type));
+  for (const t of ['entry', 'pantry', 'nursery', 'throne', 'empty']) assert.ok(kinds.has(t), `nest has a ${t}`);
+  const n = g.rooms.length;
   g.planNest(false);
-  assert.strictEqual(g.rooms.length, 4, 'planning again adds nothing');
+  assert.strictEqual(g.rooms.length, n, 'planning again adds nothing');
 
   const g2 = colony(freshApi(), 20);
   g2.worldBuilding = false;
@@ -146,9 +147,7 @@ test('ringed rooms are placed fully on-canvas even from an edge nest', () => {
   g.spawnPoints = { yellow: [{ x: 70, y: 70, r: 40 }], red: [{ x: 800, y: 300, r: 40 }] };
   g.ants = []; for (let i = 0; i < 8; i++) g.ants.push(g.createAnt(false, false, 70, 70));
   g.planNest(false);
-  // The nursery is pinned to the spawn point by design; the ringed rooms must fit.
   for (const room of g.rooms) {
-    if (room.type === 'nursery') continue;
     assert.ok(room.x - room.r >= 0 && room.x + room.r <= g.canvas.width,  `${room.type} within width`);
     assert.ok(room.y - room.r >= 0 && room.y + room.r <= g.canvas.height, `${room.type} within height`);
   }
@@ -162,10 +161,9 @@ test('the nursery is the deepest room (farthest from the rival) and links to the
   const red = { x: 850, y: 300 };
   const d = t => { const r = g.rooms.find(x => x.type === t); return Math.hypot(r.x - red.x, r.y - red.y); };
   assert.ok(d('nursery') > d('entry') && d('nursery') > d('pantry'), 'nursery is farthest from the rival');
-  // The nursery and throne each carry a second doorway toward the other (the link).
+  // The nursery connects directly to the throne (a doorway + corridor between them).
   const nursery = g.rooms.find(r => r.type === 'nursery'), throne = g.rooms.find(r => r.type === 'throne');
-  assert.ok(nursery.gaps.length === 2 && throne.gaps.length === 2, 'nursery and throne are linked by a second doorway');
-  assert.ok(nursery.linked && throne.linked, 'the link is recorded');
+  assert.ok(nursery.links.includes(throne.id) && throne.links.includes(nursery.id), 'nursery and throne are directly connected');
 });
 
 test('the rival builds a smaller nest of its own', () => {
@@ -174,9 +172,36 @@ test('the rival builds a smaller nest of its own', () => {
   g.ants = []; for (let i = 0; i < 8; i++) g.ants.push(g.createAnt(true, false, 820, 300));
   g.planNest(true);
   const types = g.rooms.filter(r => r.team === true).map(r => r.type).sort().join(',');
-  assert.strictEqual(types, 'nursery,pantry', 'rival builds a modest nest (just nursery + pantry)');
+  assert.strictEqual(types, 'empty,entry,nursery,pantry', 'rival builds a modest nest (hub, entry, pantry, nursery)');
   const redPantry = g.rooms.find(r => r.team === true && r.type === 'pantry');
   assert.ok(redPantry.r < g.roomRadius(false, 'pantry'), 'rival rooms are scaled smaller');
+});
+
+test('the auto nest is sealed and connected, and every link obeys the rules', () => {
+  const g = freshApi();
+  g.spawnPoints = { yellow: [{ x: 400, y: 330, r: 40 }], red: [{ x: 880, y: 330, r: 40 }] };
+  g.ants = []; for (let i = 0; i < 8; i++) g.ants.push(g.createAnt(false, false, 400, 330));
+  g.planNest(false);
+  const R = g.rooms.filter(r => !r.team);
+  const byId = new Map(R.map(r => [r.id, r]));
+  // reachable from the hub across corridor links
+  const hub = R.find(r => r.type === 'empty');
+  const seen = new Set([hub.id]), st = [hub.id];
+  while (st.length) for (const l of byId.get(st.pop()).links) if (byId.has(l) && !seen.has(l)) { seen.add(l); st.push(l); }
+  assert.strictEqual(seen.size, R.length, 'every room is reachable');
+  // every doorway link is an allowed connection
+  for (const r of R) for (const l of r.links) assert.ok(g.canConnect(r.type, byId.get(l).type), `${r.type}-${byId.get(l).type} allowed`);
+  // sealed: exactly one doorway isn't a room link (the entry's door to the outside)
+  const outer = R.reduce((n, r) => n + Math.max(0, r.gaps.length - r.links.length), 0);
+  assert.strictEqual(outer, 1, 'only the entry opens to the outside');
+});
+
+test('room rules: empty connects to anything; entry only to empty; pantry not to nursery', () => {
+  const g = freshApi();
+  assert.ok(g.canConnect('empty', 'throne') && g.canConnect('empty', 'pantry') && g.canConnect('empty', 'empty'));
+  assert.ok(g.canConnect('entry', 'empty') && !g.canConnect('entry', 'pantry'));
+  assert.ok(g.canConnect('pantry', 'pantry') && !g.canConnect('pantry', 'nursery'));
+  assert.ok(g.canConnect('nursery', 'throne') && g.canConnect('nursery', 'nursery'));
 });
 
 test('planned rooms never overlap each other', () => {
@@ -195,15 +220,16 @@ test('planned rooms never overlap each other', () => {
   }
 });
 
-test('a room links back to the nest by a tunnel, and needs both to count as built', () => {
+test('rooms are joined by corridors, and a room needs its walls and corridors to count as built', () => {
   const g = colony(freshApi(), 8);
   g.planNest(false);
-  const entry = g.rooms.find(r => r.type === 'entry');
-  assert.ok(entry.tunnelSites.length > 0, 'a room gets tunnel walls back to the nest');
-  entry.sites.forEach(s => s.done = true); g.refreshBuilt(entry);
-  assert.strictEqual(entry.built, false, 'ring alone is not built');
-  entry.tunnelSites.forEach(s => s.done = true); g.refreshBuilt(entry);
-  assert.strictEqual(entry.built, true, 'ring + tunnel done -> built');
+  // The hub (empty room) owns the corridors out to the rooms it connects.
+  const hub = g.rooms.find(r => r.type === 'empty' && r.tunnelSites.length > 0);
+  assert.ok(hub, 'the hub has corridor walls linking it to its rooms');
+  hub.sites.forEach(s => s.done = true); g.refreshBuilt(hub);
+  assert.strictEqual(hub.built, false, 'ring alone is not built');
+  hub.tunnelSites.forEach(s => s.done = true); g.refreshBuilt(hub);
+  assert.strictEqual(hub.built, true, 'ring + corridors done -> built');
 });
 
 test('eggs: a mating with a built nursery lays an egg that later hatches', () => {

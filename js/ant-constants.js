@@ -61,17 +61,46 @@ const WALL_DRAW  = SOIL_R * 1.8;  // rendered thickness of a soil wall line
 // idle ants dig the soil walls block by block, leaving a doorway gap facing the
 // nest. Build order is entry → pantry → nursery → throne; the nursery and throne
 // are placed as far from the rival spawn as the layout allows.
-const ROOM_ORDER = ['entry', 'pantry', 'nursery', 'throne'];
 const ROOM_SPECS = {
-  entry:   { r: 24, order: 0, label: 'Entry',   color: '#c9a227' },
-  pantry:  { r: 34, order: 1, label: 'Pantry',  color: '#7ea63c' },
-  nursery: { r: 40, order: 2, label: 'Nursery', color: '#c86fb0' },
-  throne:  { r: 30, order: 3, label: 'Throne',  color: '#c98a27' },
+  empty:   { r: 24, order: 0, label: 'Room',    color: '#8a8fa0' },  // connector node / pathway hub
+  entry:   { r: 22, order: 1, label: 'Entry',   color: '#c9a227' },
+  pantry:  { r: 34, order: 2, label: 'Pantry',  color: '#7ea63c' },
+  nursery: { r: 40, order: 3, label: 'Nursery', color: '#c86fb0' },
+  throne:  { r: 30, order: 4, label: 'Throne',  color: '#c98a27' },
 };
-const ROOM_CAPS      = { entry: Infinity, pantry: Infinity, nursery: 3, throne: 1 };
+const ROOM_CAPS      = { empty: Infinity, entry: Infinity, pantry: Infinity, nursery: 3, throne: 1 };
+
+// Which room types may connect to which. Empty rooms are the universal connectors
+// that let you route pathways; the functional rooms are pickier.
+const ROOM_CONNECT = {
+  empty:   ['empty', 'entry', 'pantry', 'nursery', 'throne'],
+  entry:   ['empty'],
+  pantry:  ['pantry', 'empty'],
+  nursery: ['throne', 'empty', 'nursery'],
+  throne:  ['nursery', 'empty'],
+};
+
+// The auto-built nest as a connected tree of rooms (an empty hub with the rooms
+// hung off it), grown from the spawn. Sealed: only the entry opens to the outside.
+const NEST_TREE = {
+  white: { root: { type: 'empty', id: 'hub', kids: [
+    { type: 'entry',  id: 'entry' },
+    { type: 'pantry', id: 'pantry' },
+    { type: 'empty',  id: 'mid', kids: [
+      { type: 'nursery', id: 'nursery', kids: [ { type: 'throne', id: 'throne' } ] },
+    ] },
+  ] } },
+  // The rival keeps it modest: a hub with an entry, a pantry and a nursery.
+  red: { root: { type: 'empty', id: 'hub', kids: [
+    { type: 'entry',   id: 'entry' },
+    { type: 'pantry',  id: 'pantry' },
+    { type: 'nursery', id: 'nursery' },
+  ] } },
+};
+const CORRIDOR_LEN = 40;   // gap between two connected rooms, spanned by a corridor
 const ROOM_SITE_STEP = SOIL_R * 1.5;  // spacing of wall blocks — tight enough that a ring has no slip-through
 const MIN_BUILD_ANTS = 6;     // the colony only starts building once it's this many strong
-const BUILD_SENSE    = 260;   // how far an idle ant will walk to work an unbuilt room
+const BUILD_SENSE    = 4000;  // a well-fed idle ant will return from anywhere to work the nest (until it's done)
 const ROOM_MSG_MS    = 4000;  // how long the "needs a nursery" nudge shows
 const MAX_BUILDERS   = 5;     // at most this many ants dig at once, so the colony still forages
 const BUILD_TICKS    = 40;    // in-situ ticks to raise one wall block (~0.65s — a visible, unhurried dig)

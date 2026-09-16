@@ -219,23 +219,22 @@ soil the colony builds is recognised as a room wall (painted walls can extend
 structures ad hoc). Soil can be mined anywhere. **Auto food never lands on soil,
 walls, water, or a queen.**
 
-**Auto-built nest.** Once the colony is a handful of ants strong, it lays out a
-walled nest and its well-fed idle workers dig the walls block by block. The nest is
-built around an open **junction** at the spawn point (the crossroads ants emerge
-into); each room hangs off the junction by its own two-walled **tunnel** with a
-genuine walkable channel, and each room's ring has a real **doorway gap** sized to
-that channel, so ants pass through openings rather than walls. Walls are thin soil
-lines; ants **can't cross them** and must use the gaps.
+**Auto-built sealed nest.** Once the colony is a handful of ants strong, it digs a
+**sealed nest**: a connected tree of rooms, grown from the spawn, where the only
+opening to the outside is the **entry**. Rooms are joined by walled **corridors**
+with a genuine walkable channel, and each room's ring has a real **doorway gap**
+sized to that channel. Ants **can't cross walls or water** — they navigate by
+**following walls** to the gaps — so they come and go only through the entry.
 
-Topology follows a few rules: the **nursery** is dug deepest (farthest from the
-rival — the most sheltered room) and is joined to the **throne** by a direct
-corridor; the **pantry** connects only to the junction, never straight to the
-nursery or throne; and every room is reachable across the junction **without
-crossing another room**. The **entry** sits toward the open. No room is built on top
-of another. Rooms show as labelled discs — dashed while being dug, solid once
-walled. A digging ant sits right at its block and jiggles as it works. At most a few
-ants dig at once, so the rest keep foraging. Room caps: **1 throne, 3 nurseries, any
-number of pantries**.
+**Empty rooms are the connectors.** The nest hangs off an **empty room** (a hub) at
+the spawn; empty rooms are the universal connector nodes that route pathways. The
+connection rules: an **empty** room joins anything; an **entry** joins only an empty
+room; a **pantry** joins another pantry or an empty room; a **nursery** joins a
+throne, an empty room, or another nursery; a **throne** joins a nursery or an empty
+room. Every room is reachable without crossing another. Walls are thin soil lines;
+a digging ant sits right at its block and jiggles as it works; at most a few dig at
+once so the rest keep foraging. Room caps: **1 throne, 3 nurseries, any number of
+pantries or empty rooms**.
 
 **Burrowing out.** An ant sealed inside a room that can't find a way past the walls
 will, after a spell of getting nowhere, **dig a single hole** to escape — a fresh
@@ -252,10 +251,17 @@ birth on the spot; the egg hatches into a new ant after a spell.
 as a **breach** and walls the doorway shut (a barricade, dug at top priority). The
 breached room is outlined in red until it's sealed.
 
-**Placing rooms by hand.** The World Building card has **+ Entrance** and **+ Food
-store** buttons. Each lets you **drag the new room where you want it** (it shows red
-while it overlaps another room); **Place here** commits it and the ants dig it next.
+**Placing rooms by hand.** The World Building card has **+ Entrance**, **+ Food
+store** and **+ Empty room** buttons. Each lets you **drag the new room where you
+want it**: it shows red (`overlaps` / `no link`) if it clashes with another room or
+has nothing there it's allowed to connect to, per the rules above. **Place here**
+commits it and the ants dig it next, wiring a corridor to the nearest room it may
+connect to. Empty rooms connect to anything, so they're how you route new pathways.
 Once built, a room can't be moved. (Caps still apply.)
+
+**Diggers walk the walls.** An ant builds by walking onto the next wall block,
+working it, and laying the soil where it stands — so the wall rises **behind the ant
+as it moves along the line**, rather than appearing all at once.
 
 Turning the mode **off** returns the classic sandbox (no rooms, no nursery gate).
 Both modes are covered by the test suite (`npm test`).

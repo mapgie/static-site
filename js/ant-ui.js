@@ -352,6 +352,7 @@ function setupUI() {
   // drag it where you want before the ants dig it.
   on('add-entry',  'click', () => startPlacingRoom('entry'));
   on('add-pantry', 'click', () => startPlacingRoom('pantry'));
+  on('add-empty',  'click', () => startPlacingRoom('empty'));
   on('room-place-ok',     'click', () => finishPlacingRoom(true));
   on('room-place-cancel', 'click', () => finishPlacingRoom(false));
 
@@ -479,12 +480,16 @@ function startPlacingRoom(type) {
 function finishPlacingRoom(commit) {
   if (!placingRoom) return;
   if (commit) {
-    const spec = ROOM_SPECS[placingRoom.type];
+    const type = placingRoom.type, spec = ROOM_SPECS[type];
     if (placementBlocked(false, placingRoom.x, placingRoom.y, spec.r)) {
       alert('That spot overlaps another room — drag it to a clear space.');
       return;   // stay in placing mode
     }
-    rooms.push(buildRoomAt(false, placingRoom.type, placingRoom.x, placingRoom.y, true));
+    if (rooms.some(r => r.team === false) && !nearestConnectable(false, type, placingRoom.x, placingRoom.y)) {
+      alert('A ' + (spec.label || type).toLowerCase() + ' has nothing here it can connect to — put an empty room in between to route a path.');
+      return;
+    }
+    buildRoomAt(false, type, placingRoom.x, placingRoom.y, true);   // buildRoomAt adds & wires it
     saveFarm();
   }
   placingRoom = null;
