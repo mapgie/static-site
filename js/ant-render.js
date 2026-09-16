@@ -122,18 +122,23 @@ function hexToRgba(hex, a) {
 
 // A transient nudge over the map (e.g. "the colony needs a nursery to grow").
 function drawCanvasNotice() {
-  if (Date.now() >= nurseryNoticeUntil) return;
+  if (Date.now() >= nurseryNoticeUntil) { noticeBounds = null; return; }
   const msg = 'The colony needs a built nursery to keep growing';
   ctx.save();
   ctx.font = '13px system-ui, sans-serif';
   ctx.textAlign = 'center';
-  const w = ctx.measureText(msg).width + 24;
-  const cx = canvas.width / 2, y = 16;
+  const pad = 24, closeW = 22;
+  const w = ctx.measureText(msg).width + pad + closeW;
+  const cx = canvas.width / 2, x = cx - w / 2, y = 16, h = 26;
   ctx.fillStyle = 'rgba(20,20,20,0.8)';
   ctx.strokeStyle = 'rgba(200,111,176,0.9)';
-  roundRect(cx - w / 2, y, w, 26, 6); ctx.fill(); ctx.stroke();
+  roundRect(x, y, w, h, 6); ctx.fill(); ctx.stroke();
   ctx.fillStyle = '#f2d6ea';
-  ctx.fillText(msg, cx, y + 17);
+  ctx.fillText(msg, cx - closeW / 2, y + 17);
+  // A close (✕) affordance on the right; its rect is stored so a tap can dismiss it.
+  ctx.fillStyle = '#e0a8cf';
+  ctx.fillText('✕', x + w - closeW / 2, y + 17);
+  noticeBounds = { x, y, w, h };   // tap anywhere on the bar to dismiss
   ctx.restore();
 }
 

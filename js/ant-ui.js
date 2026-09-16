@@ -380,9 +380,17 @@ function setupUI() {
   // Single click with no tool selected drops one piece of food
   canvas.addEventListener('click', e => {
     if (placingRoom) { placingPointerMove(e); return; }   // tap moves the room being placed
+    const c = getCanvasCoords(e);
+    // Tapping the "needs a nursery" nudge dismisses it (and eats the tap so it
+    // doesn't also drop food underneath).
+    if (noticeBounds && c.x >= noticeBounds.x && c.x <= noticeBounds.x + noticeBounds.w &&
+        c.y >= noticeBounds.y && c.y <= noticeBounds.y + noticeBounds.h) {
+      nurseryNoticeUntil = 0; noticeBounds = null;
+      nurseryNoticeMuteMs = Date.now() + NURSERY_NOTICE_MUTE_MS;   // don't nag again for a bit
+      return;
+    }
     if (maintenance || $('environment-tool').value !== 'none') return;
-    const { x, y } = getCanvasCoords(e);
-    if (addFood(x, y, $('food-type').value)) saveFarm();
+    if (addFood(c.x, c.y, $('food-type').value)) saveFarm();
   });
 
   // Drag to draw

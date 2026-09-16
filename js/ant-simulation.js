@@ -413,7 +413,11 @@ function eat(ant, food) {
 
 function updateAnts() {
   const aggression = redAggressionLevel / 100;
-  activeBuildersW = activeBuildersR = 0;   // reset per-colony builder tallies (each capped at MAX_BUILDERS)
+  activeBuildersW = activeBuildersR = 0;   // reset per-colony builder tallies (capped below)
+  // The build cap scales with colony size so a big colony puts more hands on the
+  // nest instead of leaving most of them idle, while still keeping foragers out.
+  const buildCapW = Math.max(MAX_BUILDERS, Math.ceil(countWhiteAnts() * BUILDER_SHARE));
+  const buildCapR = Math.max(MAX_BUILDERS, Math.ceil(countRedAnts()   * BUILDER_SHARE));
 
   for (let i = ants.length - 1; i >= 0; i--) {
     const a = ants[i];
@@ -493,7 +497,8 @@ function updateAnts() {
       if (!prey && !a.carrying && !react && a.fullness >= a.hungerPoint) {
         const t = buildTaskFor(a);
         const busy = a.isRed ? activeBuildersR : activeBuildersW;
-        if (t && (t.urgent || busy < MAX_BUILDERS)) { build = t; if (a.isRed) activeBuildersR++; else activeBuildersW++; }
+        const cap  = a.isRed ? buildCapR : buildCapW;
+        if (t && (t.urgent || busy < cap)) { build = t; if (a.isRed) activeBuildersR++; else activeBuildersW++; }
       }
       if (!prey && a.carrying) {
         // Haul it home. If the store is a walled pantry, make for its doorway
@@ -668,6 +673,44 @@ function updateAnts() {
       if (!a.poisoned) tryBreeding(a);
     }
   }
+
+  separateAnts();
+}
+
+// Soft ant-ant separation: nudge overlapping ants apart so they don't stack or
+// walk over each other. A grid keeps it O(n). Parked haulers and ants mid-dig
+// hold their spot (they're meant to sit on food / on a wall block); the push is
+// skipped whenever it would drive an ant into a wall, soil or water.
+function separateAnts() {
+  const gap = ANT_SEP, gap2 = gap * gap, cell = gap;
+  const grid = new Map();
+  const key = (cx, cy) => cx + ',' + cy;
+  for (const a of ants) {
+    const k = key(Math.floor(a.x / cell), Math.floor(a.y / cell));
+    let bucket = grid.get(k); if (!bucket) grid.set(k, bucket = []);
+    bucket.push(a);
+  }
+  for (const a of ants) {
+    if (a.hauling || a.digTimer > 0) continue;   // haulers/diggers stay put by design
+    const cx = Math.floor(a.x / cell), cy = Math.floor(a.y / cell);
+    for (let gx = cx - 1; gx <= cx + 1; gx++) {
+      for (let gy = cy - 1; gy <= cy + 1; gy++) {
+        const bucket = grid.get(key(gx, gy)); if (!bucket) continue;
+        for (const b of bucket) {
+          if (b === a) continue;
+          let dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy;
+          if (d2 >= gap2) continue;
+          if (d2 === 0) { const r = Math.random() * Math.PI * 2; dx = Math.cos(r); dy = Math.sin(r); d2 = 1; }
+          const d = Math.sqrt(d2), push = (gap - d) / 2;
+          const nx = a.x + (dx / d) * push, ny = a.y + (dy / d) * push;
+          if (!blockedForAnt(nx, ny)) {
+            a.x = (nx + canvas.width) % canvas.width;
+            a.y = (ny + canvas.height) % canvas.height;
+          }
+        }
+      }
+    }
+  }
 }
 
 function tryBreeding(a) {
@@ -683,7 +726,7 @@ function tryBreeding(a) {
   // young: no built nursery, no more births (World Building Mode only). A brief
   // on-canvas nudge tells the player why the colony has stopped growing.
   if (worldBuilding && !a.isRed && countWhiteAnts() >= TUNE.NURSERY_REQUIRED_ABOVE && !hasBuiltRoom(false, 'nursery')) {
-    nurseryNoticeUntil = Date.now() + ROOM_MSG_MS;
+    if (Date.now() >= nurseryNoticeMuteMs) nurseryNoticeUntil = Date.now() + ROOM_MSG_MS;   // stays dismissed for a while after a tap
     return;
   }
 

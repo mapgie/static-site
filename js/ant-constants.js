@@ -105,7 +105,10 @@ const ROOM_SITE_STEP = SOIL_R * 1.5;  // spacing of wall blocks — tight enough
 const MIN_BUILD_ANTS = 6;     // the colony only starts building once it's this many strong
 const BUILD_SENSE    = 4000;  // a well-fed idle ant will return from anywhere to work the nest (until it's done)
 const ROOM_MSG_MS    = 4000;  // how long the "needs a nursery" nudge shows
-const MAX_BUILDERS   = 5;     // at most this many ants dig at once, so the colony still forages
+const NURSERY_NOTICE_MUTE_MS = 45000;  // after the player dismisses the nudge, stay quiet this long
+const MAX_BUILDERS   = 5;     // floor on how many ants dig at once; the cap also scales with colony size
+const BUILDER_SHARE  = 0.6;   // up to this fraction of a colony can be on the nest at once
+const ANT_SEP        = 10;    // ants keep at least this far apart, so they don't stack/walk on each other
 const BUILD_TICKS    = 40;    // in-situ ticks to raise one wall block (~0.65s — a visible, unhurried dig)
 const DIG_REACH      = 13;    // how close to a block's open-side approach point an ant digs from
 

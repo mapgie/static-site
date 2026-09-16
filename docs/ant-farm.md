@@ -63,8 +63,10 @@ sugar pile needs three trips and a fruit pile five. Protein is a single heavy dr
 one trip — but a delivered protein feeds *two* nestmates. A number on a loose pile
 shows how many trips it has left.
 
-Once a colony has built a **pantry**, delivered food is stored there instead of in a
-ring around the nest; until then it piles at the nest as before.
+Once a colony has built a **pantry**, foragers carry food **only to the pantry** —
+in through its doorway, packed against the stores already there — instead of dropping
+it in a ring around the nest. Until a pantry exists it piles at the nest as before.
+(An ant that dies mid-haul still drops its load where it falls.)
 
 **Painting.** A dragged brush scatters spaced drops, not a solid line, and each food
 has its own spacing: sugar sits closest, fruit wider, protein wider still, and a dead
@@ -93,6 +95,11 @@ scent nor trail nearby, an ant simply **wanders** — a small random turn each t
 drunkard's walk with no goal — until it stumbles onto one. When an ant does find food
 and carry it home it lays a trail and marks the spot, keeping it appealing while the
 trail fades. (Food within reach is always grabbed.)
+
+Ants also **keep out of each other's way**: a soft separation nudge pushes any two
+that get too close apart each tick, so they don't stack up or walk over one another.
+The nudge never shoves an ant into a wall, and it leaves parked haulers and ants
+mid-dig where they are.
 
 ### Pheromones and reactions
 
@@ -228,23 +235,28 @@ with a genuine walkable channel, and each room's ring has a real **doorway gap**
 sized to that channel. Ants **can't cross walls or water** — they navigate by
 **following walls** to the gaps — so they come and go only through the entry.
 
-**Empty rooms are the connectors.** The nest hangs off an **empty room** (a hub) at
-the spawn; empty rooms are the universal connector nodes that route pathways. The
-connection rules: an **empty** room joins anything; an **entry** joins only an empty
-room; a **pantry** joins another pantry or an empty room; a **nursery** joins a
-throne, an empty room, or another nursery; a **throne** joins a nursery or an empty
-room. Every room is reachable without crossing another. Walls are thin soil lines;
-a digging ant sits right at its block and jiggles as it works; at most a few dig at
-once so the rest keep foraging. Room caps: **1 throne, 3 nurseries, any number of
-pantries or empty rooms**.
+**Nursery at the heart.** The **nursery** is planted right on the colony's spawn
+point and anchors the nest; the **throne** and an **empty room** (a hub) branch off
+it, and the entry and pantry hang off that hub. Empty rooms are the universal
+connector nodes that route pathways. The connection rules: an **empty** room joins
+anything; an **entry** joins only an empty room; a **pantry** joins another pantry or
+an empty room; a **nursery** joins a throne, an empty room, or another nursery; a
+**throne** joins a nursery or an empty room. Every room is reachable without crossing
+another. Rooms are marked by a **symbol** rather than a word — 🍎 pantry, 🥚 nursery,
+👑 throne — while the entry and empty rooms carry no label. Walls are thin soil lines;
+a digging ant sits right at its block and jiggles as it works; the number that dig at
+once **scales with colony size** (up to ~60%, at least a handful) so a big colony
+puts real hands on the nest while the rest keep foraging. Room caps: **1 throne, 3
+nurseries, any number of pantries or empty rooms**.
 
 **Burrowing out.** An ant sealed inside a room that can't find a way past the walls
 will, after a spell of getting nowhere, **dig a single hole** to escape — a fresh
 opening in the wall.
 
 **Nursery-gated growth.** Past a threshold (default **10** ants, tunable under
-*Nursery needed > ants*), a colony **can't breed without a built nursery** — a brief
-on-canvas nudge says so when growth stalls. Below the threshold it breeds as usual.
+*Nursery needed > ants*), a colony **can't breed without a built nursery** — an
+on-canvas nudge says so when growth stalls. **Tap the nudge to dismiss it** and it
+stays quiet for a spell. Below the threshold the colony breeds as usual.
 
 **Eggs.** With a built nursery, a mating lays an **egg** in the nursery instead of a
 birth on the spot; the egg hatches into a new ant after a spell.
