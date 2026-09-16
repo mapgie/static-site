@@ -24,12 +24,14 @@ carry back to their own pantry, and a rival that gets inside the main colony's p
 will **steal from the store** (or eat it if hungry). In World Building Mode the rival
 colony builds its own, smaller nest to stash the loot.
 
-Ants breed only when **both** partners are *in the mood* — each has its own hidden
-happiness threshold (its "horniness", jittered per ant), so they don't all become
-ready at once — they **encounter** each other nearby, and a probability roll passes.
-The young start below that threshold, so they must mature and cheer up before they
-can breed. Both parents then rest before mating again, and **overcrowding** trims the
-odds, so a colony grows in a paced trickle rather than exploding in waves. A live
+**Until a colony has a queen**, its workers do the breeding. Ants breed only when
+**both** partners are *in the mood* — each has its own hidden happiness threshold (its
+"horniness", jittered per ant), so they don't all become ready at once — they
+**encounter** each other nearby, and a probability roll passes. The young start below
+that threshold, so they must mature and cheer up before they can breed. Both parents
+then rest before mating again, and **overcrowding** trims the odds, so a colony grows
+in a paced trickle rather than exploding in waves. Once a **queen** takes over (see
+Queens), the workers stop and she lays the eggs instead. A live
 readout over the map shows each colony's count and how many were **born** (mating)
 versus **spawned** (a queen or your Add-Ant button).
 
@@ -189,9 +191,16 @@ seed a whole crowd.
 ## Queens
 
 When a colony's happiness bar climbs high (≥ 75) **and holds there for a sustained
-spell** (about eight seconds), a **queen** appears at one of the colony's spawn points
-and periodically spawns extra ants; a brief spike no longer summons her on the spot.
-She leaves again when the bar drops (< 40).
+spell** (about eight seconds), a **queen** appears at one of the colony's spawn points;
+a brief spike no longer summons her on the spot. She leaves again when the bar drops
+(< 40).
+
+**The queen is the colony's egg-layer.** While there's no queen, the **workers**
+breed to keep the colony going (mating as above). The moment a queen arrives the
+workers **stop breeding** and she takes over: she periodically lays **eggs** — in the
+nursery if one is built, otherwise beside her — which hatch into new ants. (In the
+classic sandbox, with no nest, she spawns the ant directly.) Queen-laid ants count as
+**spawned**; worker-bred ants count as **born**.
 
 **Sadist mode** (a Rival Ant control) changes what drives the rival queen: instead of
 tracking the rival colony's own mood, she is summoned by the **main** colony's misery

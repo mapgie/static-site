@@ -193,6 +193,7 @@ function nearestUndug(a, sites) {
   let best = null, bd = BUILD_SENSE * BUILD_SENSE;
   for (const s of sites) {
     if (s.done) continue;
+    if (spotOccupied(s.x, s.y)) continue;   // skip a block an ant is standing on; come back when it clears
     const d = dist2(s.x, s.y, a.x, a.y);
     if (d < bd) { bd = d; best = s; }
   }
@@ -210,7 +211,8 @@ function buildTaskFor(a) {
   // 2) Raise the structure: lowest-order unbuilt room, its ring then its tunnel.
   const mine = rooms.filter(r => r.team === team && !r.built).sort((x, y) => x.order - y.order);
   for (const room of mine) {
-    const s = nearestUndug(a, room.sites) || nearestUndug(a, room.tunnelSites || []);
+    // Dig the corridor first, so the room is only walled once it's connected.
+    const s = nearestUndug(a, room.tunnelSites || []) || nearestUndug(a, room.sites);
     if (s) return { room, site: s, urgent: false };
   }
   return null;
@@ -531,7 +533,8 @@ function updateAnts() {
           if (++a.digTimer >= BUILD_TICKS) {
             a.digTimer = 0;
             const dug = digSoil(s.x, s.y, true);   // room soil: rendered as a smooth wall
-            if (dug || collidesWall(s.x, s.y) || ++s.tries > 4) s.done = true;
+            if (dug || collidesWall(s.x, s.y)) s.done = true;
+            else if (!spotOccupied(s.x, s.y) && ++s.tries > 4) s.done = true;   // give up only if it's truly unreachable, not just an ant in the way
             refreshBuilt(build.room);
           }
         } else {
@@ -592,7 +595,7 @@ function updateAnts() {
     forEachEnvNear(nx, ny, 40, o => {
       const r = o.r || 4;
       const d = dist2(o.x, o.y, nx, ny);
-      if (o.type === 'wall') {
+      if (o.type === 'wall' || o.type === 'soil') {   // soil walls block just like painted walls
         if (d < (r + 3) * (r + 3)) hitWall = true;
       } else {
         if (d < (r + 2) * (r + 2)) inWater = true;
@@ -681,6 +684,10 @@ function updateAnts() {
 }
 
 function tryBreeding(a) {
+  // Workers only breed while the colony has no queen; once she arrives she takes
+  // over reproduction (she lays the eggs). Below the queen threshold the workers
+  // keep the colony going themselves.
+  if (a.isRed ? queens.red : queens.white) return;
   if (a.isRed) {
     if (!allowRedBreeding || countRedAnts() >= MAX_RED_ANTS) return;
   } else if (countWhiteAnts() >= MAX_WHITE_ANTS) return;
@@ -711,8 +718,8 @@ function tryBreeding(a) {
   if (Math.random() < chance) {
     // With a built nursery, the mating lays an egg there to hatch later; otherwise
     // it's a birth on the spot. (Counted at hatch for eggs, here for live births.)
-    if (worldBuilding && !a.isRed && hasBuiltRoom(false, 'nursery')) {
-      layEgg(false);
+    if (worldBuilding && hasBuiltRoom(a.isRed, 'nursery')) {
+      layEgg(a.isRed, 'mate');
     } else {
       ants.push(spawnNear(a, a.isRed));
       if (a.isRed) { totalBornRed++; matedRed++; } else { totalBornWhite++; matedWhite++; }
@@ -734,7 +741,9 @@ function updateEggs() {
     const count = e.team ? countRedAnts() : countWhiteAnts();
     if (count >= cap) continue;
     ants.push(createAnt(e.team, false, e.x, e.y));
-    if (e.team) { totalBornRed++; matedRed++; } else { totalBornWhite++; matedWhite++; }
+    // A queen's egg counts as spawned; a worker-mated egg counts as born.
+    if (e.source === 'queen') { if (e.team) { totalBornRed++; spawnedRed++; } else { totalBornWhite++; spawnedWhite++; } }
+    else                      { if (e.team) { totalBornRed++; matedRed++; }   else { totalBornWhite++; matedWhite++; } }
   }
 }
 
@@ -783,7 +792,12 @@ function updateQueens() {
     q.spawnTimer += TICK_MS;
     if (q.spawnTimer < 3000) continue;
     q.spawnTimer = 0;
-    if (q.isRed ? reds < MAX_RED_ANTS : whites < MAX_WHITE_ANTS) {
+    if (q.isRed ? reds >= MAX_RED_ANTS : whites >= MAX_WHITE_ANTS) continue;
+    // The queen lays an egg — in the nursery if there is one, otherwise beside her.
+    // (In the classic sandbox, with no nest, she spawns the ant directly.)
+    if (worldBuilding) {
+      layEgg(q.isRed, 'queen', q.x, q.y);
+    } else {
       ants.push(spawnNear(q, q.isRed));
       if (q.isRed) { totalBornRed++; spawnedRed++; } else { totalBornWhite++; spawnedWhite++; }
     }

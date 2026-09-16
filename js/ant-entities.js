@@ -100,10 +100,18 @@ function burrowHole(x, y) {
 
 // Raise one soil block at (x,y): a brown wall the colony builds with. Refuses to
 // stack on terrain already there or to bury a spawn point's clear core.
+// Is an ant standing on this spot (so a wall block would bury it)?
+function spotOccupied(x, y) {
+  const rr = (SOIL_R + 4) * (SOIL_R + 4);
+  for (const o of ants) if (dist2(o.x, o.y, x, y) < rr) return true;
+  return false;
+}
+
 function digSoil(x, y, room = false) {
   x = clamp(x, 0, canvas.width);
   y = clamp(y, 0, canvas.height);
   if (collidesWall(x, y)) return false;
+  if (spotOccupied(x, y)) return false;   // never raise a wall on top of an ant
   for (const isRed of [false, true]) {
     for (const s of colonySpawnPoints(isRed)) {
       if (dist2(s.x, s.y, x, y) < nestCore(s) * nestCore(s)) return false;
@@ -173,8 +181,28 @@ function roomWallSites(cx, cy, r, gaps) {
   return sites;
 }
 
+// A corridor whose two walls START at a room's doorway edges and run straight to a
+// target (the junction, or another room), so the corridor joins the ring wall
+// with no gap and leaves a channel exactly as wide as the doorway.
+function corridorWalls(cx, cy, r, gapAngle, gapArc, tx, ty, endPad = 0) {
+  const doorx = cx + Math.cos(gapAngle) * r, doory = cy + Math.sin(gapAngle) * r;
+  const p1x = cx + Math.cos(gapAngle + gapArc / 2) * r, p1y = cy + Math.sin(gapAngle + gapArc / 2) * r;
+  const p2x = cx + Math.cos(gapAngle - gapArc / 2) * r, p2y = cy + Math.sin(gapAngle - gapArc / 2) * r;
+  const len = Math.max(0, Math.hypot(tx - doorx, ty - doory) - endPad);
+  const ux = Math.cos(gapAngle), uy = Math.sin(gapAngle);
+  const sites = [];
+  for (let d = 0; d <= len; d += ROOM_SITE_STEP) {
+    const mx = doorx + ux * d, my = doory + uy * d;   // channel centre (the ant works from here)
+    for (const [ex, ey] of [[p1x, p1y], [p2x, p2y]]) {
+      sites.push({ x: clamp(ex + ux * d, 0, canvas.width), y: clamp(ey + uy * d, 0, canvas.height),
+                   ax: clamp(mx, 0, canvas.width), ay: clamp(my, 0, canvas.height), done: false, tries: 0 });
+    }
+  }
+  return sites;
+}
+
 // Two flanking walls from (x0,y0) to (x1,y1), leaving a walkable channel between
-// them — the guts of every tunnel. Each site works from the channel centre.
+// them — used where a corridor isn't anchored to a ring. Works from the centre.
 function channelWalls(x0, y0, x1, y1) {
   const ang = Math.atan2(y1 - y0, x1 - x0), perp = ang + Math.PI / 2;
   const len = Math.hypot(x1 - x0, y1 - y0);
@@ -232,12 +260,16 @@ function barricadeRoom(room) {
   room.breached = true;
 }
 
-// Lay an egg somewhere inside the colony's nursery, to hatch on a timer.
-function layEgg(team) {
+// Lay an egg to hatch on a timer — in the colony's nursery if it has one, else at
+// a fallback spot (the queen's position). `source` is 'mate' (worker) or 'queen',
+// which decides whether the hatchling counts as born or spawned.
+function layEgg(team, source = 'mate', fx, fy) {
   const n = builtRoom(team, 'nursery');
-  if (!n) return false;
-  const ang = Math.random() * Math.PI * 2, d = Math.random() * (n.r * 0.6);
-  eggs.push({ x: n.x + Math.cos(ang) * d, y: n.y + Math.sin(ang) * d, team, hatch: EGG_HATCH_MS });
+  let x, y;
+  if (n) { const ang = Math.random() * Math.PI * 2, d = Math.random() * (n.r * 0.6); x = n.x + Math.cos(ang) * d; y = n.y + Math.sin(ang) * d; }
+  else if (fx !== undefined) { x = fx; y = fy; }
+  else return false;
+  eggs.push({ x, y, team, hatch: EGG_HATCH_MS, source });
   return true;
 }
 
@@ -267,11 +299,8 @@ function buildRoomAt(team, type, cx, cy, manual = false) {
   cy = clamp(cy, m, canvas.height - m);
   const gap = Math.atan2(a.y - cy, a.x - cx);   // doorway faces the junction
   const room = makeRoom(team, type, cx, cy, gap, manual);
-  // Corridor from the doorway to the junction, stopping short of the open core.
-  const gp = doorwayPoint(room);
-  const len = Math.hypot(a.x - gp.x, a.y - gp.y), stop = Math.max(0, len - (nestCore(a) + 6));
-  const tang = Math.atan2(a.y - gp.y, a.x - gp.x);
-  room.tunnelSites = channelWalls(gp.x, gp.y, gp.x + Math.cos(tang) * stop, gp.y + Math.sin(tang) * stop);
+  // Corridor from the doorway edges to the junction, stopping short of the open core.
+  room.tunnelSites = corridorWalls(cx, cy, room.r, gap, room.gaps[0].arc, a.x, a.y, nestCore(a) + 6);
   return room;
 }
 
@@ -306,9 +335,9 @@ function linkNurseryThrone(team) {
   t.gaps.push({ angle: ang + Math.PI, arc: gapArcFor(t.r) });
   n.sites = roomWallSites(n.x, n.y, n.r, n.gaps);
   t.sites = roomWallSites(t.x, t.y, t.r, t.gaps);
+  // Corridor from the nursery's new doorway edges across to the throne's edge.
   n.tunnelSites = n.tunnelSites.concat(
-    channelWalls(n.x + Math.cos(ang) * n.r, n.y + Math.sin(ang) * n.r,
-                 t.x - Math.cos(ang) * t.r, t.y - Math.sin(ang) * t.r));
+    corridorWalls(n.x, n.y, n.r, ang, gapArcFor(n.r), t.x, t.y, t.r));
   n.linked = t.linked = true;
 }
 

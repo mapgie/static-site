@@ -20,7 +20,9 @@ const STATE = [
   'whiteHappiness', 'redHappiness', 'TUNE', 'matingSpeed', 'nextAntId',
   'envDirty', 'whiteCalmMs', 'killedWhite', 'killedRed', 'redAggressionLevel',
   'rooms', 'nextRoomId', 'nurseryNoticeUntil', 'eggs',
-  'sadistMode', 'poisonReadyMs', 'activeBuildersW', 'activeBuildersR'
+  'sadistMode', 'poisonReadyMs', 'activeBuildersW', 'activeBuildersR',
+  'spawnedWhite', 'matedWhite', 'spawnedRed', 'matedRed', 'totalBornWhite',
+  'whiteQueenReadyMs'
 ];
 // Functions exposed by reference.
 const FUNCS = [
@@ -36,7 +38,7 @@ const FUNCS = [
   'placementBlocked', 'canAddRoom', 'buildRoomAt', 'findRoomSpot',
   'roomRadius', 'stealFood', 'maybeSadistPoison', 'decay', 'dropTarget', 'dropOff',
   'updateFoods', 'inAnyRoom', 'burrowHole', 'linkNurseryThrone', 'gapArcFor',
-  'doorwayPoint', 'channelWalls', 'collidesWall'
+  'doorwayPoint', 'channelWalls', 'corridorWalls', 'collidesWall', 'updateQueens'
 ];
 
 function freshApi() {

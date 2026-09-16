@@ -236,6 +236,35 @@ test('a well-fed rival on an enemy store steals it and hauls it home; hungry it 
   assert.strictEqual(g.nearestFood(far), null, 'the store is safe until the raider is inside the pantry');
 });
 
+test('the queen takes over reproduction: workers stop, the queen lays eggs', () => {
+  const g = freshApi();
+  g.worldBuilding = true;
+  g.spawnPoints = { yellow: [{ x: 300, y: 300, r: 40 }], red: [] };
+  g.rooms = [{ id: 1, team: false, type: 'nursery', x: 300, y: 300, r: 40, sites: [], tunnelSites: [], built: true, gaps: [] }];
+  const mk = () => { const a = g.createAnt(false, false, 300, 300); a.happiness = 100; a.fullness = 100; a.age = 1e6; a.breedingTimer = 1e9; return a; };
+
+  // With a queen present, workers lay nothing.
+  g.queens = { white: g.createAnt(false, true, 300, 300), red: null };
+  for (let i = 0; i < 200; i++) { g.ants = [mk(), mk()]; g.eggs = []; g.tryBreeding(g.ants[0]); }
+  assert.strictEqual(g.eggs.length, 0, 'workers do not breed while the queen reigns');
+
+  // The queen lays eggs over time, tagged as her own.
+  g.whiteHappiness = 90; g.eggs = []; g.queens.white.spawnTimer = 0;
+  for (let t = 0; t < 4000 && g.eggs.length === 0; t += 16) g.updateQueens();
+  assert.ok(g.eggs.length > 0 && g.eggs[0].source === 'queen', 'the queen lays eggs');
+
+  // A queen egg hatches as spawned, not born.
+  g.eggs = [{ x: 300, y: 300, team: false, hatch: 0, source: 'queen' }];
+  g.spawnedWhite = 0; g.updateEggs();
+  assert.strictEqual(g.spawnedWhite, 1, 'a queen egg hatches as spawned');
+
+  // With no queen, workers breed again.
+  g.queens.white = null;
+  let laid = false;
+  for (let i = 0; i < 300 && !laid; i++) { g.ants = [mk(), mk()]; g.eggs = []; g.tryBreeding(g.ants[0]); laid = g.eggs.length > 0; }
+  assert.ok(laid, 'workers breed again once the queen is gone');
+});
+
 test('food never auto-spawns inside the nest (rooms or spawn area)', () => {
   const g = freshApi();
   g.spawnPoints = { yellow: [{ x: 300, y: 300, r: 40 }], red: [] };
