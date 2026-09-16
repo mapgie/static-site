@@ -236,6 +236,37 @@ test('a well-fed rival on an enemy store steals it and hauls it home; hungry it 
   assert.strictEqual(g.nearestFood(far), null, 'the store is safe until the raider is inside the pantry');
 });
 
+test('food never auto-spawns inside the nest (rooms or spawn area)', () => {
+  const g = freshApi();
+  g.spawnPoints = { yellow: [{ x: 300, y: 300, r: 40 }], red: [] };
+  g.rooms = [{ id: 1, team: false, type: 'pantry', x: 520, y: 300, r: 34, sites: [], tunnelSites: [], built: true, gaps: [] }];
+  g.rebuildEnvGrid();
+  assert.strictEqual(g.foodSpawnAllowed(520, 300), false, 'not inside a room');
+  assert.strictEqual(g.foodSpawnAllowed(300, 300), false, 'not in the spawn/nest area');
+  assert.strictEqual(g.foodSpawnAllowed(700, 500), true,  'open ground is fine');
+});
+
+test('a trapped ant burrows a hole (removes the nearest soil block)', () => {
+  const g = freshApi();
+  g.environment = [{ x: 200, y: 200, type: 'soil', r: 4 }, { x: 260, y: 200, type: 'soil', r: 4 }];
+  assert.strictEqual(g.burrowHole(205, 200), true, 'the near block is removed');
+  assert.strictEqual(g.environment.length, 1);
+  assert.strictEqual(g.environment[0].x, 260, 'the far block is left');
+  assert.strictEqual(g.burrowHole(900, 500), false, 'nothing to burrow far from any soil');
+});
+
+test('ants cannot end up inside a soil wall', () => {
+  const g = freshApi();
+  g.environment = [];
+  for (let y = 240; y <= 360; y += 6) g.environment.push({ x: 500, y, type: 'soil', r: 4 });  // a vertical wall
+  g.rebuildEnvGrid();
+  const a = g.createAnt(false, false, 480, 300); a.angle = 0; a.fullness = 100; a.age = 1e6; a.wallCooldown = 0;
+  g.ants = [a]; g.foods = [g.makeFood(560, 300, 'sugar')];   // food on the far side, pulls it east into the wall
+  for (let i = 0; i < 60; i++) { g.updateAnts(); }
+  assert.ok(!g.collidesWall(a.x, a.y), 'the ant never sits inside the wall');
+  assert.ok(a.x < 495, 'and it did not pass through to the far side');
+});
+
 test('poison: spoiled only rots to poison under Sadist, and Sadist seeds it only when over-happy', () => {
   const g = freshApi();
   const f = g.makeFood(100, 100, 'spoiled'); f.age = 1e9; g.foods = [f];

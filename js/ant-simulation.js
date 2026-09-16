@@ -495,9 +495,18 @@ function updateAnts() {
         if (t && (t.urgent || busy < MAX_BUILDERS)) { build = t; if (a.isRed) activeBuildersR++; else activeBuildersW++; }
       }
       if (!prey && a.carrying) {
-        // Haul it home
+        // Haul it home. If the store is a walled pantry, make for its doorway
+        // first (so the ant uses the opening instead of butting the outer wall);
+        // once inside, head for the drop spot.
         const t = dropTarget(a);
-        steerToward(a, t.x, t.y, 0.25);
+        const pantry = builtRoom(a.isRed, 'pantry');
+        let aimx = t.x, aimy = t.y;
+        if (pantry && dist2(a.x, a.y, pantry.x, pantry.y) > pantry.r * pantry.r) {
+          const o = SOIL_R + 12;
+          aimx = pantry.x + Math.cos(pantry.gapAngle) * (pantry.r + o);
+          aimy = pantry.y + Math.sin(pantry.gapAngle) * (pantry.r + o);
+        }
+        steerToward(a, aimx, aimy, 0.25);
         if (++a.carryTicks > CARRY_RETRY) { a.dropOffset = pickDropOffset(4, a.isRed, a.x, a.y); a.carryTicks = 0; }
       } else if (react === 'flee') {
         steerAway(a, danger.x, danger.y, 0.3);
@@ -512,16 +521,25 @@ function updateAnts() {
         // built, and the room can't stall a couple of blocks short.
         const s = build.site, ax = s.ax ?? s.x, ay = s.ay ?? s.y;
         steerToward(a, ax, ay, 0.2); chase = { x: ax, y: ay };
-        const atRoom = dist2(build.room.x, build.room.y, a.x, a.y) < (build.room.r + TUNNEL_LEN + 24) ** 2;
-        if (atRoom) {
-          holdStill = true;   // plant it while the block goes up
+        if (dist2(ax, ay, a.x, a.y) < 34 * 34) {   // near the block's open-side approach
+          holdStill = true;   // stay by the block instead of drifting off...
+          a.buildStuck = 0;
+          // ...but sit right at it and jiggle a touch, so it reads as working.
+          a.x = clamp(ax + (Math.random() - 0.5) * 2.4, 0, canvas.width);
+          a.y = clamp(ay + (Math.random() - 0.5) * 2.4, 0, canvas.height);
+          a.angle = Math.atan2(s.y - a.y, s.x - a.x);   // face the block it's raising
           if (++a.digTimer >= BUILD_TICKS) {
             a.digTimer = 0;
             const dug = digSoil(s.x, s.y, true);   // room soil: rendered as a smooth wall
             if (dug || collidesWall(s.x, s.y) || ++s.tries > 4) s.done = true;
             refreshBuilt(build.room);
           }
-        } else a.digTimer = 0;
+        } else {
+          // Can't get to this block for a while (walled off / unreachable): give up
+          // on it so the room can't deadlock the rest of the nest.
+          a.digTimer = 0;
+          if ((a.buildStuck = (a.buildStuck || 0) + 1) > 130) { s.done = true; refreshBuilt(build.room); a.buildStuck = 0; }
+        }
       } else if (!prey && a.isRed) {
         // Raider: seek out food anywhere — ambient drops or the enemy store when
         // it's breached — and haul it back to the rival pantry. (Hunting whites is
@@ -594,11 +612,19 @@ function updateAnts() {
         a.x = (bx + canvas.width)  % canvas.width;
         a.y = (by + canvas.height) % canvas.height;
       }
+      // Getting nowhere against walls: if it's sealed inside a room, one such ant
+      // burrows a hole out (a fresh opening), provided it's not a queen.
+      a.stuckMs += TICK_MS;
+      if (a.stuckMs >= BURROW_STUCK_MS && !a.isQueen && inAnyRoom(a.x, a.y)) {
+        if (burrowHole(a.x + Math.cos(a.angle) * (SOIL_R + 5), a.y + Math.sin(a.angle) * (SOIL_R + 5)) ||
+            burrowHole(a.x, a.y)) a.stuckMs = 0;
+      }
     } else {
       if (nearWater && nearWaterD < 30 * 30) steerAway(a, nearWater.x, nearWater.y, 0.25);
       if (inWater) { nx = a.x + (nx - a.x) * 0.4; ny = a.y + (ny - a.y) * 0.4; }
-      a.x = (nx + canvas.width)  % canvas.width;
-      a.y = (ny + canvas.height) % canvas.height;
+      const fx = (nx + canvas.width) % canvas.width, fy = (ny + canvas.height) % canvas.height;
+      if (!collidesWall(fx, fy)) { a.x = fx; a.y = fy; a.stuckMs = 0; }   // never end up inside soil
+      else a.stuckMs += TICK_MS;
     }
 
     // Trail laying after a good meal

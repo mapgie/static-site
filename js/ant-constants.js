@@ -53,8 +53,9 @@ const PROTEIN_BOOST_TICKS = 600; // ~10s of extra vigour and mating drive after 
 // blocks that wall off nest rooms. Soil can be mined anywhere; painted walls can
 // extend structures ad hoc but aren't recognised as rooms.
 const SOIL_COLOR = '#6b4423';
-const SOIL_R     = 5;    // radius of a placed soil block
+const SOIL_R     = 4;    // radius of a placed soil block (walls are kept thin)
 const DIG_TICKS  = 3;    // in-situ digging ticks to raise one soil block
+const WALL_DRAW  = SOIL_R * 1.8;  // rendered thickness of a soil wall line
 
 // Nest rooms. The colony auto-builds a walled complex: it plans room sites, then
 // idle ants dig the soil walls block by block, leaving a doorway gap facing the
@@ -68,19 +69,24 @@ const ROOM_SPECS = {
   throne:  { r: 30, order: 3, label: 'Throne',  color: '#c98a27' },
 };
 const ROOM_CAPS      = { entry: Infinity, pantry: Infinity, nursery: 3, throne: 1 };
-const ROOM_GAP_ARC   = 0.7;   // radians of doorway left open in each room's wall
-const ROOM_SITE_STEP = SOIL_R * 1.7;  // spacing of wall blocks around the room
+const ROOM_SITE_STEP = SOIL_R * 1.5;  // spacing of wall blocks — tight enough that a ring has no slip-through
 const MIN_BUILD_ANTS = 6;     // the colony only starts building once it's this many strong
-const BUILD_SENSE    = 220;   // how far an idle ant will walk to work an unbuilt room
+const BUILD_SENSE    = 260;   // how far an idle ant will walk to work an unbuilt room
 const ROOM_MSG_MS    = 4000;  // how long the "needs a nursery" nudge shows
 const MAX_BUILDERS   = 5;     // at most this many ants dig at once, so the colony still forages
 const BUILD_TICKS    = 40;    // in-situ ticks to raise one wall block (~0.65s — a visible, unhurried dig)
 const DIG_REACH      = 13;    // how close to a block's open-side approach point an ant digs from
 
-// Tunnels: each room sits a corridor's length out from the nest, and its doorway
-// is linked back to the nest by two flanking soil walls with a walkable channel.
-const TUNNEL_LEN     = 46;    // gap between the nest ring and a room, spanned by the corridor
-const TUNNEL_HALF_W  = 12;    // half-width of the walkable channel between the corridor walls
+// Tunnels: each room hangs off the open junction at the nest by a two-walled
+// corridor with a real, walkable channel; the room's doorway gap is sized to
+// match the channel so ants can actually pass through.
+const TUNNEL_LEN     = 52;    // corridor length between the junction and a room
+const TUNNEL_HALF_W  = 15;    // half-width of the walkable channel (ants ~4px pass comfortably)
+const DOORWAY_HALF   = TUNNEL_HALF_W + 3;  // half-width of a room's doorway opening
+
+// Burrowing out: an ant sealed inside a room that can't find a way past the walls
+// will, after a spell of getting nowhere, dig a single hole to escape.
+const BURROW_STUCK_MS = 2500; // how long an ant must be stuck against walls before it burrows
 
 // Threat response: a rival this close to a built room's doorway counts as a breach,
 // and the colony walls the doorway shut (a barricade).

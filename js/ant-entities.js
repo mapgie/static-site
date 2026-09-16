@@ -40,7 +40,8 @@ function createAnt(isRed = false, isQueen = false, x, y) {
     hauling: null,      // the carcass this ant is on a team for
     haulCooldown: 0,    // ticks left ignoring carcasses after a team gave up
     wallCooldown: 0,    // ticks left peeling away from a wall before chasing again
-    digTimer: 0         // ticks spent digging the wall block it's standing on
+    digTimer: 0,        // ticks spent digging the wall block it's standing on
+    stuckMs: 0          // ms getting nowhere against walls; triggers a burrow-out
   };
 }
 
@@ -55,8 +56,15 @@ function collidesWall(x, y) {
   return hit;
 }
 
-// Where auto-food may land: not on solid terrain (wall/soil), not in water, and
-// not on top of a queen. Keeps drops out of structures and off the royals.
+// Any room footprint (either colony) covers this point?
+function inAnyRoom(x, y) {
+  for (const room of rooms) if (dist2(room.x, room.y, x, y) < room.r * room.r) return true;
+  return false;
+}
+
+// Where auto-food (and Sadist poison) may land: not on terrain/water, not on a
+// queen, and never inside the nest — no room footprint and no spawn area, so food
+// always lands in the open and must be carried in to the pantry.
 function foodSpawnAllowed(x, y) {
   let ok = true;
   forEachEnvNear(x, y, 40, o => {
@@ -68,6 +76,25 @@ function foodSpawnAllowed(x, y) {
   for (const q of [queens.white, queens.red]) {
     if (q && dist2(q.x, q.y, x, y) < 16 * 16) return false;
   }
+  for (const key of ['yellow', 'red']) {
+    for (const s of spawnPoints[key]) if (dist2(s.x, s.y, x, y) < s.r * s.r) return false;
+  }
+  if (inAnyRoom(x, y)) return false;
+  return true;
+}
+
+// A trapped ant burrows: remove the nearest soil block, opening a hole to escape.
+function burrowHole(x, y) {
+  let bi = -1, bd = 16 * 16;
+  for (let i = 0; i < environment.length; i++) {
+    const o = environment[i];
+    if (o.type !== 'soil') continue;
+    const d = dist2(o.x, o.y, x, y);
+    if (d < bd) { bd = d; bi = i; }
+  }
+  if (bi < 0) return false;
+  environment.splice(bi, 1);
+  markEnvDirty();
   return true;
 }
 
@@ -112,21 +139,53 @@ function awayFromRival(team) {
   return Math.atan2(a.y - enemy.y, a.x - enemy.x);
 }
 
-// Wall-block sites evenly around a room, skipping the doorway arc at gapAngle.
-// Each site carries an `approach` point just outside the ring, so a builder digs
-// the block from open ground instead of walling itself in.
-function roomWallSites(cx, cy, r, gapAngle) {
-  const n = Math.max(8, Math.round((2 * Math.PI * r) / ROOM_SITE_STEP));
+// A doorway opening as wide as the tunnel channel, so an ant can actually pass.
+function gapArcFor(r) { return 2 * Math.asin(Math.min(0.85, DOORWAY_HALF / Math.max(r, DOORWAY_HALF))); }
+
+// Is an angle within any of a ring's doorway gaps?
+function inAnyGap(ang, gaps) {
+  for (const g of gaps) {
+    const off = Math.abs(((ang - g.angle + Math.PI) % (Math.PI * 2)) - Math.PI);
+    if (off < g.arc / 2) return true;
+  }
+  return false;
+}
+
+// The centre of a room's (first) doorway, on the ring.
+function doorwayPoint(room) {
+  return { x: room.x + Math.cos(room.gapAngle) * room.r, y: room.y + Math.sin(room.gapAngle) * room.r };
+}
+
+// Wall-block sites evenly around a room, leaving every doorway gap open. Each site
+// carries an open-side approach point so a builder digs from outside the ring.
+function roomWallSites(cx, cy, r, gaps) {
+  const n = Math.max(10, Math.round((2 * Math.PI * r) / ROOM_SITE_STEP));
   const sites = [];
   for (let k = 0; k < n; k++) {
     const ang = (k / n) * Math.PI * 2;
-    const off = Math.abs(((ang - gapAngle + Math.PI) % (Math.PI * 2)) - Math.PI);
-    if (off < ROOM_GAP_ARC / 2) continue;   // leave the doorway open
+    if (inAnyGap(ang, gaps)) continue;   // leave the doorway/link openings clear
     const ar = r + SOIL_R + 8;
     sites.push({ x: clamp(cx + Math.cos(ang) * r, 0, canvas.width),
                  y: clamp(cy + Math.sin(ang) * r, 0, canvas.height),
                  ax: clamp(cx + Math.cos(ang) * ar, 0, canvas.width),
                  ay: clamp(cy + Math.sin(ang) * ar, 0, canvas.height), done: false, tries: 0 });
+  }
+  return sites;
+}
+
+// Two flanking walls from (x0,y0) to (x1,y1), leaving a walkable channel between
+// them — the guts of every tunnel. Each site works from the channel centre.
+function channelWalls(x0, y0, x1, y1) {
+  const ang = Math.atan2(y1 - y0, x1 - x0), perp = ang + Math.PI / 2;
+  const len = Math.hypot(x1 - x0, y1 - y0);
+  const sites = [];
+  for (let d = 0; d <= len; d += ROOM_SITE_STEP) {
+    const chx = x0 + Math.cos(ang) * d, chy = y0 + Math.sin(ang) * d;
+    for (const side of [-1, 1]) {
+      const x = chx + Math.cos(perp) * TUNNEL_HALF_W * side, y = chy + Math.sin(perp) * TUNNEL_HALF_W * side;
+      sites.push({ x: clamp(x, 0, canvas.width), y: clamp(y, 0, canvas.height),
+                   ax: clamp(chx, 0, canvas.width), ay: clamp(chy, 0, canvas.height), done: false, tries: 0 });
+    }
   }
   return sites;
 }
@@ -137,38 +196,16 @@ function roomRadius(team, type) { return Math.round(ROOM_SPECS[type].r * (team ?
 function makeRoom(team, type, cx, cy, gapAngle, manual = false) {
   const spec = ROOM_SPECS[type];
   const r = roomRadius(team, type);
+  const gaps = [{ angle: gapAngle, arc: gapArcFor(r) }];
   return {
     id: nextRoomId++, team, type, manual,
     x: clamp(cx, 0, canvas.width), y: clamp(cy, 0, canvas.height), r,
-    gapAngle, order: manual ? -1 : spec.order,   // user-nudged rooms build first
-    sites: roomWallSites(cx, cy, r, gapAngle),
-    tunnelSites: [],       // filled by placeRoom: the corridor walls back to the nest
+    gapAngle, gaps, order: manual ? -1 : spec.order,   // user-nudged rooms build first
+    sites: roomWallSites(cx, cy, r, gaps),
+    tunnelSites: [],       // corridor walls back to the junction (and any room link)
     barricadeSites: null,  // filled on a breach: soil to seal the doorway
-    breached: false,
-    built: false
+    breached: false, linked: false, built: false
   };
-}
-
-// Two flanking walls from a room's doorway back toward the nest, leaving a
-// walkable channel between them — the tunnel. Stops short of the nest core.
-function tunnelWallSites(anchor, room) {
-  const gx = room.x + Math.cos(room.gapAngle) * room.r;   // the doorway on the room ring
-  const gy = room.y + Math.sin(room.gapAngle) * room.r;
-  const ang = Math.atan2(anchor.y - gy, anchor.x - gx);
-  const perp = ang + Math.PI / 2;
-  const len = Math.hypot(anchor.x - gx, anchor.y - gy);
-  const stop = Math.max(0, len - (nestCore(anchor) + 6));
-  const sites = [];
-  for (let d = 0; d <= stop; d += ROOM_SITE_STEP) {
-    const chx = gx + Math.cos(ang) * d, chy = gy + Math.sin(ang) * d;   // channel centre — the ant works from here
-    for (const side of [-1, 1]) {
-      const x = chx + Math.cos(perp) * TUNNEL_HALF_W * side;
-      const y = chy + Math.sin(perp) * TUNNEL_HALF_W * side;
-      sites.push({ x: clamp(x, 0, canvas.width), y: clamp(y, 0, canvas.height),
-                   ax: clamp(chx, 0, canvas.width), ay: clamp(chy, 0, canvas.height), done: false, tries: 0 });
-    }
-  }
-  return sites;
 }
 
 // Structural completion: every ring and tunnel block raised. Barricades are a
@@ -177,15 +214,15 @@ function refreshBuilt(room) {
   room.built = room.sites.every(s => s.done) && (room.tunnelSites || []).every(s => s.done);
 }
 
-// A room breached by a rival gets its doorway arc filled in — soil sites across
-// the gap, dug at top priority to seal the colony in.
+// A room breached by a rival gets its main doorway filled in — soil across the
+// gap, dug at top priority to seal the colony in.
 function barricadeRoom(room) {
   if (room.barricadeSites) return;
-  const sites = [];
-  const n = Math.max(3, Math.round(ROOM_GAP_ARC * room.r / ROOM_SITE_STEP) + 1);
+  const arc = room.gaps[0].arc, sites = [];
+  const n = Math.max(3, Math.round(arc * room.r / ROOM_SITE_STEP) + 1);
   const ar = room.r + SOIL_R + 8;
   for (let k = 0; k <= n; k++) {
-    const ang = room.gapAngle - ROOM_GAP_ARC / 2 + (k / n) * ROOM_GAP_ARC;
+    const ang = room.gapAngle - arc / 2 + (k / n) * arc;
     sites.push({ x: clamp(room.x + Math.cos(ang) * room.r, 0, canvas.width),
                  y: clamp(room.y + Math.sin(ang) * room.r, 0, canvas.height),
                  ax: clamp(room.x + Math.cos(ang) * ar, 0, canvas.width),
@@ -204,7 +241,10 @@ function layEgg(team) {
   return true;
 }
 
-const ROOM_PLACE_ANGLE = { throne: 0, pantry: -0.9, entry: Math.PI };  // biased around the nest
+// Nursery deepest (away from the rival), throne beside it; pantry off to one
+// side; entry toward the open. So the nursery is the most sheltered room.
+const ROOM_PLACE_ANGLE = { nursery: 0, throne: 0.85, pantry: -1.4, entry: Math.PI };
+const ROOM_DEPTH       = { nursery: 1.35, throne: 1.0, pantry: 1.0, entry: 1.0 };  // ×tunnel length
 
 function roomCap(type) { return ROOM_CAPS[type] ?? Infinity; }
 function canAddRoom(team, type) { return roomCount(team, type) < roomCap(type); }
@@ -213,45 +253,38 @@ function canAddRoom(team, type) { return roomCount(team, type) < roomCap(type); 
 function placementBlocked(team, cx, cy, r) {
   for (const room of rooms) {
     if (room.team !== team) continue;
-    const min = room.r + r + 8;
+    const min = room.r + r + 10;
     if (dist2(room.x, room.y, cx, cy) < min * min) return true;
   }
   return false;
 }
 
-// Build a full room object (ring + tunnel back to the nest) at a chosen spot.
+// Build a full room object (ring + a tunnel back to the junction) at a spot.
 function buildRoomAt(team, type, cx, cy, manual = false) {
   const a = nestAnchor(team);
   const m = roomRadius(team, type) + SOIL_R + 10;
   cx = clamp(cx, m, canvas.width - m);
   cy = clamp(cy, m, canvas.height - m);
-  const gap = Math.atan2(a.y - cy, a.x - cx);   // doorway faces the nest
+  const gap = Math.atan2(a.y - cy, a.x - cx);   // doorway faces the junction
   const room = makeRoom(team, type, cx, cy, gap, manual);
-  room.tunnelSites = tunnelWallSites(a, room);
+  // Corridor from the doorway to the junction, stopping short of the open core.
+  const gp = doorwayPoint(room);
+  const len = Math.hypot(a.x - gp.x, a.y - gp.y), stop = Math.max(0, len - (nestCore(a) + 6));
+  const tang = Math.atan2(a.y - gp.y, a.x - gp.x);
+  room.tunnelSites = channelWalls(gp.x, gp.y, gp.x + Math.cos(tang) * stop, gp.y + Math.sin(tang) * stop);
   return room;
 }
 
-// The nursery sits on the nest itself — a wall ringing the spawn point, its
-// doorway facing out toward the foraging ground (no tunnel; it *is* the nest).
-function nurseryOnSpawn(team) {
-  const a = nestAnchor(team);
-  const r = Math.max(roomRadius(team, 'nursery'), a.r + 6);
-  const room = makeRoom(team, 'nursery', a.x, a.y, awayFromRival(team) + Math.PI);
-  room.r = r;
-  room.sites = roomWallSites(a.x, a.y, r, room.gapAngle);
-  room.tunnelSites = [];
-  return room;
-}
-
-// A free, on-canvas spot for a ringed room near a base angle — rotate and push
+// A free, on-canvas spot for a room, per type's angle and depth — rotate and push
 // out until it clears the other rooms, so nothing is built on top of anything.
 function findRoomSpot(team, type) {
   const a = nestAnchor(team), r = roomRadius(team, type);
   const m = r + SOIL_R + 10, base = awayFromRival(team) + (ROOM_PLACE_ANGLE[type] || 0);
-  for (let ring = 0; ring < 4; ring++) {
-    const dist = a.r + TUNNEL_LEN + r + ring * (2 * r + 16);
+  const reach = a.r + TUNNEL_LEN * (ROOM_DEPTH[type] || 1) + r;
+  for (let ring = 0; ring < 5; ring++) {
+    const dist = reach + ring * (2 * r + 16);
     for (let k = 0; k < 12; k++) {
-      const ang = base + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.5;
+      const ang = base + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.4;
       const cx = clamp(a.x + Math.cos(ang) * dist, m, canvas.width - m);
       const cy = clamp(a.y + Math.sin(ang) * dist, m, canvas.height - m);
       if (!placementBlocked(team, cx, cy, r)) return { x: cx, y: cy };
@@ -260,22 +293,42 @@ function findRoomSpot(team, type) {
   return null;   // nowhere clear (a very crowded board)
 }
 
-// Auto-build planner: lay out the nursery on the nest and the other rooms ringed
-// around it without overlaps, respecting caps. No-ops once each is planned.
+// A direct corridor between the nursery and the throne: open a second doorway in
+// each facing the other and run a channel between their edges. Done once, while
+// both are still unbuilt so recomputing their rings loses no progress.
+function linkNurseryThrone(team) {
+  const n = rooms.find(r => r.team === team && r.type === 'nursery' && !r.linked);
+  const t = rooms.find(r => r.team === team && r.type === 'throne' && !r.linked);
+  if (!n || !t) return;
+  if (n.sites.some(s => s.done) || t.sites.some(s => s.done)) { n.linked = t.linked = true; return; }
+  const ang = Math.atan2(t.y - n.y, t.x - n.x);
+  n.gaps.push({ angle: ang, arc: gapArcFor(n.r) });
+  t.gaps.push({ angle: ang + Math.PI, arc: gapArcFor(t.r) });
+  n.sites = roomWallSites(n.x, n.y, n.r, n.gaps);
+  t.sites = roomWallSites(t.x, t.y, t.r, t.gaps);
+  n.tunnelSites = n.tunnelSites.concat(
+    channelWalls(n.x + Math.cos(ang) * n.r, n.y + Math.sin(ang) * n.r,
+                 t.x - Math.cos(ang) * t.r, t.y - Math.sin(ang) * t.r));
+  n.linked = t.linked = true;
+}
+
+// Auto-build planner: each room hangs off the open junction by its own tunnel, so
+// no room is crossed to reach another; the pantry links only to the junction and
+// the nursery links to the throne. No-ops once each is planned.
 function planNest(team) {
   if (!worldBuilding) return;
   const count = team ? countRedAnts() : countWhiteAnts();
   if (count < MIN_BUILD_ANTS) return;
-  if (roomCount(team, 'nursery') === 0) rooms.push(nurseryOnSpawn(team));
-  // The rival keeps it modest — a nursery and a pantry (to stash what it steals);
-  // the main colony also digs an entry and a throne.
-  const order = team ? ['pantry', 'entry'] : ['entry', 'pantry', 'throne'];
+  // The rival keeps it modest (nursery + pantry); the main colony adds an entry
+  // and a throne. Build the nursery first so it's the deepest, most sheltered.
+  const order = team ? ['nursery', 'pantry'] : ['nursery', 'entry', 'pantry', 'throne'];
   for (const type of order) {
     if (roomCount(team, type) === 0) {
       const spot = findRoomSpot(team, type);
       if (spot) rooms.push(buildRoomAt(team, type, spot.x, spot.y));
     }
   }
+  linkNurseryThrone(team);
 }
 
 // Non-interactive add (tests / fallback): drop a room in the first clear spot.

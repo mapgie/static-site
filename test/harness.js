@@ -33,9 +33,10 @@ const FUNCS = [
   'planNest', 'addRoomManual', 'roomCount', 'hasBuiltRoom', 'builtRoom',
   'buildTaskFor', 'countWhiteAnts', 'countRedAnts', 'refreshBuilt',
   'barricadeRoom', 'layEgg', 'updateEggs', 'updateThreats',
-  'placementBlocked', 'canAddRoom', 'buildRoomAt', 'findRoomSpot', 'nurseryOnSpawn',
+  'placementBlocked', 'canAddRoom', 'buildRoomAt', 'findRoomSpot',
   'roomRadius', 'stealFood', 'maybeSadistPoison', 'decay', 'dropTarget', 'dropOff',
-  'updateFoods'
+  'updateFoods', 'inAnyRoom', 'burrowHole', 'linkNurseryThrone', 'gapArcFor',
+  'doorwayPoint', 'channelWalls', 'collidesWall'
 ];
 
 function freshApi() {

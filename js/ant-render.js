@@ -39,7 +39,7 @@ function strokeWall(sites) {
       }
     }
   }
-  ctx.lineWidth = SOIL_R * 2.2;
+  ctx.lineWidth = WALL_DRAW;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.strokeStyle = SOIL_COLOR;

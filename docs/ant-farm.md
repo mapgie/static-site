@@ -210,15 +210,26 @@ structures ad hoc). Soil can be mined anywhere. **Auto food never lands on soil,
 walls, water, or a queen.**
 
 **Auto-built nest.** Once the colony is a handful of ants strong, it lays out a
-walled nest and its well-fed idle workers dig the walls block by block, leaving a
-doorway. The **nursery is built right on the spawn point** (the heart of the nest);
-the **entry, pantry, and throne** ring around it, each linked back to the nest by a
-walled **tunnel** with a walkable channel down the middle. The **throne sits on the
-side away from the rival spawn**. No room is ever built on top of another. Each room
-shows as a labelled disc — dashed while it's still being dug, solid once its walls
-are up — and the walls render as smooth soil lines. At most a few ants dig at once,
-so the rest keep foraging. Room caps: **1 throne, 3 nurseries, any number of
-pantries**.
+walled nest and its well-fed idle workers dig the walls block by block. The nest is
+built around an open **junction** at the spawn point (the crossroads ants emerge
+into); each room hangs off the junction by its own two-walled **tunnel** with a
+genuine walkable channel, and each room's ring has a real **doorway gap** sized to
+that channel, so ants pass through openings rather than walls. Walls are thin soil
+lines; ants **can't cross them** and must use the gaps.
+
+Topology follows a few rules: the **nursery** is dug deepest (farthest from the
+rival — the most sheltered room) and is joined to the **throne** by a direct
+corridor; the **pantry** connects only to the junction, never straight to the
+nursery or throne; and every room is reachable across the junction **without
+crossing another room**. The **entry** sits toward the open. No room is built on top
+of another. Rooms show as labelled discs — dashed while being dug, solid once
+walled. A digging ant sits right at its block and jiggles as it works. At most a few
+ants dig at once, so the rest keep foraging. Room caps: **1 throne, 3 nurseries, any
+number of pantries**.
+
+**Burrowing out.** An ant sealed inside a room that can't find a way past the walls
+will, after a spell of getting nowhere, **dig a single hole** to escape — a fresh
+opening in the wall.
 
 **Nursery-gated growth.** Past a threshold (default **10** ants, tunable under
 *Nursery needed > ants*), a colony **can't breed without a built nursery** — a brief

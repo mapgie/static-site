@@ -154,13 +154,18 @@ test('ringed rooms are placed fully on-canvas even from an edge nest', () => {
   }
 });
 
-test('the nursery is built on the spawn point', () => {
+test('the nursery is the deepest room (farthest from the rival) and links to the throne', () => {
   const g = freshApi();
-  g.spawnPoints = { yellow: [{ x: 320, y: 280, r: 40 }], red: [{ x: 800, y: 300, r: 40 }] };
-  g.ants = []; for (let i = 0; i < 8; i++) g.ants.push(g.createAnt(false, false, 320, 280));
+  g.spawnPoints = { yellow: [{ x: 250, y: 300, r: 40 }], red: [{ x: 850, y: 300, r: 40 }] };
+  g.ants = []; for (let i = 0; i < 8; i++) g.ants.push(g.createAnt(false, false, 250, 300));
   g.planNest(false);
-  const nursery = g.rooms.find(r => r.type === 'nursery');
-  assert.ok(Math.abs(nursery.x - 320) < 1 && Math.abs(nursery.y - 280) < 1, 'nursery sits on the spawn');
+  const red = { x: 850, y: 300 };
+  const d = t => { const r = g.rooms.find(x => x.type === t); return Math.hypot(r.x - red.x, r.y - red.y); };
+  assert.ok(d('nursery') > d('entry') && d('nursery') > d('pantry'), 'nursery is farthest from the rival');
+  // The nursery and throne each carry a second doorway toward the other (the link).
+  const nursery = g.rooms.find(r => r.type === 'nursery'), throne = g.rooms.find(r => r.type === 'throne');
+  assert.ok(nursery.gaps.length === 2 && throne.gaps.length === 2, 'nursery and throne are linked by a second doorway');
+  assert.ok(nursery.linked && throne.linked, 'the link is recorded');
 });
 
 test('the rival builds a smaller nest of its own', () => {
@@ -169,7 +174,7 @@ test('the rival builds a smaller nest of its own', () => {
   g.ants = []; for (let i = 0; i < 8; i++) g.ants.push(g.createAnt(true, false, 820, 300));
   g.planNest(true);
   const types = g.rooms.filter(r => r.team === true).map(r => r.type).sort().join(',');
-  assert.strictEqual(types, 'entry,nursery,pantry', 'rival builds a modest nest (no throne)');
+  assert.strictEqual(types, 'nursery,pantry', 'rival builds a modest nest (just nursery + pantry)');
   const redPantry = g.rooms.find(r => r.team === true && r.type === 'pantry');
   assert.ok(redPantry.r < g.roomRadius(false, 'pantry'), 'rival rooms are scaled smaller');
 });
