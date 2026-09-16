@@ -375,6 +375,7 @@ button#delete-structures:hover {
   cursor: pointer;
 }
 #room-place-bar #room-place-ok { background: #2f6b3a; border-color: #3c8a4c; }
+#room-place-bar[hidden] { display: none; }   /* let the hidden attribute win over display:flex */
 
 /* Show/hide the on-canvas overlay (bars + population readout). */
 #hud-toggle {

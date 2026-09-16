@@ -74,7 +74,7 @@ const MIN_BUILD_ANTS = 6;     // the colony only starts building once it's this 
 const BUILD_SENSE    = 220;   // how far an idle ant will walk to work an unbuilt room
 const ROOM_MSG_MS    = 4000;  // how long the "needs a nursery" nudge shows
 const MAX_BUILDERS   = 5;     // at most this many ants dig at once, so the colony still forages
-const BUILD_TICKS    = 18;    // in-situ ticks to raise one wall block (slow enough to watch)
+const BUILD_TICKS    = 40;    // in-situ ticks to raise one wall block (~0.65s — a visible, unhurried dig)
 const DIG_REACH      = 13;    // how close to a block's open-side approach point an ant digs from
 
 // Tunnels: each room sits a corridor's length out from the nest, and its doorway

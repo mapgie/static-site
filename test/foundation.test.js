@@ -137,7 +137,7 @@ test('builders dig a room: an ant at a wall site raises soil there', () => {
   const a = g.ants[0];
   g.ants = [a];   // isolate one builder (the cap would otherwise hand the slots to its nestmates)
   a.x = site.ax; a.y = site.ay; a.fullness = 100; a.hungerPoint = 40; a.carrying = null; a.wallCooldown = 0; a.age = 1e6;
-  for (let i = 0; i < 30; i++) { g.updateAnts(); g.rebuildEnvGrid(); }   // BUILD_TICKS + travel
+  for (let i = 0; i < 55; i++) { g.updateAnts(); g.rebuildEnvGrid(); }   // BUILD_TICKS + travel
   assert.ok(g.environment.some(o => o.type === 'soil'), 'a soil wall block was raised');
 });
 
