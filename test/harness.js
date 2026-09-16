@@ -19,7 +19,7 @@ const STATE = [
   'worldBuilding', 'autoFood', 'autoFoodTimer', 'autoFoodNext', 'animationPaused',
   'whiteHappiness', 'redHappiness', 'TUNE', 'matingSpeed', 'nextAntId',
   'envDirty', 'whiteCalmMs', 'killedWhite', 'killedRed', 'redAggressionLevel',
-  'rooms', 'nextRoomId', 'nurseryNoticeUntil'
+  'rooms', 'nextRoomId', 'nurseryNoticeUntil', 'eggs', 'activeBuilders'
 ];
 // Functions exposed by reference.
 const FUNCS = [
@@ -30,7 +30,9 @@ const FUNCS = [
   'nearestFood', 'strongestTrail', 'strongestPheromone', 'dangerReaction',
   'layPheromone', 'colonySpawnPoints', 'addSpawnPoint', 'nearestSpawnPoint',
   'planNest', 'addRoomManual', 'roomCount', 'hasBuiltRoom', 'builtRoom',
-  'buildTaskFor', 'countWhiteAnts'
+  'buildTaskFor', 'countWhiteAnts', 'countRedAnts', 'refreshBuilt',
+  'barricadeRoom', 'layEgg', 'updateEggs', 'updateThreats',
+  'placementBlocked', 'canAddRoom', 'buildRoomAt', 'findRoomSpot', 'nurseryOnSpawn'
 ];
 
 function freshApi() {

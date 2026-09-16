@@ -73,6 +73,23 @@ const ROOM_SITE_STEP = SOIL_R * 1.7;  // spacing of wall blocks around the room
 const MIN_BUILD_ANTS = 6;     // the colony only starts building once it's this many strong
 const BUILD_SENSE    = 220;   // how far an idle ant will walk to work an unbuilt room
 const ROOM_MSG_MS    = 4000;  // how long the "needs a nursery" nudge shows
+const MAX_BUILDERS   = 5;     // at most this many ants dig at once, so the colony still forages
+const BUILD_TICKS    = 18;    // in-situ ticks to raise one wall block (slow enough to watch)
+const DIG_REACH      = 13;    // how close to a block's open-side approach point an ant digs from
+
+// Tunnels: each room sits a corridor's length out from the nest, and its doorway
+// is linked back to the nest by two flanking soil walls with a walkable channel.
+const TUNNEL_LEN     = 46;    // gap between the nest ring and a room, spanned by the corridor
+const TUNNEL_HALF_W  = 12;    // half-width of the walkable channel between the corridor walls
+
+// Threat response: a rival this close to a built room's doorway counts as a breach,
+// and the colony walls the doorway shut (a barricade).
+const BREACH_R       = 26;
+
+// Eggs: in a finished nursery, a mating lays an egg that hatches into an ant after
+// a spell, instead of a birth on the spot.
+const EGG_HATCH_MS   = 9000;
+const EGG_R          = 3;
 
 // Live-tunable balance numbers. Everything the Tuning panel can nudge lives here
 // so it can be changed at runtime and saved; TUNABLES (further down) drives the UI.

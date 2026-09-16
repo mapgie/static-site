@@ -22,7 +22,7 @@ function serializeWorld() {
   return {
     ants: ants.map(serialiseAnt),
     queens: { white: queens.white && serialiseAnt(queens.white), red: queens.red && serialiseAnt(queens.red) },
-    foods, environment, rooms, nextRoomId, spawnPoints, showSpawnPoints,
+    foods, environment, rooms, nextRoomId, eggs, spawnPoints, showSpawnPoints,
     totalBornWhite, totalDeadWhite, totalBornRed, totalDeadRed,
     matedWhite, spawnedWhite, matedRed, spawnedRed,
     killedWhite, killedRed,
@@ -111,6 +111,7 @@ function applyWorld(d) {
   environment  = Array.isArray(d.environment) ? d.environment : [];
   rooms        = Array.isArray(d.rooms) ? d.rooms : [];
   nextRoomId   = d.nextRoomId || (rooms.reduce((m, r) => Math.max(m, r.id || 0), 0) + 1);
+  eggs         = Array.isArray(d.eggs) ? d.eggs : [];
   showSpawnPoints = !!d.showSpawnPoints;
 
   totalBornWhite = d.totalBornWhite || 0;

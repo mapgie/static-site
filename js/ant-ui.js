@@ -293,7 +293,7 @@ function setupUI() {
 
   on('destroy-world', 'click', () => {
     ants = []; foods = []; pheromones = []; environment = []; environmentHistory = [];
-    rooms = []; nextRoomId = 1; nurseryNoticeUntil = 0;
+    rooms = []; nextRoomId = 1; eggs = []; nurseryNoticeUntil = 0; placingRoom = null;
     queens.white = queens.red = null;
     spawnPoints = { yellow: [], red: [] };
     whiteHappiness = redHappiness = 50; whiteCalmMs = 0;
@@ -348,10 +348,12 @@ function setupUI() {
   on('auto-food', 'change', e => { autoFood = e.target.checked; saveFarm(); });
   on('world-building', 'change', e => { worldBuilding = e.target.checked; saveFarm(); });
 
-  // Nudge the auto-builder: queue an extra entrance or food store for the ants
-  // to dig. Respects room caps (an entry/pantry is uncapped).
-  on('add-entry',  'click', () => { if (addRoomManual(false, 'entry'))  saveFarm(); });
-  on('add-pantry', 'click', () => { if (addRoomManual(false, 'pantry')) saveFarm(); });
+  // Nudge the auto-builder: pick a spot for an extra entrance or food store and
+  // drag it where you want before the ants dig it.
+  on('add-entry',  'click', () => startPlacingRoom('entry'));
+  on('add-pantry', 'click', () => startPlacingRoom('pantry'));
+  on('room-place-ok',     'click', () => finishPlacingRoom(true));
+  on('room-place-cancel', 'click', () => finishPlacingRoom(false));
 
   on('undoStructure', 'click', () => {
     if (environmentHistory.length) {
@@ -366,14 +368,15 @@ function setupUI() {
 
   // Single click with no tool selected drops one piece of food
   canvas.addEventListener('click', e => {
+    if (placingRoom) { placingPointerMove(e); return; }   // tap moves the room being placed
     if (maintenance || $('environment-tool').value !== 'none') return;
     const { x, y } = getCanvasCoords(e);
     if (addFood(x, y, $('food-type').value)) saveFarm();
   });
 
   // Drag to draw
-  const startDraw = e => { if (maintenance) return maintPointerDown(e); lastX = lastY = lastFoodX = lastFoodY = null; handleDraw(e); };
-  const endDraw   = () => { if (maintenance) return maintPointerUp(); lastX = lastY = lastFoodX = lastFoodY = null; };
+  const startDraw = e => { if (placingRoom) return placingPointerMove(e); if (maintenance) return maintPointerDown(e); lastX = lastY = lastFoodX = lastFoodY = null; handleDraw(e); };
+  const endDraw   = () => { if (placingRoom || maintenance) return maintPointerUp(); lastX = lastY = lastFoodX = lastFoodY = null; };
 
   canvas.addEventListener('mousedown', e => {
     if (e.button !== 0) return;
@@ -395,6 +398,7 @@ function setupUI() {
 }
 
 function handleDraw(e) {
+  if (placingRoom) return placingPointerMove(e);
   if (maintenance) return maintPointerMove(e);
   const tool = $('environment-tool').value;
   if (tool === 'none') return;      // let the click handler place single food
@@ -454,6 +458,46 @@ function exitMaintenance() {
   $('spawn-panel').hidden = true;
   selectPoint(null);
   saveFarm();
+}
+
+// ---------------------------------------------------------------------------
+// Placing a room by hand (+ Entrance / + Food store): drag a ghost where you
+// want it, then Place. It won't commit on top of another room, and once the
+// ants have built it, it can't be moved.
+// ---------------------------------------------------------------------------
+function startPlacingRoom(type) {
+  if (!worldBuilding) { alert('Turn on World Building Mode first.'); return; }
+  if (!canAddRoom(false, type)) { alert('That room type is already at its limit.'); return; }
+  const a = colonySpawnPoints(false)[0];
+  placingRoom = { type, x: clamp(a.x + a.r + 70, 0, canvas.width), y: clamp(a.y, 0, canvas.height) };
+  placingBefore = animationPaused;
+  setPaused(true);
+  const bar = $('room-place-bar');
+  if (bar) { bar.hidden = false; $('room-place-label').textContent = 'Drag the ' + (ROOM_SPECS[type].label || type).toLowerCase() + ' where you want it'; }
+}
+
+function finishPlacingRoom(commit) {
+  if (!placingRoom) return;
+  if (commit) {
+    const spec = ROOM_SPECS[placingRoom.type];
+    if (placementBlocked(false, placingRoom.x, placingRoom.y, spec.r)) {
+      alert('That spot overlaps another room — drag it to a clear space.');
+      return;   // stay in placing mode
+    }
+    rooms.push(buildRoomAt(false, placingRoom.type, placingRoom.x, placingRoom.y, true));
+    saveFarm();
+  }
+  placingRoom = null;
+  const bar = $('room-place-bar');
+  if (bar) bar.hidden = true;
+  setPaused(placingBefore);
+}
+
+function placingPointerMove(e) {
+  if (e.cancelable) e.preventDefault();
+  const { x, y } = getCanvasCoords(e);
+  placingRoom.x = clamp(x, 0, canvas.width);
+  placingRoom.y = clamp(y, 0, canvas.height);
 }
 
 // Keep both Pause buttons (the panel's and the mobile quick bar's) in step.

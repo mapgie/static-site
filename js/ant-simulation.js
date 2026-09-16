@@ -9,15 +9,17 @@ function animate() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawRooms();
   drawEnvironment();
+  drawEggs();
   if (showSpawnPoints || maintenance) drawSpawnPoints(maintenance);
   drawFoods();
   drawPheromones();
 
   if (!animationPaused) {
     if (autoFood) autoDropFood();
-    if (worldBuilding) planNest(false);   // the main colony lays out and builds its nest
+    if (worldBuilding) { planNest(false); updateThreats(); }   // lay out, build, defend the nest
     updateFoods();
     updateAnts();
+    updateEggs();
     updateQueens();
     whiteCalmMs += TICK_MS;
   }
@@ -180,20 +182,33 @@ function dangerReaction(ant, danger) {
   return nestAtRisk ? 'swarm' : 'flee';
 }
 
-// The wall block an idle builder should work next: the nearest undug site of its
-// colony's lowest-order unbuilt room, within reach. Lowest order first, so the
+// The wall block an idle builder should work next. Emergency barricades come
+// first (urgent, and they bypass the builder cap); otherwise the nearest undug
+// site of the colony's lowest-order unbuilt room — ring before tunnel — so the
 // entry goes up before the pantry, the pantry before the nursery, and so on.
+function nearestUndug(a, sites) {
+  let best = null, bd = BUILD_SENSE * BUILD_SENSE;
+  for (const s of sites) {
+    if (s.done) continue;
+    const d = dist2(s.x, s.y, a.x, a.y);
+    if (d < bd) { bd = d; best = s; }
+  }
+  return best;
+}
 function buildTaskFor(a) {
   if (!worldBuilding || a.isRed || a.isQueen) return null;
-  const mine = rooms.filter(r => r.team === a.isRed && !r.built).sort((x, y) => x.order - y.order);
+  const team = a.isRed;
+  // 1) Seal a breached doorway, wherever it is — this can't wait.
+  for (const room of rooms) {
+    if (room.team !== team || !room.barricadeSites) continue;
+    const s = nearestUndug(a, room.barricadeSites);
+    if (s) return { room, site: s, urgent: true };
+  }
+  // 2) Raise the structure: lowest-order unbuilt room, its ring then its tunnel.
+  const mine = rooms.filter(r => r.team === team && !r.built).sort((x, y) => x.order - y.order);
   for (const room of mine) {
-    let best = null, bd = BUILD_SENSE * BUILD_SENSE;
-    for (const s of room.sites) {
-      if (s.done) continue;
-      const d = dist2(s.x, s.y, a.x, a.y);
-      if (d < bd) { bd = d; best = s; }
-    }
-    if (best) return { room, site: best };
+    const s = nearestUndug(a, room.sites) || nearestUndug(a, room.tunnelSites || []);
+    if (s) return { room, site: s, urgent: false };
   }
   return null;
 }
@@ -364,6 +379,7 @@ function eat(ant, food) {
 
 function updateAnts() {
   const aggression = redAggressionLevel / 100;
+  activeBuilders = 0;   // reset the per-tick builder tally (capped at MAX_BUILDERS)
 
   for (let i = ants.length - 1; i >= 0; i--) {
     const a = ants[i];
@@ -419,7 +435,7 @@ function updateAnts() {
 
     // Decide what to chase. Right after a wall bump this is paused so the ant peels
     // away instead of steering straight back into the wall and grinding to a stop.
-    let target = null, prey = null, chase = null;
+    let target = null, prey = null, chase = null, holdStill = false;
     if (a.wallCooldown > 0) {
       a.wallCooldown--;
     } else {
@@ -436,9 +452,14 @@ function updateAnts() {
         danger = strongestPheromone(a, 'danger', SENSE_DANGER);
         if (danger) react = dangerReaction(a, danger);
       }
-      // Well-fed idle ants pitch in on the nest; hungry ones fall through to forage.
+      // Well-fed idle ants pitch in on the nest; hungry ones fall through to
+      // forage. At most MAX_BUILDERS dig at once (barricades ignore the cap), so
+      // the colony keeps foraging while it builds.
       let build = null;
-      if (!prey && !a.carrying && !react && a.fullness >= a.hungerPoint) build = buildTaskFor(a);
+      if (!prey && !a.carrying && !react && a.fullness >= a.hungerPoint) {
+        const t = buildTaskFor(a);
+        if (t && (t.urgent || activeBuilders < MAX_BUILDERS)) { build = t; activeBuilders++; }
+      }
       if (!prey && a.carrying) {
         // Haul it home
         const t = dropTarget(a);
@@ -451,14 +472,20 @@ function updateAnts() {
         const s = nearestSpawnPoint(a.isRed, a.x, a.y);
         steerToward(a, s.x, s.y, 0.15); chase = s;   // regroup at the nest to defend it
       } else if (build) {
-        // Walk to the wall block and raise it after a few ticks in place.
-        steerToward(a, build.site.x, build.site.y, 0.2); chase = build.site;
-        if (dist2(build.site.x, build.site.y, a.x, a.y) < (SOIL_R + EAT_RANGE) * (SOIL_R + EAT_RANGE)) {
-          if (++a.digTimer >= DIG_TICKS) {
+        // Head for the block's open-side approach point; once the ant is anywhere
+        // at the room it settles and raises the nearest undug block — so even a
+        // site it can't stand exactly on (walled in by its neighbours) still gets
+        // built, and the room can't stall a couple of blocks short.
+        const s = build.site, ax = s.ax ?? s.x, ay = s.ay ?? s.y;
+        steerToward(a, ax, ay, 0.2); chase = { x: ax, y: ay };
+        const atRoom = dist2(build.room.x, build.room.y, a.x, a.y) < (build.room.r + TUNNEL_LEN + 24) ** 2;
+        if (atRoom) {
+          holdStill = true;   // plant it while the block goes up
+          if (++a.digTimer >= BUILD_TICKS) {
             a.digTimer = 0;
-            const dug = digSoil(build.site.x, build.site.y);
-            if (dug || collidesWall(build.site.x, build.site.y) || ++build.site.tries > 5) build.site.done = true;
-            if (build.room.sites.every(s => s.done)) build.room.built = true;
+            const dug = digSoil(s.x, s.y, true);   // room soil: rendered as a smooth wall
+            if (dug || collidesWall(s.x, s.y) || ++s.tries > 4) s.done = true;
+            refreshBuilt(build.room);
           }
         } else a.digTimer = 0;
       } else if (!prey) {
@@ -498,6 +525,7 @@ function updateAnts() {
       const d2 = dist2(chase.x, chase.y, a.x, a.y);
       if (d2 < ARRIVE_RANGE * ARRIVE_RANGE) speed *= 0.4;
     }
+    if (holdStill) speed = 0;   // a builder mid-block stays put until the wall is up
 
     let nx = a.x + Math.cos(a.angle) * speed;
     let ny = a.y + Math.sin(a.angle) * speed;
@@ -611,11 +639,47 @@ function tryBreeding(a) {
   // Overcrowding makes ants a touch less inclined to breed.
   const chance = TUNE.MATE_CHANCE * Math.max(TUNE.CROWD_MATE_FLOOR, 1 - crowd * TUNE.CROWD_MATE_STEP);
   if (Math.random() < chance) {
-    ants.push(spawnNear(a, a.isRed));
-    if (a.isRed) { totalBornRed++; matedRed++; } else { totalBornWhite++; matedWhite++; }
+    // With a built nursery, the mating lays an egg there to hatch later; otherwise
+    // it's a birth on the spot. (Counted at hatch for eggs, here for live births.)
+    if (worldBuilding && !a.isRed && hasBuiltRoom(false, 'nursery')) {
+      layEgg(false);
+    } else {
+      ants.push(spawnNear(a, a.isRed));
+      if (a.isRed) { totalBornRed++; matedRed++; } else { totalBornWhite++; matedWhite++; }
+    }
     bumpHappiness(a, TUNE.H_MATE);
     bumpHappiness(mate, TUNE.H_MATE);
     a.breedingTimer = mate.breedingTimer = 0;   // both parents rest before mating again
+  }
+}
+
+// Eggs in a nursery tick down and hatch into new ants (counted as born here).
+function updateEggs() {
+  for (let i = eggs.length - 1; i >= 0; i--) {
+    const e = eggs[i];
+    e.hatch -= TICK_MS;
+    if (e.hatch > 0) continue;
+    eggs.splice(i, 1);
+    const cap = e.team ? MAX_RED_ANTS : MAX_WHITE_ANTS;
+    const count = e.team ? countRedAnts() : countWhiteAnts();
+    if (count >= cap) continue;
+    ants.push(createAnt(e.team, false, e.x, e.y));
+    if (e.team) { totalBornRed++; matedRed++; } else { totalBornWhite++; matedWhite++; }
+  }
+}
+
+// A rival at a built room's doorway is a breach: the colony walls it shut.
+function updateThreats() {
+  if (!worldBuilding) return;
+  for (const room of rooms) {
+    if (room.team !== false || !room.built || room.barricadeSites) continue;
+    const dx = room.x + Math.cos(room.gapAngle) * room.r;
+    const dy = room.y + Math.sin(room.gapAngle) * room.r;
+    for (const o of ants) {
+      if (!o.isRed) continue;
+      if (dist2(o.x, o.y, dx, dy) < BREACH_R * BREACH_R ||
+          dist2(o.x, o.y, room.x, room.y) < (room.r + 4) * (room.r + 4)) { barricadeRoom(room); break; }
+    }
   }
 }
 

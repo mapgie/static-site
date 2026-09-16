@@ -6,6 +6,7 @@
 // ---------------------------------------------------------------------------
 function drawEnvironment() {
   for (const o of environment) {
+    if (o.type === 'soil' && o.room) continue;   // room walls are stroked smoothly in drawRooms
     const r = o.r || 4;
     ctx.beginPath();
     if (o.type === 'wall') {
@@ -22,11 +23,33 @@ function drawEnvironment() {
   }
 }
 
-// Planned / built nest rooms: a tinted disc with a labelled ring. A planned room
-// is dashed and faint; once its walls are up it reads solid. The soil walls
-// themselves are drawn by drawEnvironment.
+// Stroke the raised (done) blocks of a wall as one smooth line: short segments
+// between nearby blocks, thick with round joins, so the wall reads continuous
+// rather than as a string of beads.
+function strokeWall(sites) {
+  const done = [];
+  for (const s of sites) if (s.done) done.push(s);
+  if (!done.length) return;
+  const near = ROOM_SITE_STEP * 1.7, near2 = near * near;
+  ctx.beginPath();
+  for (let i = 0; i < done.length; i++) {
+    for (let j = i + 1; j < done.length; j++) {
+      if (dist2(done[i].x, done[i].y, done[j].x, done[j].y) < near2) {
+        ctx.moveTo(done[i].x, done[i].y); ctx.lineTo(done[j].x, done[j].y);
+      }
+    }
+  }
+  ctx.lineWidth = SOIL_R * 2.2;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = SOIL_COLOR;
+  ctx.stroke();
+}
+
+// Planned / built nest rooms: a tinted, labelled disc, with the raised walls
+// drawn as smooth soil lines over it (a placing ghost is dashed and faint).
 function drawRooms() {
-  if (!worldBuilding || !rooms.length) return;
+  if (!worldBuilding) return;
   ctx.save();
   for (const room of rooms) {
     const spec = ROOM_SPECS[room.type];
@@ -35,15 +58,52 @@ function drawRooms() {
     ctx.arc(room.x, room.y, room.r, 0, Math.PI * 2);
     ctx.fillStyle = hexToRgba(col, room.built ? 0.16 : 0.07);
     ctx.fill();
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = room.breached ? 2.5 : 1.5;
     ctx.setLineDash(room.built ? [] : [4, 4]);
-    ctx.strokeStyle = hexToRgba(col, room.built ? 0.9 : 0.5);
+    ctx.strokeStyle = room.breached ? 'rgba(255,60,40,0.9)' : hexToRgba(col, room.built ? 0.9 : 0.5);
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = hexToRgba(col, room.built ? 1 : 0.7);
     ctx.font = '11px system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText((spec && spec.label) || room.type, room.x, room.y + 4);
+    // Smooth soil walls over the disc.
+    strokeWall(room.sites);
+    if (room.tunnelSites) strokeWall(room.tunnelSites);
+    if (room.barricadeSites) strokeWall(room.barricadeSites);
+  }
+  // A room the player is dragging into place: dashed ghost, red if it overlaps.
+  if (placingRoom) {
+    const spec = ROOM_SPECS[placingRoom.type];
+    const bad = placementBlocked(false, placingRoom.x, placingRoom.y, spec.r);
+    ctx.beginPath();
+    ctx.arc(placingRoom.x, placingRoom.y, spec.r, 0, Math.PI * 2);
+    ctx.fillStyle = bad ? 'rgba(255,60,40,0.12)' : hexToRgba(spec.color, 0.12);
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
+    ctx.strokeStyle = bad ? 'rgba(255,60,40,0.95)' : hexToRgba(spec.color, 0.95);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = bad ? 'rgba(255,120,110,1)' : hexToRgba(spec.color, 1);
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(bad ? 'overlaps' : spec.label, placingRoom.x, placingRoom.y + 4);
+  }
+  ctx.restore();
+}
+
+// Eggs waiting to hatch in a nursery: small pale ovals.
+function drawEggs() {
+  if (!eggs.length) return;
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,250,230,0.9)';
+  ctx.strokeStyle = 'rgba(120,110,90,0.6)';
+  for (const e of eggs) {
+    ctx.beginPath();
+    ctx.ellipse(e.x, e.y, EGG_R, EGG_R * 1.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
   }
   ctx.restore();
 }

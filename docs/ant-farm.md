@@ -199,23 +199,30 @@ walls, water, or a queen.**
 
 **Auto-built nest.** Once the colony is a handful of ants strong, it lays out a
 walled nest and its well-fed idle workers dig the walls block by block, leaving a
-doorway gap facing inward. Rooms go up in order — **entry → pantry → nursery →
-throne** — and the **nursery and throne are placed on the side away from the rival
-spawn**. Each room shows on the map as a labelled disc: dashed while it's still
-being dug, solid once its walls are up. Room caps: **1 throne, 3 nurseries, any
-number of pantries**. Hungry ants keep foraging while the rest build.
+doorway. The **nursery is built right on the spawn point** (the heart of the nest);
+the **entry, pantry, and throne** ring around it, each linked back to the nest by a
+walled **tunnel** with a walkable channel down the middle. The **throne sits on the
+side away from the rival spawn**. No room is ever built on top of another. Each room
+shows as a labelled disc — dashed while it's still being dug, solid once its walls
+are up — and the walls render as smooth soil lines. At most a few ants dig at once,
+so the rest keep foraging. Room caps: **1 throne, 3 nurseries, any number of
+pantries**.
 
 **Nursery-gated growth.** Past a threshold (default **10** ants, tunable under
 *Nursery needed > ants*), a colony **can't breed without a built nursery** — a brief
 on-canvas nudge says so when growth stalls. Below the threshold it breeds as usual.
 
-**Nudging the build.** The World Building card has **+ Entrance** and **+ Food
-store** buttons: each queues another room of that type for the ants to dig next
-(respecting the caps).
+**Eggs.** With a built nursery, a mating lays an **egg** in the nursery instead of a
+birth on the spot; the egg hatches into a new ant after a spell.
 
-Coming next (phased): explicit **tunnels** linking the rooms; ants walling off a
-**breached entry** under attack; and laying **eggs** in a finished nursery that
-hatch on a timer.
+**Threat response.** If a rival reaches a built room's doorway, the colony treats it
+as a **breach** and walls the doorway shut (a barricade, dug at top priority). The
+breached room is outlined in red until it's sealed.
+
+**Placing rooms by hand.** The World Building card has **+ Entrance** and **+ Food
+store** buttons. Each lets you **drag the new room where you want it** (it shows red
+while it overlaps another room); **Place here** commits it and the ants dig it next.
+Once built, a room can't be moved. (Caps still apply.)
 
 Turning the mode **off** returns the classic sandbox (no rooms, no nursery gate).
 Both modes are covered by the test suite (`npm test`).

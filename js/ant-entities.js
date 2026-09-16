@@ -73,7 +73,7 @@ function foodSpawnAllowed(x, y) {
 
 // Raise one soil block at (x,y): a brown wall the colony builds with. Refuses to
 // stack on terrain already there or to bury a spawn point's clear core.
-function digSoil(x, y) {
+function digSoil(x, y, room = false) {
   x = clamp(x, 0, canvas.width);
   y = clamp(y, 0, canvas.height);
   if (collidesWall(x, y)) return false;
@@ -82,7 +82,7 @@ function digSoil(x, y) {
       if (dist2(s.x, s.y, x, y) < nestCore(s) * nestCore(s)) return false;
     }
   }
-  environment.push({ x, y, type: 'soil', r: SOIL_R });
+  environment.push({ x, y, type: 'soil', r: SOIL_R, room });   // room soil is drawn as a smooth wall
   markEnvDirty();
   return true;
 }
@@ -113,6 +113,8 @@ function awayFromRival(team) {
 }
 
 // Wall-block sites evenly around a room, skipping the doorway arc at gapAngle.
+// Each site carries an `approach` point just outside the ring, so a builder digs
+// the block from open ground instead of walling itself in.
 function roomWallSites(cx, cy, r, gapAngle) {
   const n = Math.max(8, Math.round((2 * Math.PI * r) / ROOM_SITE_STEP));
   const sites = [];
@@ -120,8 +122,11 @@ function roomWallSites(cx, cy, r, gapAngle) {
     const ang = (k / n) * Math.PI * 2;
     const off = Math.abs(((ang - gapAngle + Math.PI) % (Math.PI * 2)) - Math.PI);
     if (off < ROOM_GAP_ARC / 2) continue;   // leave the doorway open
+    const ar = r + SOIL_R + 8;
     sites.push({ x: clamp(cx + Math.cos(ang) * r, 0, canvas.width),
-                 y: clamp(cy + Math.sin(ang) * r, 0, canvas.height), done: false, tries: 0 });
+                 y: clamp(cy + Math.sin(ang) * r, 0, canvas.height),
+                 ax: clamp(cx + Math.cos(ang) * ar, 0, canvas.width),
+                 ay: clamp(cy + Math.sin(ang) * ar, 0, canvas.height), done: false, tries: 0 });
   }
   return sites;
 }
@@ -133,40 +138,145 @@ function makeRoom(team, type, cx, cy, gapAngle, manual = false) {
     x: clamp(cx, 0, canvas.width), y: clamp(cy, 0, canvas.height), r: spec.r,
     gapAngle, order: manual ? -1 : spec.order,   // user-nudged rooms build first
     sites: roomWallSites(cx, cy, spec.r, gapAngle),
+    tunnelSites: [],       // filled by placeRoom: the corridor walls back to the nest
+    barricadeSites: null,  // filled on a breach: soil to seal the doorway
+    breached: false,
     built: false
   };
 }
 
-// Where a room of this type sits: ringed around the nest, biased by type so the
-// nursery and throne end up on the side away from the rival.
-const ROOM_PLACE_ANGLE = { throne: 0, nursery: 0.9, pantry: -0.9, entry: Math.PI };
-function placeRoom(team, type, angle) {
-  const a = nestAnchor(team);
-  const dist = a.r + ROOM_SPECS[type].r + 12;
-  const cx = a.x + Math.cos(angle) * dist, cy = a.y + Math.sin(angle) * dist;
-  return makeRoom(team, type, cx, cy, angle + Math.PI);   // doorway faces back toward the nest
+// Two flanking walls from a room's doorway back toward the nest, leaving a
+// walkable channel between them — the tunnel. Stops short of the nest core.
+function tunnelWallSites(anchor, room) {
+  const gx = room.x + Math.cos(room.gapAngle) * room.r;   // the doorway on the room ring
+  const gy = room.y + Math.sin(room.gapAngle) * room.r;
+  const ang = Math.atan2(anchor.y - gy, anchor.x - gx);
+  const perp = ang + Math.PI / 2;
+  const len = Math.hypot(anchor.x - gx, anchor.y - gy);
+  const stop = Math.max(0, len - (nestCore(anchor) + 6));
+  const sites = [];
+  for (let d = 0; d <= stop; d += ROOM_SITE_STEP) {
+    const chx = gx + Math.cos(ang) * d, chy = gy + Math.sin(ang) * d;   // channel centre — the ant works from here
+    for (const side of [-1, 1]) {
+      const x = chx + Math.cos(perp) * TUNNEL_HALF_W * side;
+      const y = chy + Math.sin(perp) * TUNNEL_HALF_W * side;
+      sites.push({ x: clamp(x, 0, canvas.width), y: clamp(y, 0, canvas.height),
+                   ax: clamp(chx, 0, canvas.width), ay: clamp(chy, 0, canvas.height), done: false, tries: 0 });
+    }
+  }
+  return sites;
 }
 
-// Auto-build planner: lay out one of each room type (once) for a colony that's
-// big enough, respecting caps. Cheap to call every tick — it no-ops once planned.
+// Structural completion: every ring and tunnel block raised. Barricades are a
+// separate emergency task and don't gate this.
+function refreshBuilt(room) {
+  room.built = room.sites.every(s => s.done) && (room.tunnelSites || []).every(s => s.done);
+}
+
+// A room breached by a rival gets its doorway arc filled in — soil sites across
+// the gap, dug at top priority to seal the colony in.
+function barricadeRoom(room) {
+  if (room.barricadeSites) return;
+  const sites = [];
+  const n = Math.max(3, Math.round(ROOM_GAP_ARC * room.r / ROOM_SITE_STEP) + 1);
+  const ar = room.r + SOIL_R + 8;
+  for (let k = 0; k <= n; k++) {
+    const ang = room.gapAngle - ROOM_GAP_ARC / 2 + (k / n) * ROOM_GAP_ARC;
+    sites.push({ x: clamp(room.x + Math.cos(ang) * room.r, 0, canvas.width),
+                 y: clamp(room.y + Math.sin(ang) * room.r, 0, canvas.height),
+                 ax: clamp(room.x + Math.cos(ang) * ar, 0, canvas.width),
+                 ay: clamp(room.y + Math.sin(ang) * ar, 0, canvas.height), done: false, tries: 0 });
+  }
+  room.barricadeSites = sites;
+  room.breached = true;
+}
+
+// Lay an egg somewhere inside the colony's nursery, to hatch on a timer.
+function layEgg(team) {
+  const n = builtRoom(team, 'nursery');
+  if (!n) return false;
+  const ang = Math.random() * Math.PI * 2, d = Math.random() * (n.r * 0.6);
+  eggs.push({ x: n.x + Math.cos(ang) * d, y: n.y + Math.sin(ang) * d, team, hatch: EGG_HATCH_MS });
+  return true;
+}
+
+const ROOM_PLACE_ANGLE = { throne: 0, pantry: -0.9, entry: Math.PI };  // biased around the nest
+
+function roomCap(type) { return ROOM_CAPS[type] ?? Infinity; }
+function canAddRoom(team, type) { return roomCount(team, type) < roomCap(type); }
+
+// Would a disc of radius r centred here overlap one of this colony's rooms?
+function placementBlocked(team, cx, cy, r) {
+  for (const room of rooms) {
+    if (room.team !== team) continue;
+    const min = room.r + r + 8;
+    if (dist2(room.x, room.y, cx, cy) < min * min) return true;
+  }
+  return false;
+}
+
+// Build a full room object (ring + tunnel back to the nest) at a chosen spot.
+function buildRoomAt(team, type, cx, cy, manual = false) {
+  const a = nestAnchor(team);
+  const m = ROOM_SPECS[type].r + SOIL_R + 10;
+  cx = clamp(cx, m, canvas.width - m);
+  cy = clamp(cy, m, canvas.height - m);
+  const gap = Math.atan2(a.y - cy, a.x - cx);   // doorway faces the nest
+  const room = makeRoom(team, type, cx, cy, gap, manual);
+  room.tunnelSites = tunnelWallSites(a, room);
+  return room;
+}
+
+// The nursery sits on the nest itself — a wall ringing the spawn point, its
+// doorway facing out toward the foraging ground (no tunnel; it *is* the nest).
+function nurseryOnSpawn(team) {
+  const a = nestAnchor(team);
+  const r = Math.max(ROOM_SPECS.nursery.r, a.r + 6);
+  const room = makeRoom(team, 'nursery', a.x, a.y, awayFromRival(team) + Math.PI);
+  room.r = r;
+  room.sites = roomWallSites(a.x, a.y, r, room.gapAngle);
+  room.tunnelSites = [];
+  return room;
+}
+
+// A free, on-canvas spot for a ringed room near a base angle — rotate and push
+// out until it clears the other rooms, so nothing is built on top of anything.
+function findRoomSpot(team, type) {
+  const a = nestAnchor(team), r = ROOM_SPECS[type].r;
+  const m = r + SOIL_R + 10, base = awayFromRival(team) + (ROOM_PLACE_ANGLE[type] || 0);
+  for (let ring = 0; ring < 4; ring++) {
+    const dist = a.r + TUNNEL_LEN + r + ring * (2 * r + 16);
+    for (let k = 0; k < 12; k++) {
+      const ang = base + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.5;
+      const cx = clamp(a.x + Math.cos(ang) * dist, m, canvas.width - m);
+      const cy = clamp(a.y + Math.sin(ang) * dist, m, canvas.height - m);
+      if (!placementBlocked(team, cx, cy, r)) return { x: cx, y: cy };
+    }
+  }
+  return null;   // nowhere clear (a very crowded board)
+}
+
+// Auto-build planner: lay out the nursery on the nest and the other rooms ringed
+// around it without overlaps, respecting caps. No-ops once each is planned.
 function planNest(team) {
   if (!worldBuilding) return;
   const count = team ? countRedAnts() : countWhiteAnts();
   if (count < MIN_BUILD_ANTS) return;
-  const away = awayFromRival(team);
-  for (const type of ROOM_ORDER) {
-    if (roomCount(team, type) === 0) rooms.push(placeRoom(team, type, away + (ROOM_PLACE_ANGLE[type] || 0)));
+  if (roomCount(team, 'nursery') === 0) rooms.push(nurseryOnSpawn(team));
+  for (const type of ['entry', 'pantry', 'throne']) {
+    if (roomCount(team, type) === 0) {
+      const spot = findRoomSpot(team, type);
+      if (spot) rooms.push(buildRoomAt(team, type, spot.x, spot.y));
+    }
   }
 }
 
-// A user-nudged room from the +Entrance / +Food store buttons: added at a fresh
-// angle and flagged to build next. Respects the per-type cap.
+// Non-interactive add (tests / fallback): drop a room in the first clear spot.
 function addRoomManual(team, type) {
-  if (roomCount(team, type) >= (ROOM_CAPS[type] ?? Infinity)) return false;
-  const spread = (roomCount(team, type) * 0.8) + (Math.random() * 0.6 - 0.3);
-  rooms.push(placeRoom(team, type, awayFromRival(team) + spread));
-  rooms[rooms.length - 1].manual = true;
-  rooms[rooms.length - 1].order = -1;
+  if (!canAddRoom(team, type)) return false;
+  const spot = findRoomSpot(team, type);
+  if (!spot) return false;
+  rooms.push(buildRoomAt(team, type, spot.x, spot.y, true));
   return true;
 }
 
