@@ -13,9 +13,11 @@ let rooms              = [];   // planned / built nest rooms (World Building Mod
 let nextRoomId         = 1;
 let eggs               = [];   // eggs laid in a nursery, waiting to hatch
 let nurseryNoticeUntil = 0;    // ms timestamp until which the "needs a nursery" nudge shows
-let activeBuilders     = 0;    // ants digging this tick, capped at MAX_BUILDERS
+let activeBuildersW    = 0;    // main-colony ants digging this tick, capped at MAX_BUILDERS
+let activeBuildersR    = 0;    // ...and the rival colony's, capped separately
 let placingRoom        = null; // { type, x, y } a room the player is dragging into place
 let placingBefore      = false;// paused state to restore after placing
+let poisonReadyMs      = 0;    // ms the main colony has been over-happy (Sadist poison timer)
 let queens             = { white: null, red: null };
 let spawnPoints        = { yellow: [], red: [] };   // per colony; empty = canvas centre
 let showSpawnPoints    = false;  // during play; the maintenance view always shows them

@@ -16,7 +16,8 @@ function animate() {
 
   if (!animationPaused) {
     if (autoFood) autoDropFood();
-    if (worldBuilding) { planNest(false); updateThreats(); }   // lay out, build, defend the nest
+    if (worldBuilding) { planNest(false); planNest(true); updateThreats(); }  // both colonies build; main defends
+    maybeSadistPoison();   // Sadist-only hazard, independent of the living-world food toggle
     updateFoods();
     updateAnts();
     updateEggs();
@@ -114,17 +115,19 @@ function aggregateHappiness() {
 
 // Loose food is worth picking up; delivered food is worth eating, unless this
 // ant is one of those that brought it in.
-function nearestFood(ant) {
-  let best = null, bd = SENSE_FOOD * SENSE_FOOD;
+function nearestFood(ant, range = SENSE_FOOD) {
+  let best = null, bd = range * range;
   const hungry = ant.fullness < ant.hungerPoint;
   for (const f of foods) {
     if (f.delivered) {
       if (f.team === ant.isRed) {
         if (foundByAnt(f, ant)) continue;   // its own store, but not a piece it hauled in
-      } else if (dist2(f.x, f.y, ant.x, ant.y) > RAID_RANGE * RAID_RANGE) {
-        continue;   // a rival raids an enemy store only from inside the pantry, never at range
+        if (!hungry) continue;              // leave one's own store alone until hungry
+      } else {
+        // An enemy store: only reachable from inside the pantry, but a raider will
+        // take it whether hungry (eat) or not (steal and haul it home).
+        if (dist2(f.x, f.y, ant.x, ant.y) > RAID_RANGE * RAID_RANGE) continue;
       }
-      if (!hungry) continue;   // well-fed ants forage but leave the store (own or raided) for later
     }
     if (f.type === 'insect' && !f.delivered) {
       if (ant.haulCooldown > 0) continue;                       // just gave up on one
@@ -196,7 +199,7 @@ function nearestUndug(a, sites) {
   return best;
 }
 function buildTaskFor(a) {
-  if (!worldBuilding || a.isRed || a.isQueen) return null;
+  if (!worldBuilding || a.isQueen) return null;
   const team = a.isRed;
   // 1) Seal a breached doorway, wherever it is — this can't wait.
   for (const room of rooms) {
@@ -217,8 +220,26 @@ function decay(f) {
   if (f.type !== 'fruit' && f.type !== 'spoiled') return;
   f.age = (f.age || 0) + TICK_MS;
   if (f.age < decayStageMs()) return;
+  // Spoiled food only rots on into poison under Sadist mode; otherwise it stays
+  // spoiled, so the ordinary living world never breeds poison on its own.
+  if (f.type === 'spoiled' && !sadistMode) return;
   f.age = 0;
   f.type = f.type === 'fruit' ? 'spoiled' : 'poison';
+}
+
+// Sadist mode only: once the main colony is thriving (a sustained queen at high
+// spirits), the sadist rarely seeds a poison drop to spoil the good times.
+function maybeSadistPoison() {
+  if (!sadistMode || !queens.white || whiteHappiness < TUNE.QUEEN_HIGH) { poisonReadyMs = 0; return; }
+  poisonReadyMs += TICK_MS;
+  if (poisonReadyMs < POISON_SUSTAIN_MS) return;
+  poisonReadyMs = 0;                              // wait out another full spell before the next
+  if (Math.random() > POISON_SPAWN_CHANCE) return;
+  if (foods.length >= MAX_FOOD || !canvas) return;
+  for (let t = 0; t < 8; t++) {
+    const x = Math.random() * canvas.width, y = Math.random() * canvas.height;
+    if (foodSpawnAllowed(x, y)) { addFood(x, y, 'poison', { size: 5 }); break; }
+  }
 }
 
 function joinTeam(ant, f) {
@@ -309,6 +330,18 @@ function pickUp(ant, food) {
   layPheromone(ant.x, ant.y);
 }
 
+// A raider lifts a piece of the enemy's stockpile and hauls it home to its own
+// pantry, shrinking the store it stole from.
+function stealFood(ant, food) {
+  ant.carrying   = { type: food.type, age: food.age || 0, size: food.size || 4 };
+  ant.dropOffset = pickDropOffset(4, ant.isRed, ant.x, ant.y);
+  ant.carryTicks = 0;
+  ant.trail = 90;
+  if (Number.isFinite(food.servings) && food.servings > 1) food.servings--;
+  else { const i = foods.indexOf(food); if (i !== -1) foods.splice(i, 1); }
+  layPheromone(ant.x, ant.y);
+}
+
 function dropOff(ant) {
   const t = dropTarget(ant);
   const c = ant.carrying;
@@ -379,7 +412,7 @@ function eat(ant, food) {
 
 function updateAnts() {
   const aggression = redAggressionLevel / 100;
-  activeBuilders = 0;   // reset the per-tick builder tally (capped at MAX_BUILDERS)
+  activeBuildersW = activeBuildersR = 0;   // reset per-colony builder tallies (each capped at MAX_BUILDERS)
 
   for (let i = ants.length - 1; i >= 0; i--) {
     const a = ants[i];
@@ -458,7 +491,8 @@ function updateAnts() {
       let build = null;
       if (!prey && !a.carrying && !react && a.fullness >= a.hungerPoint) {
         const t = buildTaskFor(a);
-        if (t && (t.urgent || activeBuilders < MAX_BUILDERS)) { build = t; activeBuilders++; }
+        const busy = a.isRed ? activeBuildersR : activeBuildersW;
+        if (t && (t.urgent || busy < MAX_BUILDERS)) { build = t; if (a.isRed) activeBuildersR++; else activeBuildersW++; }
       }
       if (!prey && a.carrying) {
         // Haul it home
@@ -488,12 +522,18 @@ function updateAnts() {
             refreshBuilt(build.room);
           }
         } else a.digTimer = 0;
+      } else if (!prey && a.isRed) {
+        // Raider: seek out food anywhere — ambient drops or the enemy store when
+        // it's breached — and haul it back to the rival pantry. (Hunting whites is
+        // a separate drive above; this is plunder, not a march on the nest.)
+        target = nearestFood(a, Infinity);
+        if (target) { steerToward(a, target.x, target.y, 0.12); chase = target; }
       } else if (!prey) {
-        // Ants forage by smell, not sight. Food only pulls when it's very close
-        // (as if it carried a faint scent of its own); at that range it trumps a
-        // trail. Farther off, a pheromone trail wins; with neither, the ant just
-        // wanders until it stumbles onto a scent. `target` is still the nearest
-        // food so the pickup check below can grab anything in reach.
+        // Main colony forages by smell, not sight. Food only pulls when it's very
+        // close (as if it carried a faint scent of its own); at that range it
+        // trumps a trail. Farther off, a pheromone trail wins; with neither, the
+        // ant just wanders until it stumbles onto a scent. `target` is still the
+        // nearest food so the pickup check below can grab anything in reach.
         target = nearestFood(a);
         const smell = target && dist2(target.x, target.y, a.x, a.y) < SENSE_SMELL * SENSE_SMELL ? target : null;
         const p = strongestTrail(a);
@@ -589,7 +629,11 @@ function updateAnts() {
     } else if (target) {
       const reach = EAT_RANGE + (target.type === 'insect' ? INSECT_RADIUS : 0);
       if (dist2(target.x, target.y, a.x, a.y) < reach * reach) {
-        if (target.delivered)           { if (!eat(a, target)) continue; }
+        if (target.delivered) {
+          const enemy = target.team !== a.isRed;
+          if (enemy && a.fullness >= a.hungerPoint) stealFood(a, target);   // plunder: haul it home
+          else if (!eat(a, target)) continue;                               // hungry (or own store): eat
+        }
         else if (target.type === 'insect') joinTeam(a, target);
         else                            pickUp(a, target);
       }

@@ -19,7 +19,10 @@ point and food is hauled to the nearest one. Each colony is capped at 500 ants.
 Rival ants hunt and bite main-colony ants; their **Aggression** control sets how
 keenly they chase and how often a bite lands. A bite kills instantly. A **hungry**
 rival breaks off the hunt to look for food, so rivals must eat and can starve like
-any ant.
+any ant. Rivals are also **thieves**: when they aren't hunting they roam for food to
+carry back to their own pantry, and a rival that gets inside the main colony's pantry
+will **steal from the store** (or eat it if hungry). In World Building Mode the rival
+colony builds its own, smaller nest to stash the loot.
 
 Ants breed only when **both** partners are *in the mood* — each has its own hidden
 happiness threshold (its "horniness", jittered per ant), so they don't all become
@@ -54,6 +57,9 @@ haul home: an ant lifts one unit and the rest waits for the next carrier, so a
 sugar pile needs three trips and a fruit pile five. Protein is a single heavy drop —
 one trip — but a delivered protein feeds *two* nestmates. A number on a loose pile
 shows how many trips it has left.
+
+Once a colony has built a **pantry**, delivered food is stored there instead of in a
+ring around the nest; until then it piles at the nest as before.
 
 **Painting.** A dragged brush scatters spaced drops, not a solid line, and each food
 has its own spacing: sugar sits closest, fruit wider, protein wider still, and a dead
@@ -167,6 +173,12 @@ Poison spreads **only by eating**:
 
 - an ant that eats Poison food becomes poisoned (it no longer dies on the spot), or
 - a rival ant that bites an already-poisoned ant catches it.
+
+Poison never appears from the ordinary living world: auto-dropped food can ripen and
+spoil, but spoiled food only rots on into poison under **Sadist mode**. And in Sadist
+mode, once the main colony is thriving — a sustained queen at high spirits — the
+sadist will **rarely seed a poison drop** to spoil the good times. (You can always
+drop poison yourself with the Food picker.)
 
 There is no proximity contagion, and there is **no cure**: no meal clears a poisoning
 once it takes hold. A poisoned ant decays on every axis — it ages faster, loses

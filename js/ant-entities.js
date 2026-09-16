@@ -131,13 +131,17 @@ function roomWallSites(cx, cy, r, gapAngle) {
   return sites;
 }
 
+// Room radius, scaled down for the rival colony's more modest nest.
+function roomRadius(team, type) { return Math.round(ROOM_SPECS[type].r * (team ? RED_ROOM_SCALE : 1)); }
+
 function makeRoom(team, type, cx, cy, gapAngle, manual = false) {
   const spec = ROOM_SPECS[type];
+  const r = roomRadius(team, type);
   return {
     id: nextRoomId++, team, type, manual,
-    x: clamp(cx, 0, canvas.width), y: clamp(cy, 0, canvas.height), r: spec.r,
+    x: clamp(cx, 0, canvas.width), y: clamp(cy, 0, canvas.height), r,
     gapAngle, order: manual ? -1 : spec.order,   // user-nudged rooms build first
-    sites: roomWallSites(cx, cy, spec.r, gapAngle),
+    sites: roomWallSites(cx, cy, r, gapAngle),
     tunnelSites: [],       // filled by placeRoom: the corridor walls back to the nest
     barricadeSites: null,  // filled on a breach: soil to seal the doorway
     breached: false,
@@ -218,7 +222,7 @@ function placementBlocked(team, cx, cy, r) {
 // Build a full room object (ring + tunnel back to the nest) at a chosen spot.
 function buildRoomAt(team, type, cx, cy, manual = false) {
   const a = nestAnchor(team);
-  const m = ROOM_SPECS[type].r + SOIL_R + 10;
+  const m = roomRadius(team, type) + SOIL_R + 10;
   cx = clamp(cx, m, canvas.width - m);
   cy = clamp(cy, m, canvas.height - m);
   const gap = Math.atan2(a.y - cy, a.x - cx);   // doorway faces the nest
@@ -231,7 +235,7 @@ function buildRoomAt(team, type, cx, cy, manual = false) {
 // doorway facing out toward the foraging ground (no tunnel; it *is* the nest).
 function nurseryOnSpawn(team) {
   const a = nestAnchor(team);
-  const r = Math.max(ROOM_SPECS.nursery.r, a.r + 6);
+  const r = Math.max(roomRadius(team, 'nursery'), a.r + 6);
   const room = makeRoom(team, 'nursery', a.x, a.y, awayFromRival(team) + Math.PI);
   room.r = r;
   room.sites = roomWallSites(a.x, a.y, r, room.gapAngle);
@@ -242,7 +246,7 @@ function nurseryOnSpawn(team) {
 // A free, on-canvas spot for a ringed room near a base angle — rotate and push
 // out until it clears the other rooms, so nothing is built on top of anything.
 function findRoomSpot(team, type) {
-  const a = nestAnchor(team), r = ROOM_SPECS[type].r;
+  const a = nestAnchor(team), r = roomRadius(team, type);
   const m = r + SOIL_R + 10, base = awayFromRival(team) + (ROOM_PLACE_ANGLE[type] || 0);
   for (let ring = 0; ring < 4; ring++) {
     const dist = a.r + TUNNEL_LEN + r + ring * (2 * r + 16);
@@ -263,7 +267,10 @@ function planNest(team) {
   const count = team ? countRedAnts() : countWhiteAnts();
   if (count < MIN_BUILD_ANTS) return;
   if (roomCount(team, 'nursery') === 0) rooms.push(nurseryOnSpawn(team));
-  for (const type of ['entry', 'pantry', 'throne']) {
+  // The rival keeps it modest — a nursery and a pantry (to stash what it steals);
+  // the main colony also digs an entry and a throne.
+  const order = team ? ['pantry', 'entry'] : ['entry', 'pantry', 'throne'];
+  for (const type of order) {
     if (roomCount(team, type) === 0) {
       const spot = findRoomSpot(team, type);
       if (spot) rooms.push(buildRoomAt(team, type, spot.x, spot.y));
@@ -358,9 +365,11 @@ function nearestColonyDelivered(s, isRed) {
 }
 
 function dropTarget(ant) {
-  const s = nearestSpawnPoint(ant.isRed, ant.x, ant.y);
-  const anchor = nearestColonyDelivered(s, ant.isRed);
-  if (!anchor) return nestTarget(s, ant.dropOffset, 4);   // the first piece sets the pile's anchor
+  // Once a pantry is built, food is stored there; until then it piles at the nest.
+  const pantry = builtRoom(ant.isRed, 'pantry');
+  const home = pantry || nearestSpawnPoint(ant.isRed, ant.x, ant.y);
+  const anchor = nearestColonyDelivered(home, ant.isRed);
+  if (!anchor) return pantry ? { x: pantry.x, y: pantry.y } : nestTarget(home, ant.dropOffset, 4);
   // Every later piece packs against the stockpile, on the ant's approach side.
   const ang = Math.atan2(ant.y - anchor.y, ant.x - anchor.x);
   const r = 2 * foodRadius(anchor);

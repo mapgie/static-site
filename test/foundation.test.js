@@ -163,6 +163,17 @@ test('the nursery is built on the spawn point', () => {
   assert.ok(Math.abs(nursery.x - 320) < 1 && Math.abs(nursery.y - 280) < 1, 'nursery sits on the spawn');
 });
 
+test('the rival builds a smaller nest of its own', () => {
+  const g = freshApi();
+  g.spawnPoints = { yellow: [{ x: 200, y: 300, r: 40 }], red: [{ x: 820, y: 300, r: 40 }] };
+  g.ants = []; for (let i = 0; i < 8; i++) g.ants.push(g.createAnt(true, false, 820, 300));
+  g.planNest(true);
+  const types = g.rooms.filter(r => r.team === true).map(r => r.type).sort().join(',');
+  assert.strictEqual(types, 'entry,nursery,pantry', 'rival builds a modest nest (no throne)');
+  const redPantry = g.rooms.find(r => r.team === true && r.type === 'pantry');
+  assert.ok(redPantry.r < g.roomRadius(false, 'pantry'), 'rival rooms are scaled smaller');
+});
+
 test('planned rooms never overlap each other', () => {
   const g = freshApi();
   g.spawnPoints = { yellow: [{ x: 400, y: 300, r: 40 }], red: [{ x: 850, y: 300, r: 40 }] };

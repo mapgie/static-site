@@ -91,6 +91,16 @@ const BREACH_R       = 26;
 const EGG_HATCH_MS   = 9000;
 const EGG_R          = 3;
 
+// The rival colony builds a smaller nest of its own (it doesn't get attacked, so
+// it can afford to be modest).
+const RED_ROOM_SCALE = 0.7;
+
+// Sadist poison: only in Sadist mode, and only once the main colony is thriving
+// (a sustained queen at high spirits), the sadist rarely seeds a poison drop to
+// spoil the good times. Poison never appears from the ordinary living world.
+const POISON_SUSTAIN_MS  = 12000;  // how long the colony must stay over-happy first
+const POISON_SPAWN_CHANCE = 0.35;  // chance, per sustained spell, that a drop actually lands
+
 // Live-tunable balance numbers. Everything the Tuning panel can nudge lives here
 // so it can be changed at runtime and saved; TUNABLES (further down) drives the UI.
 const TUNE_DEFAULTS = {

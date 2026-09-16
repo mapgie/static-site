@@ -199,6 +199,63 @@ test('a rival raids an enemy stockpile only from inside the pantry, not at range
   assert.strictEqual(g.nearestFood(r), store, 'inside the pantry, the enemy store is fair plunder');
 });
 
+test('delivered food is stored in the pantry once one is built', () => {
+  const g = freshApi();
+  g.spawnPoints = { yellow: [{ x: 200, y: 300, r: 40 }], red: [] };
+  const a = g.createAnt(false, false, 510, 300);
+  a.carrying = { type: 'sugar', age: 0, size: 4 };
+  a.dropOffset = { dx: 12, dy: 0 };   // set by pickUp in real play
+  g.ants = [a]; g.foods = [];
+  // No pantry yet -> heads for the nest.
+  let t = g.dropTarget(a);
+  assert.ok(Math.hypot(t.x - 200, t.y - 300) < 60, 'without a pantry, food goes to the nest');
+  // With a built pantry -> heads for the pantry.
+  g.rooms = [{ id: 1, team: false, type: 'pantry', x: 500, y: 300, r: 34, sites: [], tunnelSites: [], built: true, order: 1 }];
+  t = g.dropTarget(a);
+  assert.ok(Math.hypot(t.x - 500, t.y - 300) < 34, 'with a pantry, food is stored there');
+});
+
+test('a well-fed rival on an enemy store steals it and hauls it home; hungry it eats', () => {
+  const g = freshApi();
+  g.spawnPoints = { yellow: [{ x: 200, y: 300, r: 40 }], red: [{ x: 800, y: 300, r: 40 }] };
+  const store = g.makeFood(500, 300, 'sugar');
+  store.delivered = true; store.team = false; store.foundBy = null; store.servings = 3; store.units = 0;
+  g.foods = [store];
+
+  // A well-fed rival right on the store targets it (to steal) even without hunger.
+  const r = g.createAnt(true, false, 505, 300); r.fullness = 100; r.hungerPoint = 40;
+  g.ants = [r];
+  assert.strictEqual(g.nearestFood(r), store, 'a raider eyes the enemy store regardless of hunger');
+  g.stealFood(r, store);
+  assert.ok(r.carrying && r.carrying.type === 'sugar', 'the raider carries off the loot');
+  assert.strictEqual(store.servings, 2, 'the raided store shrank by a serving');
+
+  // From across the map, the store is not a target (no reaching through walls).
+  const far = g.createAnt(true, false, 120, 300); far.fullness = 100; far.hungerPoint = 40;
+  g.ants = [far]; g.foods = [store];
+  assert.strictEqual(g.nearestFood(far), null, 'the store is safe until the raider is inside the pantry');
+});
+
+test('poison: spoiled only rots to poison under Sadist, and Sadist seeds it only when over-happy', () => {
+  const g = freshApi();
+  const f = g.makeFood(100, 100, 'spoiled'); f.age = 1e9; g.foods = [f];
+  g.sadistMode = false; g.decay(f);
+  assert.strictEqual(f.type, 'spoiled', 'no poison from decay in normal play');
+  g.sadistMode = true; f.age = 1e9; g.decay(f);
+  assert.strictEqual(f.type, 'poison', 'Sadist lets spoiled rot into poison');
+
+  // Auto-seeding: nothing outside Sadist, something once over-happy under Sadist.
+  const g2 = freshApi(); g2.foods = [];
+  g2.queens = { white: { x: 100, y: 100 }, red: null }; g2.whiteHappiness = 90;
+  g2.sadistMode = false;
+  for (let i = 0; i < 3000; i++) g2.maybeSadistPoison();
+  assert.strictEqual(g2.foods.length, 0, 'no auto poison outside Sadist');
+  g2.sadistMode = true;
+  let seeded = false;
+  for (let i = 0; i < 30000 && !seeded; i++) { g2.maybeSadistPoison(); seeded = g2.foods.some(x => x.type === 'poison'); }
+  assert.ok(seeded, 'Sadist seeds poison when a sustained queen is over-happy');
+});
+
 // The food-placement rule and mating apply in BOTH modes.
 for (const mode of [true, false]) {
   test(`both modes (worldBuilding=${mode}): food avoids terrain and mating still gated`, () => {
