@@ -344,6 +344,65 @@ button#delete-structures:hover {
 #hud-stats .rival  { color: #3cb399; }
 #hud-stats b { color: #fff; font-weight: 600; }
 
+#nest-actions { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+#nest-actions button { flex: 1 1 auto; }
+
+#room-place-bar {
+  position: absolute;
+  top: calc(var(--canvas-pad) + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 12;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid #555;
+  border-radius: 8px;
+  background: rgba(20, 20, 20, 0.9);
+  color: #eee;
+  font-size: 12px;
+  max-width: calc(100% - 20px);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+#room-place-bar button {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #666;
+  background: #2a2a2a;
+  color: #eee;
+  cursor: pointer;
+}
+#room-place-bar #room-place-ok { background: #2f6b3a; border-color: #3c8a4c; }
+#room-place-bar[hidden] { display: none; }   /* let the hidden attribute win over display:flex */
+
+/* Show/hide the on-canvas overlay (bars + population readout). */
+#hud-toggle {
+  position: absolute;
+  top: calc(var(--canvas-pad) + 10px);
+  right: calc(var(--canvas-pad) + 10px);
+  z-index: 11;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid #555;
+  border-radius: 6px;
+  background: rgba(20, 20, 20, 0.55);
+  color: #cfcfcf;
+  cursor: pointer;
+}
+#hud-toggle:hover { background: rgba(40, 40, 40, 0.8); color: #fff; }
+#hud-toggle .eye-shut { display: none; }
+.canvas-container.hud-hidden #hud-toggle .eye-open { display: none; }
+.canvas-container.hud-hidden #hud-toggle .eye-shut { display: inline; }
+.canvas-container.hud-hidden #hud-stats,
+.canvas-container.hud-hidden #happiness-bar-container,
+.canvas-container.hud-hidden #antagonist-bar-container { display: none; }
+
 /* --- Mode Selector (Tools & Foods) --- */
 .mode-selector {
   display: flex;

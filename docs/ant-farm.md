@@ -19,7 +19,10 @@ point and food is hauled to the nearest one. Each colony is capped at 500 ants.
 Rival ants hunt and bite main-colony ants; their **Aggression** control sets how
 keenly they chase and how often a bite lands. A bite kills instantly. A **hungry**
 rival breaks off the hunt to look for food, so rivals must eat and can starve like
-any ant.
+any ant. Rivals are also **thieves**: when they aren't hunting they roam for food to
+carry back to their own pantry, and a rival that gets inside the main colony's pantry
+will **steal from the store** (or eat it if hungry). In World Building Mode the rival
+colony builds its own, smaller nest to stash the loot.
 
 Ants breed only when **both** partners are *in the mood* — each has its own hidden
 happiness threshold (its "horniness", jittered per ant), so they don't all become
@@ -33,8 +36,12 @@ versus **spawned** (a queen or your Add-Ant button).
 ## Food
 
 Drop food by clicking the canvas, or paint it with the **Food** environment tool.
-Ants carry loose food back to the nest, where it becomes part of the colony's
-**store**. Once delivered, only *another* ant may eat it.
+Ants carry loose food back to the nest, where it becomes part of that colony's
+**store**. Once delivered, an ant normally eats only from its *own* colony's
+stockpile, so one colony's reserves don't prop up the other's mood. The exception is
+a **raid**: a rival that gets physically *inside* the enemy pantry — standing right
+on the stored food — can eat it. Ants never home in on an enemy store from across
+the map or reach it through walls; a raider has to breach and be there.
 
 | Food | Colour | Drops (trips to haul) | Feeds | Effect on the eater |
 |---|---|---|---|---|
@@ -50,6 +57,9 @@ haul home: an ant lifts one unit and the rest waits for the next carrier, so a
 sugar pile needs three trips and a fruit pile five. Protein is a single heavy drop —
 one trip — but a delivered protein feeds *two* nestmates. A number on a loose pile
 shows how many trips it has left.
+
+Once a colony has built a **pantry**, delivered food is stored there instead of in a
+ring around the nest; until then it piles at the nest as before.
 
 **Painting.** A dragged brush scatters spaced drops, not a solid line, and each food
 has its own spacing: sugar sits closest, fruit wider, protein wider still, and a dead
@@ -68,12 +78,41 @@ insect** as a rare treat (poison and spoiled never fall on their own). Turn it o
 with the **Auto food drops** checkbox in the Food panel to hand-feed the colony
 yourself.
 
-### Trails
+### Trails, scent, and wandering
 
-When an ant finds food and carries it home it lays a **trail** and marks the find
-itself, so the spot stays appealing while the trail fades. Nestmates that cross the
-trail fall in line and process over to the food, carrying off the rest of the pile
-trip by trip until it is gone or the trail dies away.
+Ants forage by **smell, not sight**. Food only pulls an ant when it is very close —
+as if each morsel carried a faint scent of its own — and at that range the scent
+**trumps** everything. Farther off, a **pheromone trail** wins, so nestmates fall in
+line and process over to a find, carrying off the pile trip by trip; with neither
+scent nor trail nearby, an ant simply **wanders** — a small random turn each tick, a
+drunkard's walk with no goal — until it stumbles onto one. When an ant does find food
+and carry it home it lays a trail and marks the spot, keeping it appealing while the
+trail fades. (Food within reach is always grabbed.)
+
+### Pheromones and reactions
+
+There is no event system or messaging: ants coordinate entirely through the shared
+**pheromone field** (stigmergy). Every reaction is a scent one ant drops and another
+reads back when it passes near. Marks are **typed**:
+
+- **Trail** (yellow) — laid on a food find, as above.
+- **Danger** (red) — laid where a colony-mate is **killed by a rival**. It carries
+  farther than a food trail.
+
+A main-colony ant that catches a danger scent **reacts before it thinks about food**.
+What it does depends on its mood, the colony's size, and whether the nest itself is
+threatened:
+
+- **Flee** (the default) — turn and run from the scent, with a jolt of speed.
+- **Swarm** — if the danger is laid at the colony's own **nest or queen**, *and* the
+  colony is large enough to have crowned a queen (the same `QUEEN_MIN_ANTS`
+  threshold) with decent morale, the ants instead **rally home** to defend it rather
+  than scattering.
+
+Standing and fighting off an attacker, and walling off a breached entry, are the next
+phase (they wait on ant-vs-ant combat and the World Building construction work); for
+now *swarm* pulls defenders back to the nest. Rival ants are the aggressors and never
+react to danger.
 
 ### Stockpiling
 
@@ -135,6 +174,12 @@ Poison spreads **only by eating**:
 - an ant that eats Poison food becomes poisoned (it no longer dies on the spot), or
 - a rival ant that bites an already-poisoned ant catches it.
 
+Poison never appears from the ordinary living world: auto-dropped food can ripen and
+spoil, but spoiled food only rots on into poison under **Sadist mode**. And in Sadist
+mode, once the main colony is thriving — a sustained queen at high spirits — the
+sadist will **rarely seed a poison drop** to spoil the good times. (You can always
+drop poison yourself with the Food picker.)
+
 There is no proximity contagion, and there is **no cure**: no meal clears a poisoning
 once it takes hold. A poisoned ant decays on every axis — it ages faster, loses
 fullness and happiness faster, cannot breed at all — and is drawn in its colony's
@@ -153,10 +198,66 @@ tracking the rival colony's own mood, she is summoned by the **main** colony's m
 — she arrives when your ants are suffering and withdraws once they recover. Sadist
 mode also switches on the extra happiness setbacks described under Happiness.
 
+## World Building (in progress)
+
+**World Building Mode** (a control card; on by default for now) unlocks a nesting
+layer on top of the classic sandbox.
+
+**Digging.** Ants raise **soil** — a slow in-situ action (a few ticks per block)
+that turns a spot into a brown block. Soil blocks movement like a wall, but only
+soil the colony builds is recognised as a room wall (painted walls can extend
+structures ad hoc). Soil can be mined anywhere. **Auto food never lands on soil,
+walls, water, or a queen.**
+
+**Auto-built nest.** Once the colony is a handful of ants strong, it lays out a
+walled nest and its well-fed idle workers dig the walls block by block. The nest is
+built around an open **junction** at the spawn point (the crossroads ants emerge
+into); each room hangs off the junction by its own two-walled **tunnel** with a
+genuine walkable channel, and each room's ring has a real **doorway gap** sized to
+that channel, so ants pass through openings rather than walls. Walls are thin soil
+lines; ants **can't cross them** and must use the gaps.
+
+Topology follows a few rules: the **nursery** is dug deepest (farthest from the
+rival — the most sheltered room) and is joined to the **throne** by a direct
+corridor; the **pantry** connects only to the junction, never straight to the
+nursery or throne; and every room is reachable across the junction **without
+crossing another room**. The **entry** sits toward the open. No room is built on top
+of another. Rooms show as labelled discs — dashed while being dug, solid once
+walled. A digging ant sits right at its block and jiggles as it works. At most a few
+ants dig at once, so the rest keep foraging. Room caps: **1 throne, 3 nurseries, any
+number of pantries**.
+
+**Burrowing out.** An ant sealed inside a room that can't find a way past the walls
+will, after a spell of getting nowhere, **dig a single hole** to escape — a fresh
+opening in the wall.
+
+**Nursery-gated growth.** Past a threshold (default **10** ants, tunable under
+*Nursery needed > ants*), a colony **can't breed without a built nursery** — a brief
+on-canvas nudge says so when growth stalls. Below the threshold it breeds as usual.
+
+**Eggs.** With a built nursery, a mating lays an **egg** in the nursery instead of a
+birth on the spot; the egg hatches into a new ant after a spell.
+
+**Threat response.** If a rival reaches a built room's doorway, the colony treats it
+as a **breach** and walls the doorway shut (a barricade, dug at top priority). The
+breached room is outlined in red until it's sealed.
+
+**Placing rooms by hand.** The World Building card has **+ Entrance** and **+ Food
+store** buttons. Each lets you **drag the new room where you want it** (it shows red
+while it overlaps another room); **Place here** commits it and the ants dig it next.
+Once built, a room can't be moved. (Caps still apply.)
+
+Turning the mode **off** returns the classic sandbox (no rooms, no nursery gate).
+Both modes are covered by the test suite (`npm test`).
+
 ## Controls
 
 The control panel is a column of **collapsible cards** — click a card's heading to
 fold it away; each card remembers whether you left it open.
+
+An **eye toggle** in the top-right corner of the map folds the on-canvas overlay
+(the happiness bars and the population readout) away for a clean view, and back;
+your choice is remembered.
 
 - **Ant Controls** — add ants, open the spawn-point maintenance view, and set mating
   conditions, lifespan, and speed for the main colony.
@@ -166,7 +267,8 @@ fold it away; each card remembers whether you left it open.
 - **Environment Tools** — paint Food, Water, or Walls, or Bulldoze; set brush
   thickness; undo or clear structures. Walls block ants; water slows and repels them.
 - **Danger Zone** — kill a colony, kill everything, or destroy the world.
-- **Stats** — live counts and each colony's happiness.
+- **Stats** — live counts and each colony's happiness. Deaths are split into
+  **killed** (by a rival) and **died** (hunger, age, or poison), for each colony.
 - **Breakdown** — per-colony figures for spotting imbalance: average mood and
   fullness, how many ants are hungry, poisoned, or hauling, each colony's stored
   food, and how long the main colony has gone unattacked.

@@ -6,10 +6,14 @@
 // ---------------------------------------------------------------------------
 function drawEnvironment() {
   for (const o of environment) {
+    if (o.type === 'soil' && o.room) continue;   // room walls are stroked smoothly in drawRooms
     const r = o.r || 4;
     ctx.beginPath();
     if (o.type === 'wall') {
       ctx.fillStyle = '#888';
+      ctx.arc(o.x, o.y, r, 0, Math.PI * 2);
+    } else if (o.type === 'soil') {
+      ctx.fillStyle = SOIL_COLOR;
       ctx.arc(o.x, o.y, r, 0, Math.PI * 2);
     } else {
       ctx.fillStyle = 'rgba(0,180,255,0.6)';
@@ -17,6 +21,123 @@ function drawEnvironment() {
     }
     ctx.fill();
   }
+}
+
+// Stroke the raised (done) blocks of a wall as one smooth line: short segments
+// between nearby blocks, thick with round joins, so the wall reads continuous
+// rather than as a string of beads.
+function strokeWall(sites) {
+  const done = [];
+  for (const s of sites) if (s.done) done.push(s);
+  if (!done.length) return;
+  const near = ROOM_SITE_STEP * 1.7, near2 = near * near;
+  ctx.beginPath();
+  for (let i = 0; i < done.length; i++) {
+    for (let j = i + 1; j < done.length; j++) {
+      if (dist2(done[i].x, done[i].y, done[j].x, done[j].y) < near2) {
+        ctx.moveTo(done[i].x, done[i].y); ctx.lineTo(done[j].x, done[j].y);
+      }
+    }
+  }
+  ctx.lineWidth = WALL_DRAW;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = SOIL_COLOR;
+  ctx.stroke();
+}
+
+// Planned / built nest rooms: a tinted, labelled disc, with the raised walls
+// drawn as smooth soil lines over it (a placing ghost is dashed and faint).
+function drawRooms() {
+  if (!worldBuilding) return;
+  ctx.save();
+  for (const room of rooms) {
+    const spec = ROOM_SPECS[room.type];
+    const col = (spec && spec.color) || '#c9a227';
+    ctx.beginPath();
+    ctx.arc(room.x, room.y, room.r, 0, Math.PI * 2);
+    ctx.fillStyle = hexToRgba(col, room.built ? 0.16 : 0.07);
+    ctx.fill();
+    ctx.lineWidth = room.breached ? 2.5 : 1.5;
+    ctx.setLineDash(room.built ? [] : [4, 4]);
+    ctx.strokeStyle = room.breached ? 'rgba(255,60,40,0.9)' : hexToRgba(col, room.built ? 0.9 : 0.5);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = hexToRgba(col, room.built ? 1 : 0.7);
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText((spec && spec.label) || room.type, room.x, room.y + 4);
+    // Smooth soil walls over the disc.
+    strokeWall(room.sites);
+    if (room.tunnelSites) strokeWall(room.tunnelSites);
+    if (room.barricadeSites) strokeWall(room.barricadeSites);
+  }
+  // A room the player is dragging into place: dashed ghost, red if it overlaps.
+  if (placingRoom) {
+    const spec = ROOM_SPECS[placingRoom.type];
+    const bad = placementBlocked(false, placingRoom.x, placingRoom.y, spec.r);
+    ctx.beginPath();
+    ctx.arc(placingRoom.x, placingRoom.y, spec.r, 0, Math.PI * 2);
+    ctx.fillStyle = bad ? 'rgba(255,60,40,0.12)' : hexToRgba(spec.color, 0.12);
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
+    ctx.strokeStyle = bad ? 'rgba(255,60,40,0.95)' : hexToRgba(spec.color, 0.95);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = bad ? 'rgba(255,120,110,1)' : hexToRgba(spec.color, 1);
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(bad ? 'overlaps' : spec.label, placingRoom.x, placingRoom.y + 4);
+  }
+  ctx.restore();
+}
+
+// Eggs waiting to hatch in a nursery: small pale ovals.
+function drawEggs() {
+  if (!eggs.length) return;
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,250,230,0.9)';
+  ctx.strokeStyle = 'rgba(120,110,90,0.6)';
+  for (const e of eggs) {
+    ctx.beginPath();
+    ctx.ellipse(e.x, e.y, EGG_R, EGG_R * 1.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function hexToRgba(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
+// A transient nudge over the map (e.g. "the colony needs a nursery to grow").
+function drawCanvasNotice() {
+  if (Date.now() >= nurseryNoticeUntil) return;
+  const msg = 'The colony needs a built nursery to keep growing';
+  ctx.save();
+  ctx.font = '13px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  const w = ctx.measureText(msg).width + 24;
+  const cx = canvas.width / 2, y = 16;
+  ctx.fillStyle = 'rgba(20,20,20,0.8)';
+  ctx.strokeStyle = 'rgba(200,111,176,0.9)';
+  roundRect(cx - w / 2, y, w, 26, 6); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#f2d6ea';
+  ctx.fillText(msg, cx, y + 17);
+  ctx.restore();
+}
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
 }
 
 function getFoodColor(type) {
@@ -118,8 +239,11 @@ function drawPheromones() {
     if (p.strength <= 0) continue;
     pheromones[w++] = p;
     ctx.beginPath();
-    ctx.fillStyle = `rgba(255,230,0,${Math.min(p.strength, 1) * 0.6})`;
-    ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+    const a = Math.min(p.strength, 1) * 0.6;
+    // Trails are the familiar yellow; a danger scent glows red so a threatened
+    // stretch of the map reads at a glance.
+    ctx.fillStyle = p.kind === 'danger' ? `rgba(255,60,40,${a})` : `rgba(255,230,0,${a})`;
+    ctx.arc(p.x, p.y, p.kind === 'danger' ? 3 : 2, 0, Math.PI * 2);
     ctx.fill();
   }
   pheromones.length = w;
@@ -179,15 +303,17 @@ function updateStats() {
   const atNest = foods.reduce((n, f) => n + (f.delivered ? 1 : 0), 0);
   el.innerHTML =
     `Total Alive: ${ants.length}<br>` +
-    `Yellow Ants: Alive ${w} | Born ${totalBornWhite} | Dead ${totalDeadWhite}<br>` +
-    `Rival Ants: Alive ${r} | Born ${totalBornRed} | Dead ${totalDeadRed}<br>` +
+    `Yellow Ants: Alive ${w} | Born ${totalBornWhite} | Dead ${totalDeadWhite} (${killedWhite} killed)<br>` +
+    `Rival Ants: Alive ${r} | Born ${totalBornRed} | Dead ${totalDeadRed} (${killedRed} killed)<br>` +
     `Food: ${foods.length} (${atNest} at nest) | Happiness: ${Math.round(whiteHappiness)} | Rival: ${Math.round(redHappiness)}`;
 
   const hud = $('hud-stats');
   if (hud) {
-    let html = `<span class="yellow">🐜 <b>${w}</b> · born ${matedWhite} · spawned ${spawnedWhite} · died ${totalDeadWhite}</span>`;
+    const wOther = Math.max(0, totalDeadWhite - killedWhite);
+    const rOther = Math.max(0, totalDeadRed - killedRed);
+    let html = `<span class="yellow">🐜 <b>${w}</b> · born ${matedWhite} · spawned ${spawnedWhite} · killed ${killedWhite} · died ${wOther}</span>`;
     if (r > 0 || totalBornRed > 0) {
-      html += `<br><span class="rival">✦ <b>${r}</b> · born ${matedRed} · spawned ${spawnedRed} · died ${totalDeadRed}</span>`;
+      html += `<br><span class="rival">✦ <b>${r}</b> · born ${matedRed} · spawned ${spawnedRed} · killed ${killedRed} · died ${rOther}</span>`;
     }
     hud.innerHTML = html;
   }
