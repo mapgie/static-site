@@ -149,6 +149,24 @@ function nearestWhiteAnt(ant) {
   return best;
 }
 
+// Pick prey for a hunting rival, spreading the pack: prefer the nearest white that
+// isn't already being chased by MAX_PURSUERS rivals, so they don't all swarm one
+// ant. `pursuers` tallies picks across this tick; falls back to the plain nearest
+// once every nearby target is spoken for.
+function pickPrey(ant, pursuers) {
+  let best = null, bd = SENSE_PREY * SENSE_PREY;
+  for (const o of ants) {
+    if (o.isRed || (pursuers.get(o.id) || 0) >= MAX_PURSUERS) continue;
+    const d = dist2(o.x, o.y, ant.x, ant.y);
+    if (d < bd) { bd = d; best = o; }
+  }
+  // If every nearby target already has its share of hunters, this rival does NOT
+  // pile on — it returns empty and falls through to foraging, so a lone ant isn't
+  // swarmed by the whole pack.
+  if (best) pursuers.set(best.id, (pursuers.get(best.id) || 0) + 1);
+  return best;
+}
+
 // The strongest pheromone of a given kind within range of an ant. Foraging reads
 // 'trail'; the danger response reads 'danger'. Kind-less legacy marks read as
 // 'trail' so an old save still steers ants along its scent.
@@ -217,15 +235,18 @@ function buildTaskFor(a) {
   return null;
 }
 
+// Ages fruit → spoiled → (Sadist only) poison. Returns true when the piece should
+// be removed from the world entirely: in the ordinary living world spoiled food
+// finally rots away to nothing rather than piling up forever.
 function decay(f) {
-  if (f.type !== 'fruit' && f.type !== 'spoiled') return;
+  if (f.type !== 'fruit' && f.type !== 'spoiled') return false;
   f.age = (f.age || 0) + TICK_MS;
-  if (f.age < decayStageMs()) return;
-  // Spoiled food only rots on into poison under Sadist mode; otherwise it stays
-  // spoiled, so the ordinary living world never breeds poison on its own.
-  if (f.type === 'spoiled' && !sadistMode) return;
+  if (f.age < decayStageMs()) return false;
   f.age = 0;
-  f.type = f.type === 'fruit' ? 'spoiled' : 'poison';
+  if (f.type === 'fruit') { f.type = 'spoiled'; return false; }
+  // Spoiled: rots on into poison under Sadist mode; otherwise it crumbles away.
+  if (sadistMode) { f.type = 'poison'; return false; }
+  return true;
 }
 
 // Sadist mode only: once the main colony is thriving (a sustained queen at high
@@ -267,7 +288,9 @@ function pruneHaulers() {
 }
 
 function updateFoods() {
-  for (const f of foods) decay(f);
+  // Age everything; drop loose pieces that have finally rotted away (carried and
+  // being-hauled pieces are left alone so nothing vanishes out of an ant's grip).
+  foods = foods.filter(f => !(decay(f) && !f.haulers?.length));
 
   let byId = null;
   for (const f of foods) {
@@ -277,13 +300,16 @@ function updateFoods() {
 
     if (team.length >= INSECT_HAULERS) {
       f.waited = 0;
+      const store = builtRoom(f.team, 'pantry');
       const aim = haulHomeAim(f.team, f.x, f.y);
+      // Reached the nest (through the entry, or into any built room): counted home.
+      // The carcass is then STORED in the pantry — never left in the nursery/throne.
       const home = insideMyBuiltRoom(f.team, f.x, f.y) ||
                    dist2(aim.x, aim.y, f.x, f.y) < (INSECT_RADIUS + EAT_RANGE) * (INSECT_RADIUS + EAT_RANGE);
       if (home) {
-        // Delivered: drop the carcass at the pantry (or spawn) — the whole team
-        // counts as finders, none of them may eat it.
-        const spot = builtRoom(f.team, 'pantry') || nearestSpawnPoint(f.team, f.x, f.y);
+        // Delivered: drop the carcass at the pantry (or spawn, before one exists) —
+        // the whole team counts as finders, none of them may eat it.
+        const spot = store || nearestSpawnPoint(f.team, f.x, f.y);
         f.x = spot.x; f.y = spot.y;
         f.delivered = true;
         f.foundBy = f.haulers.slice();
@@ -427,6 +453,7 @@ function updateAnts() {
   // nest instead of leaving most of them idle, while still keeping foragers out.
   const buildCapW = Math.max(MAX_BUILDERS, Math.ceil(countWhiteAnts() * BUILDER_SHARE));
   const buildCapR = Math.max(MAX_BUILDERS, Math.ceil(countRedAnts()   * BUILDER_SHARE));
+  const pursuers = new Map();   // whiteId -> how many rivals are hunting it this tick (spreads the pack)
 
   for (let i = ants.length - 1; i >= 0; i--) {
     const a = ants[i];
@@ -482,14 +509,14 @@ function updateAnts() {
 
     // Decide what to chase. Right after a wall bump this is paused so the ant peels
     // away instead of steering straight back into the wall and grinding to a stop.
-    let target = null, prey = null, chase = null, holdStill = false;
+    let target = null, prey = null, chase = null, holdStill = false, building = false;
     if (a.wallCooldown > 0) {
       a.wallCooldown--;
     } else {
       // Well-fed rivals hunt; a hungry rival breaks off to look for food, so it
       // depends on eating (and can starve) just like the main colony.
       if (a.isRed && aggression > 0 && a.fullness >= a.hungerPoint) {
-        prey = nearestWhiteAnt(a);
+        prey = pickPrey(a, pursuers);
         if (prey) { steerToward(a, prey.x, prey.y, 0.05 + aggression * 0.25); chase = prey; }
       }
       // A main-colony ant that isn't hunting or hauling answers a danger scent
@@ -507,7 +534,7 @@ function updateAnts() {
         const t = buildTaskFor(a);
         const busy = a.isRed ? activeBuildersR : activeBuildersW;
         const cap  = a.isRed ? buildCapR : buildCapW;
-        if (t && (t.urgent || busy < cap)) { build = t; if (a.isRed) activeBuildersR++; else activeBuildersW++; }
+        if (t && (t.urgent || busy < cap)) { build = t; building = true; if (a.isRed) activeBuildersR++; else activeBuildersW++; }
       }
       if (!prey && a.carrying) {
         // Haul it home. Head for a reachable opening — the entry's outer door when
@@ -622,6 +649,22 @@ function updateAnts() {
       a.x = (nx + canvas.width) % canvas.width;
       a.y = (ny + canvas.height) % canvas.height;
       a.stuckMs = 0;
+    }
+
+    // Trapped-forager relief: an ant that should be out foraging but has been stuck
+    // inside the nest too long digs its own way out, radially through the nearest
+    // room wall (the colony re-seals the hole later). Builders, carriers, hunters
+    // and the queen are exempt — they belong inside.
+    if (!a.isQueen && !a.carrying && !building && !prey && inAnyRoom(a.x, a.y)) {
+      a.confinedMs = (a.confinedMs || 0) + TICK_MS;
+      if (a.confinedMs >= CONFINE_BURROW_MS) {
+        const rm = rooms.find(r => dist2(r.x, r.y, a.x, a.y) < r.r * r.r);
+        const out = rm ? Math.atan2(a.y - rm.y, a.x - rm.x) : a.angle;
+        if (burrowHole(a.x + Math.cos(out) * (SOIL_R + 6), a.y + Math.sin(out) * (SOIL_R + 6)) ||
+            burrowHole(a.x, a.y)) a.confinedMs = 0;
+      }
+    } else {
+      a.confinedMs = 0;
     }
 
     // Trail laying after a good meal

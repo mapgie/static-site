@@ -110,6 +110,8 @@ const NURSERY_NOTICE_MUTE_MS = 45000;  // after the player dismisses the nudge, 
 const MAX_BUILDERS   = 5;     // floor on how many ants dig at once; the cap also scales with colony size
 const BUILDER_SHARE  = 0.6;   // up to this fraction of a colony can be on the nest at once
 const ANT_SEP        = 10;    // ants keep at least this far apart, so they don't stack/walk on each other
+const MAX_PURSUERS   = 2;     // at most this many rivals gang up on one ant, so they don't all swarm a single target
+const CONFINE_BURROW_MS = 6000; // a forager stuck inside the nest this long burrows its own way out
 const BUILD_TICKS    = 40;    // in-situ ticks to raise one wall block (~0.65s — a visible, unhurried dig)
 const DIG_REACH      = 13;    // how close to a block's open-side approach point an ant digs from
 

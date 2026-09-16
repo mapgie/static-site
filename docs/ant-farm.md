@@ -21,7 +21,9 @@ board and the rival colony near the bottom.
 Rival ants hunt and bite main-colony ants; their **Aggression** control sets how
 keenly they chase and how often a bite lands. A bite kills instantly. A **hungry**
 rival breaks off the hunt to look for food, so rivals must eat and can starve like
-any ant. Rivals are also **thieves**: when they aren't hunting they roam for food to
+any ant. The pack **spreads out**: at most a couple of rivals lock onto any one
+ant, and the rest go find their own quarry or forage rather than all swarming a
+single target. Rivals are also **thieves**: when they aren't hunting they roam for food to
 carry back to their own pantry, and a rival that gets inside the main colony's pantry
 will **steal from the store** (or eat it if hungry). In World Building Mode the rival
 colony builds its own, smaller nest to stash the loot.
@@ -51,10 +53,10 @@ the map or reach it through walls; a raider has to breach and be there.
 | Food | Colour | Drops (trips to haul) | Feeds | Effect on the eater |
 |---|---|---|---|---|
 | Sugar | `#f5f5f5` | 3 | 1 each | Least filling. +15% lifespan. |
-| Fruit | `#ff8c00` | 5 | 1 each | More filling. +20% lifespan. Cures a slow. Ripens, then rots into Spoiled. |
+| Fruit | `#ff8c00` | 5 | 1 each | More filling. +20% lifespan. Cures a slow. Ripens into Spoiled, which then crumbles away if left. |
 | Protein | `#ef9a9a` | 1 (heavy) | 2 | Most filling. +25% lifespan. Cures a slow and adds a burst of speed and mating drive. Slower to carry home. |
 | Dead Insect | `#8d6e63` | team of 3 hauls | 10–15 | A carcass is ~80% sugar / 20% protein: each mouthful lands as one or the other. Takes a team of three to move at all. |
-| Spoiled | `#3d5afe` | 1 | 1 | Slows the eater and shaves a little lifespan. Rots further into Poison. |
+| Spoiled | `#3d5afe` | 1 | 1 | Slows the eater and shaves a little lifespan. Under Sadist mode it rots on into Poison; otherwise it crumbles away to nothing. |
 | Poison | `#b040ff` | 1 | 5–10 | Poisons everyone who eats from the drop (see below). |
 
 **Drops and trips.** A dropped piece is a small pile that takes several **trips** to
@@ -258,7 +260,10 @@ nurseries, any number of pantries or empty rooms**.
 
 **Burrowing out.** An ant sealed inside a room that can't find a way past the walls
 will, after a spell of getting nowhere, **dig a single hole** to escape — a fresh
-opening in the wall.
+opening in the wall. The same relief valve covers a **forager stuck inside the nest**:
+if it's spent too long indoors when it should be out looking for food (crowding at a
+doorway, say), it digs its own way out through the nearest wall. The colony re-seals
+these holes as it maintains the nest.
 
 **Nursery-gated growth.** Past a threshold (default **10** ants, tunable under
 *Nursery needed > ants*), a colony **can't breed without a built nursery** — an
