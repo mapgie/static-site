@@ -255,8 +255,9 @@ another. Rooms are marked by a **symbol** rather than a word — 🍎 pantry, �
 👑 throne — while the entry and empty rooms carry no label. Walls are thin soil lines;
 a digging ant sits right at its block and jiggles as it works; the number that dig at
 once **scales with colony size** (up to ~60%, at least a handful) so a big colony
-puts real hands on the nest while the rest keep foraging. Room caps: **1 throne, 3
-nurseries, any number of pantries or empty rooms**.
+puts real hands on the nest while the rest keep foraging. The walls are **solid** —
+blocks are laid close enough to overlap, with openings only at the doorways. Room
+caps: **1 throne, 1 nursery, any number of pantries or empty rooms**.
 
 **Burrowing out.** An ant sealed inside a room that can't find a way past the walls
 will, after a spell of getting nowhere, **dig a single hole** to escape — a fresh
@@ -275,15 +276,23 @@ birth on the spot; the egg hatches into a new ant after a spell.
 
 **Threat response.** If a rival reaches a built room's doorway, the colony treats it
 as a **breach** and walls the doorway shut (a barricade, dug at top priority). The
-breached room is outlined in red until it's sealed.
+room is **outlined in red only while a rival is actually there** — the red clears
+once the threat leaves, though the barricade soil stays.
 
-**Placing rooms by hand.** The World Building card has **+ Entrance**, **+ Food
-store** and **+ Empty room** buttons. Each lets you **drag the new room where you
-want it**: it shows red (`overlaps` / `no link`) if it clashes with another room or
-has nothing there it's allowed to connect to, per the rules above. **Place here**
-commits it and the ants dig it next, wiring a corridor to the nearest room it may
-connect to. Empty rooms connect to anything, so they're how you route new pathways.
-Once built, a room can't be moved. (Caps still apply.)
+**Placing rooms by hand.** The World Building card has a button for **every** room
+type — **+ Entrance**, **+ Food store**, **+ Nursery**, **+ Throne** and **+ Empty
+room** — so you can build a whole nest by hand (including after placing custom rooms
+first). Each lets you **drag the new room where you want it**: it shows red
+(`overlaps` / `no link`) if it clashes with another room or has nothing it's allowed
+to connect to, per the rules above. **Place here** commits it and the ants dig it
+next, wiring a corridor to the nearest room it may connect to. Empty rooms connect to
+anything, so they're how you route new pathways. Once built, a room can't be moved.
+Caps still apply (**1 nursery, 1 throne**).
+
+**Repairing & bulldozing.** The **Bulldozer** tool knocks holes in nest walls, and
+they **stay open** — the colony doesn't rush to patch them. Hit **Repair nest** to
+send ants to rebuild every knocked-out wall. (An ant that burrows its own escape
+hole is different: those small holes self-seal as the colony maintains the nest.)
 
 **Diggers walk the walls.** An ant builds by walking onto the next wall block,
 working it, and laying the soil where it stands — so the wall rises **behind the ant
@@ -320,10 +329,11 @@ your choice is remembered.
   water all block ants** — an ant that meets one **follows along it** (tracing round an
   obstacle, hugging a wall until it finds a doorway or a scent pulls it off) rather
   than crossing it, and it never crosses water. The **Bulldozer** clears terrain and
-  loose food, and it also **breaches nest walls**: knocking out a room's wall reopens
-  that stretch, so the colony re-digs it (a hole ants pour through until it's sealed
-  again).
-- **Danger Zone** — kill a colony, kill everything, or destroy the world.
+  loose food, and it **breaches nest walls** — a hole ants pour through that stays
+  open until you hit **Repair nest** (in the World Building card).
+- **Danger Zone** — kill the rivals, kill everything, **Destroy Nest** (removes the
+  rooms and their walls but leaves ants, food, water and painted walls), or **Destroy
+  World** (wipes everything).
 - **Stats** — live counts and each colony's happiness. Deaths are split into
   **killed** (by a rival) and **died** (hunger, age, or poison), for each colony.
 - **Breakdown** — per-colony figures for spotting imbalance: average mood and

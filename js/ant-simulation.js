@@ -562,14 +562,18 @@ function updateAnts() {
           if (++a.digTimer >= BUILD_TICKS) {
             a.digTimer = 0;
             const dug = digSoil(s.x, s.y, true);   // lays soil at its feet; the shove bumps it onward
-            if (dug || collidesWall(s.x, s.y) || ++s.tries > 4) s.done = true;
-            refreshBuilt(build.room);
+            // Done ONLY when this site actually has its own block — so a later burrow
+            // that removes a neighbour can't leave this stretch a rendered-but-open gap.
+            if (dug || soilAt(s.x, s.y)) { s.done = true; refreshBuilt(build.room); }
           }
         } else {
-          // Can't reach this block for a while (walled off): give up on it so the
-          // room can't deadlock (the force-complete backstop also covers this).
+          // Can't reach this block for a while (walled off): force-lay it so the room
+          // can't deadlock or end up with a hole (the force-complete backstop also covers this).
           a.digTimer = 0;
-          if ((a.buildStuck = (a.buildStuck || 0) + 1) > 130) { s.done = true; refreshBuilt(build.room); a.buildStuck = 0; }
+          if ((a.buildStuck = (a.buildStuck || 0) + 1) > 130) {
+            if (digSoil(s.x, s.y, true) || soilAt(s.x, s.y)) { s.done = true; refreshBuilt(build.room); }
+            a.buildStuck = 0;
+          }
         }
       } else if (!prey && a.isRed) {
         // Raider: seek out food anywhere — ambient drops or the enemy store when
@@ -655,11 +659,14 @@ function updateAnts() {
     // inside the nest too long digs its own way out, radially through the nearest
     // room wall (the colony re-seals the hole later). Builders, carriers, hunters
     // and the queen are exempt — they belong inside.
-    if (!a.isQueen && !a.carrying && !building && !prey && inAnyRoom(a.x, a.y)) {
+    // Only a HUNGRY forager that urgently needs to get out digs its way free — a
+    // well-fed ant milling indoors (e.g. during construction) doesn't, so builders
+    // don't churn the walls they're raising.
+    if (!a.isQueen && !a.carrying && !building && !prey && a.fullness < a.hungerPoint && inNestZone(a.x, a.y)) {
       a.confinedMs = (a.confinedMs || 0) + TICK_MS;
       if (a.confinedMs >= CONFINE_BURROW_MS) {
         const rm = rooms.find(r => dist2(r.x, r.y, a.x, a.y) < r.r * r.r);
-        const out = rm ? Math.atan2(a.y - rm.y, a.x - rm.x) : a.angle;
+        const out = rm ? Math.atan2(a.y - rm.y, a.x - rm.x) : a.angle;   // out of a room, or along its heading in a corridor
         if (burrowHole(a.x + Math.cos(out) * (SOIL_R + 6), a.y + Math.sin(out) * (SOIL_R + 6)) ||
             burrowHole(a.x, a.y)) a.confinedMs = 0;
       }
@@ -831,18 +838,23 @@ function updateEggs() {
   }
 }
 
-// A rival at a built room's doorway is a breach: the colony walls it shut.
+// A rival at a built room's doorway is a breach: the colony walls it shut. The red
+// outline marks an ACTIVE threat only — it clears once no rival is near, while the
+// barricade soil (built once) stays.
 function updateThreats() {
   if (!worldBuilding) return;
   for (const room of rooms) {
-    if (room.team !== false || !room.built || room.barricadeSites) continue;
+    if (room.team !== false || !room.built) continue;
     const dx = room.x + Math.cos(room.gapAngle) * room.r;
     const dy = room.y + Math.sin(room.gapAngle) * room.r;
+    let threat = false;
     for (const o of ants) {
       if (!o.isRed) continue;
       if (dist2(o.x, o.y, dx, dy) < BREACH_R * BREACH_R ||
-          dist2(o.x, o.y, room.x, room.y) < (room.r + 4) * (room.r + 4)) { barricadeRoom(room); break; }
+          dist2(o.x, o.y, room.x, room.y) < (room.r + 4) * (room.r + 4)) { threat = true; break; }
     }
+    room.breached = threat;
+    if (threat && !room.barricadeSites) barricadeRoom(room);   // seal the doorway once
   }
 }
 

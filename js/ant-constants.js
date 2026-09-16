@@ -71,7 +71,7 @@ const ROOM_SPECS = {
   nursery: { r: 40, order: 3, color: '#c86fb0', sym: '🥚' },
   throne:  { r: 30, order: 4, color: '#c98a27', sym: '👑' },
 };
-const ROOM_CAPS      = { empty: Infinity, entry: Infinity, pantry: Infinity, nursery: 3, throne: 1 };
+const ROOM_CAPS      = { empty: Infinity, entry: Infinity, pantry: Infinity, nursery: 1, throne: 1 };
 
 // Which room types may connect to which. Empty rooms are the universal connectors
 // that let you route pathways; the functional rooms are pickier.
@@ -102,7 +102,7 @@ const NEST_TREE = {
   ] } },
 };
 const CORRIDOR_LEN = 40;   // gap between two connected rooms, spanned by a corridor
-const ROOM_SITE_STEP = SOIL_R * 1.5;  // spacing of wall blocks — tight enough that a ring has no slip-through
+const ROOM_SITE_STEP = SOIL_R * 2.2;  // spacing of wall blocks — wide as it can be while overlapping blocks (r+3) still seal, so walls are solid with fewer blocks to dig
 const MIN_BUILD_ANTS = 6;     // the colony only starts building once it's this many strong
 const BUILD_SENSE    = 4000;  // a well-fed idle ant will return from anywhere to work the nest (until it's done)
 const ROOM_MSG_MS    = 4000;  // how long the "needs a nursery" nudge shows
@@ -110,6 +110,7 @@ const NURSERY_NOTICE_MUTE_MS = 45000;  // after the player dismisses the nudge, 
 const MAX_BUILDERS   = 5;     // floor on how many ants dig at once; the cap also scales with colony size
 const BUILDER_SHARE  = 0.6;   // up to this fraction of a colony can be on the nest at once
 const ANT_SEP        = 10;    // ants keep at least this far apart, so they don't stack/walk on each other
+const ANT_WALL_CLEAR = 4;     // ant-vs-wall clearance (soil r + this); a hair wider than build collision so bodies keep off the drawn wall, without choking corridors
 const MAX_PURSUERS   = 2;     // at most this many rivals gang up on one ant, so they don't all swarm a single target
 const CONFINE_BURROW_MS = 6000; // a forager stuck inside the nest this long burrows its own way out
 const BUILD_TICKS    = 40;    // in-situ ticks to raise one wall block (~0.65s — a visible, unhurried dig)

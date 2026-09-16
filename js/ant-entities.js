@@ -57,12 +57,26 @@ function collidesWall(x, y) {
 }
 
 // What an ant can't walk into: walls, soil AND water (ants avoid and never cross it).
+// The margin is a touch wider than the build-collision one so an ant's body keeps
+// clear of the drawn wall instead of visibly riding along it.
 function blockedForAnt(x, y) {
   let hit = false;
   forEachEnvNear(x, y, 40, o => {
     if (hit) return;
-    const r = (o.r || 4) + 3;
+    const r = (o.r || 4) + ANT_WALL_CLEAR;
     if (dist2(o.x, o.y, x, y) < r * r) hit = true;
+  });
+  return hit;
+}
+
+// Is there a soil/wall block sitting essentially AT this point (not merely nearby)?
+// A wall site is only "done" when its own block is in place, so removing a
+// neighbouring block can't silently leave it uncovered.
+function soilAt(x, y) {
+  let hit = false;
+  const r2 = (SOIL_R * 0.9) * (SOIL_R * 0.9);
+  forEachEnvNear(x, y, 10, o => {
+    if (!hit && (o.type === 'soil' || o.type === 'wall') && dist2(o.x, o.y, x, y) < r2) hit = true;
   });
   return hit;
 }
@@ -90,6 +104,14 @@ function insideMyBuiltRoom(team, x, y) {
   return false;
 }
 
+// In the "nest zone": inside any room, or hemmed in by nest wall soil (a corridor).
+// Used to spot a forager that's stuck indoors — a room OR a corridor junction.
+function inNestZone(x, y) {
+  if (inAnyRoom(x, y)) return true;
+  const o = nearestObstacle(x, y, TUNNEL_HALF_W + 8);
+  return !!(o && o.type === 'soil' && o.room);
+}
+
 // Where auto-food (and Sadist poison) may land: not on terrain/water, not on a
 // queen, and never inside the nest — no room footprint and no spawn area, so food
 // always lands in the open and must be carried in to the pantry.
@@ -112,6 +134,9 @@ function foodSpawnAllowed(x, y) {
 }
 
 // A trapped ant burrows: remove the nearest soil block, opening a hole to escape.
+// If the block was a room wall, clear its site too — so the wall stops being drawn
+// there (no ghost wall that ants appear to walk through) and the colony re-seals the
+// escape hole on its own.
 function burrowHole(x, y) {
   let bi = -1, bd = 16 * 16;
   for (let i = 0; i < environment.length; i++) {
@@ -121,9 +146,24 @@ function burrowHole(x, y) {
     if (d < bd) { bd = d; bi = i; }
   }
   if (bi < 0) return false;
+  const b = environment[bi];
   environment.splice(bi, 1);
   markEnvDirty();
+  if (b.room) clearRoomSiteAt(b.x, b.y);
   return true;
+}
+
+// Mark any room wall site at (x,y) as undone and flag its room for re-sealing, so a
+// removed block no longer renders as a wall and the colony digs it back in.
+function clearRoomSiteAt(x, y) {
+  const near2 = (SOIL_R * 1.5) * (SOIL_R * 1.5);
+  for (const room of rooms) {
+    let hit = false;
+    for (const s of room.sites.concat(room.tunnelSites || [], room.barricadeSites || [])) {
+      if (s.done && dist2(s.x, s.y, x, y) < near2) { s.done = false; s.tries = 0; hit = true; }
+    }
+    if (hit) { room.built = false; room._stall = 0; room._lastDone = -1; }
+  }
 }
 
 // Raise one soil block at (x,y): a brown wall the colony builds with. Refuses to
@@ -152,7 +192,16 @@ function shoveAntsOff(x, y) {
 function digSoil(x, y, room = false) {
   x = clamp(x, 0, canvas.width);
   y = clamp(y, 0, canvas.height);
-  if (collidesWall(x, y)) return false;
+  // Refuse only a near-exact duplicate. A room wall needs its closely-spaced blocks
+  // (~6px apart) to ALL go down so it's solid — the old collision-radius check
+  // skipped every other one, leaving gaps ants walked straight through. Free-hand
+  // digging keeps the wider spacing.
+  const dupR = room ? SOIL_R * 0.8 : SOIL_R + 3, dupR2 = dupR * dupR;
+  let dup = false;
+  forEachEnvNear(x, y, 20, o => {
+    if (!dup && (o.type === 'soil' || o.type === 'wall') && dist2(o.x, o.y, x, y) < dupR2) dup = true;
+  });
+  if (dup) return false;
   for (const isRed of [false, true]) {
     for (const s of colonySpawnPoints(isRed)) {
       if (dist2(s.x, s.y, x, y) < nestCore(s) * nestCore(s)) return false;
@@ -428,7 +477,7 @@ function forceUnstall(team) {
   const done = all.reduce((n, s) => n + (s.done ? 1 : 0), 0);
   if (done !== room._lastDone) { room._lastDone = done; room._stall = 0; return; }
   if ((room._stall = (room._stall || 0) + 1) > 600) {   // ~10s with zero progress
-    for (const s of all) if (!s.done) { digSoil(s.x, s.y, true); s.done = true; }
+    for (const s of all) if (!s.done && (digSoil(s.x, s.y, true) || soilAt(s.x, s.y))) s.done = true;
     refreshBuilt(room);
     room._stall = 0;
   }

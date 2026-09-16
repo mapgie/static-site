@@ -314,6 +314,16 @@ function setupUI() {
     updateStats(); saveFarm();
   });
 
+  // Tear down just the nests: rooms, their soil walls and any eggs, leaving painted
+  // walls, water, loose food and the ants where they are.
+  on('destroy-nest', 'click', () => {
+    rooms = []; nextRoomId = 1; eggs = []; nurseryNoticeUntil = 0; placingRoom = null;
+    environment = environment.filter(o => !(o.type === 'soil' && o.room));
+    activeBuildersW = activeBuildersR = 0;
+    markEnvDirty();
+    updateStats(); saveFarm();
+  });
+
   on('toggle-controls', 'click', () => {
     setControlsHidden(!document.querySelector('main').classList.contains('controls-hidden'));
   });
@@ -360,9 +370,12 @@ function setupUI() {
 
   // Nudge the auto-builder: pick a spot for an extra entrance or food store and
   // drag it where you want before the ants dig it.
-  on('add-entry',  'click', () => startPlacingRoom('entry'));
-  on('add-pantry', 'click', () => startPlacingRoom('pantry'));
-  on('add-empty',  'click', () => startPlacingRoom('empty'));
+  on('add-entry',   'click', () => startPlacingRoom('entry'));
+  on('add-pantry',  'click', () => startPlacingRoom('pantry'));
+  on('add-nursery', 'click', () => startPlacingRoom('nursery'));
+  on('add-throne',  'click', () => startPlacingRoom('throne'));
+  on('add-empty',   'click', () => startPlacingRoom('empty'));
+  on('repair-nest', 'click', repairNest);
   on('room-place-ok',     'click', () => finishPlacingRoom(true));
   on('room-place-cancel', 'click', () => finishPlacingRoom(false));
 
@@ -416,22 +429,31 @@ function setupUI() {
   }));
 }
 
-// Bulldoze a spot: clear terrain and loose food, and — crucially — reopen any room
-// wall sites whose soil we just removed, so the room stops counting as "built"
-// there and the colony re-digs it (instead of leaving a rendered wall with no
-// collision that ants walk straight through).
+// Bulldoze a spot: clear terrain and loose food, and mark any room wall sites whose
+// soil we just removed as undone — so the hole stays open (no rendered wall with no
+// collision), but the colony does NOT rush to rebuild it. Repairs happen only when
+// the player hits "Repair nest".
 function bulldozeAt(ix, iy, r2) {
   environment = environment.filter(o => dist2(o.x, o.y, ix, iy) > r2);
   foods       = foods.filter(f => dist2(f.x, f.y, ix, iy) > r2);
   for (const room of rooms) {
     const reach = room.r + CORRIDOR_LEN + 40;
     if (dist2(room.x, room.y, ix, iy) > reach * reach) continue;
-    let changed = false;
     for (const s of room.sites.concat(room.tunnelSites || [], room.barricadeSites || [])) {
-      if (s.done && dist2(s.x, s.y, ix, iy) <= r2) { s.done = false; s.tries = 0; changed = true; }
+      if (s.done && dist2(s.x, s.y, ix, iy) <= r2) { s.done = false; s.tries = 0; }
     }
-    if (changed) { room.built = false; room._stall = 0; room._lastDone = -1; }
   }
+}
+
+// "Send ants to fix the nest": mark every room that has a knocked-out wall as unbuilt
+// so the colony digs its missing walls back in. Only touches damaged rooms.
+function repairNest() {
+  let any = false;
+  for (const room of rooms) {
+    const sites = room.sites.concat(room.tunnelSites || [], room.barricadeSites || []);
+    if (sites.some(s => !s.done)) { room.built = false; room._stall = 0; room._lastDone = -1; any = true; }
+  }
+  if (any) { markEnvDirty(); saveFarm(); }
 }
 
 function handleDraw(e) {
