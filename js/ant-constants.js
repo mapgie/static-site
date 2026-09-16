@@ -61,12 +61,14 @@ const WALL_DRAW  = SOIL_R * 1.8;  // rendered thickness of a soil wall line
 // idle ants dig the soil walls block by block, leaving a doorway gap facing the
 // nest. Build order is entry → pantry → nursery → throne; the nursery and throne
 // are placed as far from the rival spawn as the layout allows.
+// `sym` is drawn at the room centre (a symbol, not a word); empty/entry show none
+// (an entry is obvious from its opening to the outside).
 const ROOM_SPECS = {
-  empty:   { r: 24, order: 0, label: 'Room',    color: '#8a8fa0' },  // connector node / pathway hub
-  entry:   { r: 22, order: 1, label: 'Entry',   color: '#c9a227' },
-  pantry:  { r: 34, order: 2, label: 'Pantry',  color: '#7ea63c' },
-  nursery: { r: 40, order: 3, label: 'Nursery', color: '#c86fb0' },
-  throne:  { r: 30, order: 4, label: 'Throne',  color: '#c98a27' },
+  empty:   { r: 24, order: 0, color: '#8a8fa0' },              // connector node / pathway hub — unlabelled
+  entry:   { r: 22, order: 1, color: '#c9a227' },              // unlabelled — its outside door speaks for it
+  pantry:  { r: 34, order: 2, color: '#7ea63c', sym: '🍎' },
+  nursery: { r: 40, order: 3, color: '#c86fb0', sym: '🥚' },
+  throne:  { r: 30, order: 4, color: '#c98a27', sym: '👑' },
 };
 const ROOM_CAPS      = { empty: Infinity, entry: Infinity, pantry: Infinity, nursery: 3, throne: 1 };
 
@@ -80,21 +82,22 @@ const ROOM_CONNECT = {
   throne:  ['nursery', 'empty'],
 };
 
-// The auto-built nest as a connected tree of rooms (an empty hub with the rooms
-// hung off it), grown from the spawn. Sealed: only the entry opens to the outside.
+// The auto-built nest as a connected tree of rooms grown from the spawn, with the
+// NURSERY at the root (on the spawn point). Sealed: only the entry opens outside.
 const NEST_TREE = {
-  white: { root: { type: 'empty', id: 'hub', kids: [
-    { type: 'entry',  id: 'entry' },
-    { type: 'pantry', id: 'pantry' },
-    { type: 'empty',  id: 'mid', kids: [
-      { type: 'nursery', id: 'nursery', kids: [ { type: 'throne', id: 'throne' } ] },
+  white: { root: { type: 'nursery', id: 'nursery', kids: [
+    { type: 'throne', id: 'throne' },                       // nursery ↔ throne, direct
+    { type: 'empty',  id: 'hub', kids: [                    // and out through a connector hub
+      { type: 'entry',  id: 'entry' },
+      { type: 'pantry', id: 'pantry' },
     ] },
   ] } },
-  // The rival keeps it modest: a hub with an entry, a pantry and a nursery.
-  red: { root: { type: 'empty', id: 'hub', kids: [
-    { type: 'entry',   id: 'entry' },
-    { type: 'pantry',  id: 'pantry' },
-    { type: 'nursery', id: 'nursery' },
+  // The rival keeps it modest: nursery on its spawn, a hub, an entry and a pantry.
+  red: { root: { type: 'nursery', id: 'nursery', kids: [
+    { type: 'empty', id: 'hub', kids: [
+      { type: 'entry',  id: 'entry' },
+      { type: 'pantry', id: 'pantry' },
+    ] },
   ] } },
 };
 const CORRIDOR_LEN = 40;   // gap between two connected rooms, spanned by a corridor
@@ -216,7 +219,7 @@ const QUEEN_SUSTAIN_MS = 8000;
 // gap between drops (jittered 0.6–1.4×), so a drop lands roughly every 7–17s —
 // an occasional ambient drip, not a downpour.
 const AUTO_FOOD_WEIGHTS = { sugar: 60, fruit: 25, protein: 12, insect: 3 };
-const AUTO_FOOD_MS = 12000;
+const AUTO_FOOD_MS = 26000;   // base gap between drops (jittered 0.6–1.4×) — an occasional drip
 
 // Per food type. FOOD_UNITS is how many separate trips a dropped piece takes to
 // haul home (its "drops"): a carrier lifts one unit per trip and the rest waits

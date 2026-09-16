@@ -91,13 +91,16 @@ test('planNest lays out one of each room only when the colony is big enough and 
   assert.strictEqual(g2.rooms.length, 0, 'no building when the mode is off');
 });
 
-test('the nursery and throne are placed farther from the rival than the entry', () => {
+test('the nursery sits on the spawn point; the other rooms grow outward from it', () => {
   const g = colony(freshApi(), 8);
   g.planNest(false);
-  const red = { x: 800, y: 300 };
-  const d = t => { const r = g.rooms.find(x => x.type === t); return (r.x - red.x) ** 2 + (r.y - red.y) ** 2; };
-  assert.ok(d('nursery') > d('entry'), 'nursery sits away from the rival');
-  assert.ok(d('throne')  > d('entry'), 'throne sits away from the rival');
+  const spawn = g.spawnPoints.yellow[0];
+  const dToSpawn = t => { const r = g.rooms.find(x => x.type === t); return Math.hypot(r.x - spawn.x, r.y - spawn.y); };
+  const nurseryD = dToSpawn('nursery');
+  assert.ok(nurseryD < 30, 'the nursery is planted on the spawn point');
+  for (const t of ['entry', 'pantry', 'throne']) {
+    assert.ok(dToSpawn(t) > nurseryD, `the ${t} grows out beyond the nursery`);
+  }
 });
 
 test('room caps: one throne, unlimited pantries', () => {
@@ -153,16 +156,15 @@ test('ringed rooms are placed fully on-canvas even from an edge nest', () => {
   }
 });
 
-test('the nursery is the deepest room (farthest from the rival) and links to the throne', () => {
+test('the nursery is planted on the spawn point and links directly to the throne', () => {
   const g = freshApi();
   g.spawnPoints = { yellow: [{ x: 250, y: 300, r: 40 }], red: [{ x: 850, y: 300, r: 40 }] };
   g.ants = []; for (let i = 0; i < 8; i++) g.ants.push(g.createAnt(false, false, 250, 300));
   g.planNest(false);
-  const red = { x: 850, y: 300 };
-  const d = t => { const r = g.rooms.find(x => x.type === t); return Math.hypot(r.x - red.x, r.y - red.y); };
-  assert.ok(d('nursery') > d('entry') && d('nursery') > d('pantry'), 'nursery is farthest from the rival');
+  const nursery = g.rooms.find(r => r.type === 'nursery');
+  assert.ok(Math.hypot(nursery.x - 250, nursery.y - 300) < 30, 'nursery is on the spawn point');
   // The nursery connects directly to the throne (a doorway + corridor between them).
-  const nursery = g.rooms.find(r => r.type === 'nursery'), throne = g.rooms.find(r => r.type === 'throne');
+  const throne = g.rooms.find(r => r.type === 'throne');
   assert.ok(nursery.links.includes(throne.id) && throne.links.includes(nursery.id), 'nursery and throne are directly connected');
 });
 

@@ -524,14 +524,24 @@ function nearestColonyDelivered(s, isRed) {
 }
 
 function dropTarget(ant) {
-  // Once a pantry is built, food is stored there; until then it piles at the nest.
+  // Food is stored ONLY in the pantry (packed against what's already inside it).
+  // Until a pantry is built, it piles at the nest instead.
   const pantry = builtRoom(ant.isRed, 'pantry');
-  const home = pantry || nearestSpawnPoint(ant.isRed, ant.x, ant.y);
-  const anchor = nearestColonyDelivered(home, ant.isRed);
-  if (!anchor) return pantry ? { x: pantry.x, y: pantry.y } : nestTarget(home, ant.dropOffset, 4);
-  // Every later piece packs against the stockpile, on the ant's approach side.
-  const ang = Math.atan2(ant.y - anchor.y, ant.x - anchor.x);
-  const r = 2 * foodRadius(anchor);
+  if (pantry) {
+    let anchor = null, bd = pantry.r * pantry.r;   // only food already inside the pantry
+    for (const f of foods) {
+      if (!f.delivered || f.team !== ant.isRed) continue;
+      const d = dist2(f.x, f.y, pantry.x, pantry.y);
+      if (d < bd) { bd = d; anchor = f; }
+    }
+    if (!anchor) return { x: pantry.x, y: pantry.y };
+    const ang = Math.atan2(ant.y - anchor.y, ant.x - anchor.x), r = 2 * foodRadius(anchor);
+    return { x: anchor.x + Math.cos(ang) * r, y: anchor.y + Math.sin(ang) * r };
+  }
+  const s = nearestSpawnPoint(ant.isRed, ant.x, ant.y);
+  const anchor = nearestColonyDelivered(s, ant.isRed);
+  if (!anchor) return nestTarget(s, ant.dropOffset, 4);
+  const ang = Math.atan2(ant.y - anchor.y, ant.x - anchor.x), r = 2 * foodRadius(anchor);
   return { x: anchor.x + Math.cos(ang) * r, y: anchor.y + Math.sin(ang) * r };
 }
 

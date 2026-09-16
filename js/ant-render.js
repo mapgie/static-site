@@ -63,10 +63,13 @@ function drawRooms() {
     ctx.strokeStyle = room.breached ? 'rgba(255,60,40,0.9)' : hexToRgba(col, room.built ? 0.9 : 0.5);
     ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle = hexToRgba(col, room.built ? 1 : 0.7);
-    ctx.font = '11px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText((spec && spec.label) || room.type, room.x, room.y + 4);
+    if (spec && spec.sym) {   // a symbol at the centre; empty/entry stay unlabelled
+      ctx.globalAlpha = room.built ? 1 : 0.7;
+      ctx.font = Math.round(room.r * 0.8) + 'px system-ui, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(spec.sym, room.x, room.y + 1);
+      ctx.textBaseline = 'alphabetic'; ctx.globalAlpha = 1;
+    }
     // Smooth soil walls over the disc.
     strokeWall(room.sites);
     if (room.tunnelSites) strokeWall(room.tunnelSites);
@@ -91,7 +94,8 @@ function drawRooms() {
     ctx.fillStyle = bad ? 'rgba(255,120,110,1)' : hexToRgba(spec.color, 1);
     ctx.font = '11px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(overlaps ? 'overlaps' : orphan ? 'no link' : spec.label, placingRoom.x, placingRoom.y + 4);
+    const tag = overlaps ? 'overlaps' : orphan ? 'no link' : (spec.sym || placingRoom.type);
+    ctx.fillText(tag, placingRoom.x, placingRoom.y + 4);
   }
   ctx.restore();
 }
