@@ -416,6 +416,24 @@ function setupUI() {
   }));
 }
 
+// Bulldoze a spot: clear terrain and loose food, and — crucially — reopen any room
+// wall sites whose soil we just removed, so the room stops counting as "built"
+// there and the colony re-digs it (instead of leaving a rendered wall with no
+// collision that ants walk straight through).
+function bulldozeAt(ix, iy, r2) {
+  environment = environment.filter(o => dist2(o.x, o.y, ix, iy) > r2);
+  foods       = foods.filter(f => dist2(f.x, f.y, ix, iy) > r2);
+  for (const room of rooms) {
+    const reach = room.r + CORRIDOR_LEN + 40;
+    if (dist2(room.x, room.y, ix, iy) > reach * reach) continue;
+    let changed = false;
+    for (const s of room.sites.concat(room.tunnelSites || [], room.barricadeSites || [])) {
+      if (s.done && dist2(s.x, s.y, ix, iy) <= r2) { s.done = false; s.tries = 0; changed = true; }
+    }
+    if (changed) { room.built = false; room._stall = 0; room._lastDone = -1; }
+  }
+}
+
 function handleDraw(e) {
   if (placingRoom) return placingPointerMove(e);
   if (maintenance) return maintPointerMove(e);
@@ -434,6 +452,8 @@ function handleDraw(e) {
   interpolate(lastX, lastY, x, y, (ix, iy) => {
     if (tool === 'wall' || tool === 'water') {
       environment.push({ x: ix, y: iy, type: tool, r: penWidth });
+    } else if (tool === 'soil') {
+      environment.push({ x: ix, y: iy, type: 'soil', r: penWidth });   // a brown soil wall, blocks ants like the nest walls
     } else if (tool === 'food') {
       // Every food scatters with its own spacing so a dragged line is spaced
       // drops, not a solid pile: sugar close, fruit wider, protein wider still,
@@ -443,9 +463,7 @@ function handleDraw(e) {
         if (addFood(ix, iy, foodType)) { lastFoodX = ix; lastFoodY = iy; }
       }
     } else if (tool === 'bulldozer') {
-      const r2 = (penWidth + 4) * (penWidth + 4);
-      environment = environment.filter(o => dist2(o.x, o.y, ix, iy) > r2);
-      foods       = foods.filter(f => dist2(f.x, f.y, ix, iy) > r2);
+      bulldozeAt(ix, iy, (penWidth + 4) * (penWidth + 4));
     }
   });
   if (tool !== 'food') markEnvDirty();

@@ -277,22 +277,31 @@ function updateFoods() {
 
     if (team.length >= INSECT_HAULERS) {
       f.waited = 0;
-      if (!f.dropOffset) f.dropOffset = pickDropOffset(INSECT_RADIUS + 2, f.team, f.x, f.y);
-      const { x: tx, y: ty } = nestTarget(nearestSpawnPoint(f.team, f.x, f.y), f.dropOffset, INSECT_RADIUS + 2);
-      if (dist2(tx, ty, f.x, f.y) < EAT_RANGE * EAT_RANGE) {
-        // Delivered: the whole team counts as finders, none of them may eat it.
-        f.x = tx; f.y = ty;
+      const aim = haulHomeAim(f.team, f.x, f.y);
+      const home = insideMyBuiltRoom(f.team, f.x, f.y) ||
+                   dist2(aim.x, aim.y, f.x, f.y) < (INSECT_RADIUS + EAT_RANGE) * (INSECT_RADIUS + EAT_RANGE);
+      if (home) {
+        // Delivered: drop the carcass at the pantry (or spawn) — the whole team
+        // counts as finders, none of them may eat it.
+        const spot = builtRoom(f.team, 'pantry') || nearestSpawnPoint(f.team, f.x, f.y);
+        f.x = spot.x; f.y = spot.y;
         f.delivered = true;
         f.foundBy = f.haulers.slice();
         for (const a of team) a.hauling = null;
-        f.haulers = []; f.dropOffset = null;
+        f.haulers = []; f.dropOffset = null; f.stuck = 0;
         continue;
       }
-      f.heading = Math.atan2(ty - f.y, tx - f.x);
+      f.heading = Math.atan2(aim.y - f.y, aim.x - f.x);
       const speed = Math.min(1, 0.3 + 0.1 * team.length);
       const nx = f.x + Math.cos(f.heading) * speed, ny = f.y + Math.sin(f.heading) * speed;
       if (collidesWall(nx, ny)) {
-        if (++f.stuck > CARRY_RETRY / 4) { f.dropOffset = pickDropOffset(INSECT_RADIUS + 2, f.team, f.x, f.y); f.stuck = 0; }
+        // Jammed against a wall: after a spell the team gives up and leaves the
+        // carcass where it is, to be found again, rather than grinding forever.
+        if (++f.stuck > HAUL_STUCK_DROP) {
+          for (const a of team) { a.hauling = null; a.haulCooldown = HAUL_COOLDOWN; }
+          f.haulers = []; f.stuck = 0; f.waited = 0;
+          continue;
+        }
       } else {
         f.x = clamp(nx, 0, canvas.width); f.y = clamp(ny, 0, canvas.height); f.stuck = 0;
       }
@@ -501,19 +510,12 @@ function updateAnts() {
         if (t && (t.urgent || busy < cap)) { build = t; if (a.isRed) activeBuildersR++; else activeBuildersW++; }
       }
       if (!prey && a.carrying) {
-        // Haul it home. If the store is a walled pantry, make for its doorway
-        // first (so the ant uses the opening instead of butting the outer wall);
-        // once inside, head for the drop spot.
-        const t = dropTarget(a);
-        const pantry = builtRoom(a.isRed, 'pantry');
-        let aimx = t.x, aimy = t.y;
-        if (pantry && dist2(a.x, a.y, pantry.x, pantry.y) > pantry.r * pantry.r) {
-          const o = SOIL_R + 12;
-          aimx = pantry.x + Math.cos(pantry.gapAngle) * (pantry.r + o);
-          aimy = pantry.y + Math.sin(pantry.gapAngle) * (pantry.r + o);
-        }
-        steerToward(a, aimx, aimy, 0.25);
-        if (++a.carryTicks > CARRY_RETRY) { a.dropOffset = pickDropOffset(4, a.isRed, a.x, a.y); a.carryTicks = 0; }
+        // Haul it home. Head for a reachable opening — the entry's outer door when
+        // still outside the sealed nest, the pantry's doorway once inside — so the
+        // ant uses openings instead of grinding on outer walls.
+        const aim = carryHomeAim(a);
+        steerToward(a, aim.x, aim.y, 0.25);
+        a.carryTicks++;
       } else if (react === 'flee') {
         steerAway(a, danger.x, danger.y, 0.3);
         a.speedBoost = Math.max(a.speedBoost, 30);   // a jolt of adrenaline carries it clear
@@ -645,8 +647,18 @@ function updateAnts() {
 
     // Drop off, pick up, or eat
     if (a.carrying) {
-      const t = dropTarget(a);
-      if (dist2(t.x, t.y, a.x, a.y) < EAT_RANGE * EAT_RANGE) dropOff(a);
+      const store = builtRoom(a.isRed, 'pantry');
+      if (store) {
+        // Home once it's inside any built room, or right at the pantry; if it has
+        // been carrying far too long (couldn't thread the nest), log it anyway so
+        // it stops circling — the store still shows up in the pantry.
+        const home = insideMyBuiltRoom(a.isRed, a.x, a.y) ||
+                     dist2(a.x, a.y, store.x, store.y) < (store.r + EAT_RANGE) * (store.r + EAT_RANGE);
+        if (home || a.carryTicks > CARRY_GIVEUP) dropOff(a);
+      } else {
+        const t = dropTarget(a);
+        if (dist2(t.x, t.y, a.x, a.y) < EAT_RANGE * EAT_RANGE) dropOff(a);
+      }
     } else if (target) {
       const reach = EAT_RANGE + (target.type === 'insect' ? INSECT_RADIUS : 0);
       if (dist2(target.x, target.y, a.x, a.y) < reach * reach) {

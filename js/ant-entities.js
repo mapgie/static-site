@@ -83,6 +83,13 @@ function inAnyRoom(x, y) {
   return false;
 }
 
+// Is (x,y) inside one of this colony's BUILT rooms? Used to decide a carrier is
+// "home" — it has made it into the sealed nest, so its load can go to the pantry.
+function insideMyBuiltRoom(team, x, y) {
+  for (const r of rooms) if (r.team === team && r.built && dist2(r.x, r.y, x, y) < r.r * r.r) return true;
+  return false;
+}
+
 // Where auto-food (and Sadist poison) may land: not on terrain/water, not on a
 // queen, and never inside the nest — no room footprint and no spawn area, so food
 // always lands in the open and must be carried in to the pantry.
@@ -286,6 +293,10 @@ function connectRooms(a, b) {
   addGap(a, ang); addGap(b, ang + Math.PI);
   a.tunnelSites = a.tunnelSites.concat(corridorWalls(a.x, a.y, a.r, ang, gapArcFor(a.r), b.x, b.y, b.r));
   a.links.push(b.id); b.links.push(a.id);
+  // The new corridor's walls belong to `a`. If `a` was already finished, reopen it
+  // so the builders dig the fresh corridor — otherwise a hand-placed room never
+  // gets wired up and sits there unconnected.
+  a.built = false; a._stall = 0; a._lastDone = -1;
 }
 
 // Structural completion: every ring and corridor block raised. Barricades are a
@@ -543,6 +554,47 @@ function dropTarget(ant) {
   if (!anchor) return nestTarget(s, ant.dropOffset, 4);
   const ang = Math.atan2(ant.y - anchor.y, ant.x - anchor.x), r = 2 * foodRadius(anchor);
   return { x: anchor.x + Math.cos(ang) * r, y: anchor.y + Math.sin(ang) * r };
+}
+
+// Where a single carrier should steer to bring food home. The pantry's own doorway
+// faces the nest interior, so from outside a sealed nest it's unreachable directly:
+// aim for the entry's outer door until the ant is inside, then for the pantry.
+function carryHomeAim(ant) {
+  const store = builtRoom(ant.isRed, 'pantry');
+  if (!insideMyBuiltRoom(ant.isRed, ant.x, ant.y)) {
+    const entry = builtRoom(ant.isRed, 'entry');
+    if (entry) {
+      const o = SOIL_R + 12;
+      return { x: entry.x + Math.cos(entry.gapAngle) * (entry.r + o),
+               y: entry.y + Math.sin(entry.gapAngle) * (entry.r + o) };
+    }
+  }
+  if (store) {
+    if (dist2(ant.x, ant.y, store.x, store.y) > store.r * store.r) {
+      const o = SOIL_R + 12;
+      return { x: store.x + Math.cos(store.gapAngle) * (store.r + o),
+               y: store.y + Math.sin(store.gapAngle) * (store.r + o) };
+    }
+    return { x: store.x, y: store.y };
+  }
+  return dropTarget(ant);
+}
+
+// Same idea for a carcass haul team: aim at the entry door from outside, otherwise
+// the pantry (or, with no nest, the spawn point).
+function haulHomeAim(team, x, y) {
+  if (!insideMyBuiltRoom(team, x, y)) {
+    const entry = builtRoom(team, 'entry');
+    if (entry) {
+      const o = SOIL_R + INSECT_RADIUS + 6;
+      return { x: entry.x + Math.cos(entry.gapAngle) * (entry.r + o),
+               y: entry.y + Math.sin(entry.gapAngle) * (entry.r + o) };
+    }
+  }
+  const store = builtRoom(team, 'pantry');
+  if (store) return { x: store.x, y: store.y };
+  const s = nearestSpawnPoint(team, x, y);
+  return { x: s.x, y: s.y };
 }
 
 // Ants coordinate by scent, not messages: every reaction is a pheromone dropped

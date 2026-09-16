@@ -47,6 +47,7 @@ const NEST_RADIUS = 40;   // default drop-off radius; each point can be resized
 const NEST_MIN_R  = 24;
 const NEST_MAX_R  = 120;
 const CARRY_RETRY = 1800; // ticks before a stuck carrier picks a new drop spot
+const CARRY_GIVEUP = 600; // ticks a carrier tries to reach home before its load is logged to the pantry anyway
 const PROTEIN_BOOST_TICKS = 600; // ~10s of extra vigour and mating drive after eating protein
 
 // World building: in this mode ants dig soil — a slow in-situ action — into brown
@@ -205,6 +206,7 @@ const INSECT_SERVINGS_MIN = 10;  // how many ants one carcass can feed...
 const INSECT_SERVINGS_MAX = 15;  // ...picked in this range per carcass
 const INSECT_RADIUS   = 9;
 const HAUL_PATIENCE   = 900;  // ticks a short-handed team waits before giving up
+const HAUL_STUCK_DROP = 300;  // ticks a full team grinds on a wall before it drops the carcass to be re-found
 const HAUL_COOLDOWN   = 900;  // ticks a giver-upper ignores carcasses afterwards
 
 function insectServings() {

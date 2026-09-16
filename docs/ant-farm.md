@@ -63,10 +63,17 @@ sugar pile needs three trips and a fruit pile five. Protein is a single heavy dr
 one trip — but a delivered protein feeds *two* nestmates. A number on a loose pile
 shows how many trips it has left.
 
-Once a colony has built a **pantry**, foragers carry food **only to the pantry** —
-in through its doorway, packed against the stores already there — instead of dropping
-it in a ring around the nest. Until a pantry exists it piles at the nest as before.
-(An ant that dies mid-haul still drops its load where it falls.)
+Once a colony has built a **pantry**, foragers carry food **to the pantry**. Because a
+sealed nest's pantry doorway faces inward, a carrier first heads for the **entry**
+(the one outward-facing door), threads in, and its load is stored in the pantry,
+packed against what's already there. A carrier that can't find its way in after a
+long spell logs its load to the pantry anyway rather than circling forever. Until a
+pantry exists, food piles at the nest as before. (An ant that dies mid-haul drops its
+load where it falls.)
+
+A **carcass** works the same way: once enough haulers gather, the team drags it to the
+nest entrance and it's stored; if the team jams against a wall for too long it lets
+go, leaving the carcass to be found again instead of grinding in place.
 
 **Painting.** A dragged brush scatters spaced drops, not a solid line, and each food
 has its own spacing: sugar sits closest, fruit wider, protein wider still, and a dead
@@ -303,11 +310,14 @@ your choice is remembered.
 - **Rival Ant Controls** — add rival ants; set their lifespan, speed, breeding,
   aggression, and **Sadist mode**.
 - **Food** — pick a food type, see what each does, and set the decay rate.
-- **Environment Tools** — paint Food, Water, or Walls, or Bulldoze; set brush
-  thickness; undo or clear structures. **Walls, soil and water all block ants** — an
-  ant that meets one **follows along it** (tracing round an obstacle, hugging a wall
-  until it finds a doorway or a scent pulls it off) rather than crossing it, and it
-  never crosses water.
+- **Environment Tools** — paint Food, Water, a grey **Wall** or a brown **Soil wall**,
+  or **Bulldoze**; set brush thickness; undo or clear structures. **Walls, soil and
+  water all block ants** — an ant that meets one **follows along it** (tracing round an
+  obstacle, hugging a wall until it finds a doorway or a scent pulls it off) rather
+  than crossing it, and it never crosses water. The **Bulldozer** clears terrain and
+  loose food, and it also **breaches nest walls**: knocking out a room's wall reopens
+  that stretch, so the colony re-digs it (a hole ants pour through until it's sealed
+  again).
 - **Danger Zone** — kill a colony, kill everything, or destroy the world.
 - **Stats** — live counts and each colony's happiness. Deaths are split into
   **killed** (by a rival) and **died** (hunger, age, or poison), for each colony.
