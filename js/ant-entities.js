@@ -45,7 +45,7 @@ function createAnt(isRed = false, isQueen = false, x, y) {
   };
 }
 
-// Walls and (dug) soil both block movement.
+// Walls and (dug) soil both block movement (used for building/spawn checks).
 function collidesWall(x, y) {
   let hit = false;
   forEachEnvNear(x, y, 40, o => {
@@ -54,6 +54,27 @@ function collidesWall(x, y) {
     if (dist2(o.x, o.y, x, y) < r * r) hit = true;
   });
   return hit;
+}
+
+// What an ant can't walk into: walls, soil AND water (ants avoid and never cross it).
+function blockedForAnt(x, y) {
+  let hit = false;
+  forEachEnvNear(x, y, 40, o => {
+    if (hit) return;
+    const r = (o.r || 4) + 3;
+    if (dist2(o.x, o.y, x, y) < r * r) hit = true;
+  });
+  return hit;
+}
+
+// The nearest bit of terrain to a point (for working out which wall to follow).
+function nearestObstacle(x, y, range = 40) {
+  let best = null, bd = range * range;
+  forEachEnvNear(x, y, range, o => {
+    const d = dist2(o.x, o.y, x, y);
+    if (d < bd) { bd = d; best = o; }
+  });
+  return best;
 }
 
 // Any room footprint (either colony) covers this point?

@@ -253,10 +253,11 @@ test('the queen takes over reproduction: workers stop, the queen lays eggs', () 
   for (let t = 0; t < 4000 && g.eggs.length === 0; t += 16) g.updateQueens();
   assert.ok(g.eggs.length > 0 && g.eggs[0].source === 'queen', 'the queen lays eggs');
 
-  // A queen egg hatches as spawned, not born.
+  // A queen egg hatches as born (spawned is reserved for hand-added ants).
   g.eggs = [{ x: 300, y: 300, team: false, hatch: 0, source: 'queen' }];
-  g.spawnedWhite = 0; g.updateEggs();
-  assert.strictEqual(g.spawnedWhite, 1, 'a queen egg hatches as spawned');
+  g.matedWhite = 0; g.spawnedWhite = 0; g.updateEggs();
+  assert.strictEqual(g.matedWhite, 1, 'a queen egg hatches as born');
+  assert.strictEqual(g.spawnedWhite, 0, 'not counted as spawned');
 
   // With no queen, workers breed again.
   g.queens.white = null;

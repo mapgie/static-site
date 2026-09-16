@@ -32,8 +32,9 @@ that threshold, so they must mature and cheer up before they can breed. Both par
 then rest before mating again, and **overcrowding** trims the odds, so a colony grows
 in a paced trickle rather than exploding in waves. Once a **queen** takes over (see
 Queens), the workers stop and she lays the eggs instead. A live
-readout over the map shows each colony's count and how many were **born** (mating)
-versus **spawned** (a queen or your Add-Ant button).
+readout over the map shows each colony's count and how many were **born** (any
+in-colony reproduction — worker mating or queen eggs) versus **spawned** (only ants
+you add yourself with the Add-Ant button).
 
 ## Food
 
@@ -200,7 +201,7 @@ breed to keep the colony going (mating as above). The moment a queen arrives the
 workers **stop breeding** and she takes over: she periodically lays **eggs** — in the
 nursery if one is built, otherwise beside her — which hatch into new ants. (In the
 classic sandbox, with no nest, she spawns the ant directly.) Queen-laid ants count as
-**spawned**; worker-bred ants count as **born**.
+**born**, the same as worker-bred ants; only ants you add by hand count as **spawned**.
 
 **Sadist mode** (a Rival Ant control) changes what drives the rival queen: instead of
 tracking the rival colony's own mood, she is summoned by the **main** colony's misery
@@ -274,7 +275,10 @@ your choice is remembered.
   aggression, and **Sadist mode**.
 - **Food** — pick a food type, see what each does, and set the decay rate.
 - **Environment Tools** — paint Food, Water, or Walls, or Bulldoze; set brush
-  thickness; undo or clear structures. Walls block ants; water slows and repels them.
+  thickness; undo or clear structures. **Walls, soil and water all block ants** — an
+  ant that meets one **follows along it** (tracing round an obstacle, hugging a wall
+  until it finds a doorway or a scent pulls it off) rather than crossing it, and it
+  never crosses water.
 - **Danger Zone** — kill a colony, kill everything, or destroy the world.
 - **Stats** — live counts and each colony's happiness. Deaths are split into
   **killed** (by a rival) and **died** (hunger, age, or poison), for each colony.

@@ -588,46 +588,39 @@ function updateAnts() {
     }
     if (holdStill) speed = 0;   // a builder mid-block stays put until the wall is up
 
-    let nx = a.x + Math.cos(a.angle) * speed;
-    let ny = a.y + Math.sin(a.angle) * speed;
+    const nx = a.x + Math.cos(a.angle) * speed;
+    const ny = a.y + Math.sin(a.angle) * speed;
+    a.wet = false;   // ants no longer enter water — it blocks and repels like a wall
 
-    let hitWall = false, nearWater = null, nearWaterD = Infinity, inWater = false;
-    forEachEnvNear(nx, ny, 40, o => {
-      const r = o.r || 4;
-      const d = dist2(o.x, o.y, nx, ny);
-      if (o.type === 'wall' || o.type === 'soil') {   // soil walls block just like painted walls
-        if (d < (r + 3) * (r + 3)) hitWall = true;
-      } else {
-        if (d < (r + 2) * (r + 2)) inWater = true;
-        if (d < nearWaterD) { nearWaterD = d; nearWater = o; }
-      }
-    });
-    a.wet = inWater;
-
-    if (hitWall) {
-      // Turn back, hold off chasing for a moment, and actually step into the clear
-      // so the ant leaves the wall instead of pressing against it.
-      a.angle += Math.PI + (Math.random() - 0.5) * 0.8;
-      a.wallCooldown = 25;
-      const bx = a.x + Math.cos(a.angle) * speed;
-      const by = a.y + Math.sin(a.angle) * speed;
-      if (!collidesWall(bx, by)) {
-        a.x = (bx + canvas.width)  % canvas.width;
-        a.y = (by + canvas.height) % canvas.height;
-      }
-      // Getting nowhere against walls: if it's sealed inside a room, one such ant
-      // burrows a hole out (a fresh opening), provided it's not a queen.
-      a.stuckMs += TICK_MS;
-      if (a.stuckMs >= BURROW_STUCK_MS && !a.isQueen && inAnyRoom(a.x, a.y)) {
-        if (burrowHole(a.x + Math.cos(a.angle) * (SOIL_R + 5), a.y + Math.sin(a.angle) * (SOIL_R + 5)) ||
-            burrowHole(a.x, a.y)) a.stuckMs = 0;
+    if (speed > 0 && blockedForAnt(nx, ny)) {
+      // Blocked by wall, soil or water: hug it and march ALONG it (keeping to the
+      // side nearest its heading) until the way ahead opens — so it traces a wall
+      // in a circle, rounds obstacles, and finds doorway gaps, instead of bouncing.
+      const o = nearestObstacle(nx, ny, 40) || nearestObstacle(a.x, a.y, 40);
+      if (o) {
+        const normal = Math.atan2(a.y - o.y, a.x - o.x);          // away from the wall
+        const t1 = normal + Math.PI / 2, t2 = normal - Math.PI / 2;
+        a.angle = Math.abs(angleDiff(t1, a.angle)) <= Math.abs(angleDiff(t2, a.angle)) ? t1 : t2;
+        let moved = false;
+        for (let k = 0; k < 6; k++) {   // at a corner, keep turning toward open ground
+          const bx = a.x + Math.cos(a.angle) * speed, by = a.y + Math.sin(a.angle) * speed;
+          if (!blockedForAnt(bx, by)) {
+            a.x = (bx + canvas.width) % canvas.width; a.y = (by + canvas.height) % canvas.height;
+            moved = true; break;
+          }
+          a.angle += angleDiff(normal, a.angle) >= 0 ? 0.5 : -0.5;
+        }
+        a.stuckMs = moved ? 0 : a.stuckMs + TICK_MS;
+        // Truly sealed in and getting nowhere: one ant burrows a hole out.
+        if (a.stuckMs >= BURROW_STUCK_MS && !a.isQueen && inAnyRoom(a.x, a.y)) {
+          if (burrowHole(a.x + Math.cos(a.angle) * (SOIL_R + 5), a.y + Math.sin(a.angle) * (SOIL_R + 5)) ||
+              burrowHole(a.x, a.y)) a.stuckMs = 0;
+        }
       }
     } else {
-      if (nearWater && nearWaterD < 30 * 30) steerAway(a, nearWater.x, nearWater.y, 0.25);
-      if (inWater) { nx = a.x + (nx - a.x) * 0.4; ny = a.y + (ny - a.y) * 0.4; }
-      const fx = (nx + canvas.width) % canvas.width, fy = (ny + canvas.height) % canvas.height;
-      if (!collidesWall(fx, fy)) { a.x = fx; a.y = fy; a.stuckMs = 0; }   // never end up inside soil
-      else a.stuckMs += TICK_MS;
+      a.x = (nx + canvas.width) % canvas.width;
+      a.y = (ny + canvas.height) % canvas.height;
+      a.stuckMs = 0;
     }
 
     // Trail laying after a good meal
@@ -741,9 +734,8 @@ function updateEggs() {
     const count = e.team ? countRedAnts() : countWhiteAnts();
     if (count >= cap) continue;
     ants.push(createAnt(e.team, false, e.x, e.y));
-    // A queen's egg counts as spawned; a worker-mated egg counts as born.
-    if (e.source === 'queen') { if (e.team) { totalBornRed++; spawnedRed++; } else { totalBornWhite++; spawnedWhite++; } }
-    else                      { if (e.team) { totalBornRed++; matedRed++; }   else { totalBornWhite++; matedWhite++; } }
+    // Any hatched egg — worker-mated or queen-laid — counts as born.
+    if (e.team) { totalBornRed++; matedRed++; } else { totalBornWhite++; matedWhite++; }
   }
 }
 
@@ -798,8 +790,8 @@ function updateQueens() {
     if (worldBuilding) {
       layEgg(q.isRed, 'queen', q.x, q.y);
     } else {
-      ants.push(spawnNear(q, q.isRed));
-      if (q.isRed) { totalBornRed++; spawnedRed++; } else { totalBornWhite++; spawnedWhite++; }
+      ants.push(spawnNear(q, q.isRed));   // classic sandbox: queen offspring, counted as born
+      if (q.isRed) { totalBornRed++; matedRed++; } else { totalBornWhite++; matedWhite++; }
     }
   }
 }
