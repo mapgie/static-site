@@ -261,10 +261,22 @@ function setupUI() {
   on('spawn-add-yellow',  'click', () => addPointFromPanel(false));
   on('spawn-add-red',     'click', () => addPointFromPanel(true));
   on('spawn-delete',      'click', deleteSelectedPoint);
+  on('spawn-randomise',   'click', randomiseSpawnPoints);
   on('spawn-delete-all',  'click', () => { spawnPoints = { yellow: [], red: [] }; selectPoint(null); saveFarm(); });
   on('spawn-size-slider', 'input',  e => { if (selectedPoint) selectedPoint.r = +e.target.value; });
   on('spawn-size-slider', 'change', () => saveFarm());
   on('show-spawn-points', 'change', e => { showSpawnPoints = e.target.checked; saveFarm(); });
+
+  // On-canvas spawn editing: the corner toggle enters/leaves the maintenance
+  // view, and the floating strip drives it without the side menu open.
+  on('spawn-edit-toggle', 'click', () => { maintenance ? exitMaintenance() : enterMaintenance(); });
+  on('sq-add-yellow',     'click', () => addPointFromPanel(false));
+  on('sq-add-red',        'click', () => addPointFromPanel(true));
+  on('sq-randomise',      'click', randomiseSpawnPoints);
+  on('sq-smaller',        'click', () => resizeSelectedPoint(-8));
+  on('sq-bigger',         'click', () => resizeSelectedPoint(8));
+  on('sq-delete',         'click', deleteSelectedPoint);
+  on('sq-done',           'click', exitMaintenance);
   document.addEventListener('keydown', e => {
     if (!maintenance) return;
     const typing = /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName || '');
@@ -275,7 +287,7 @@ function setupUI() {
   on('destroy-world', 'click', () => {
     ants = []; foods = []; pheromones = []; environment = []; environmentHistory = [];
     queens.white = queens.red = null;
-    spawnPoints = { yellow: [], red: [] };
+    seedDefaultSpawnPoints();
     whiteHappiness = redHappiness = 50; whiteCalmMs = 0;
     totalBornWhite = totalDeadWhite = totalBornRed = totalDeadRed = 0;
     matedWhite = spawnedWhite = matedRed = spawnedRed = 0;
@@ -397,6 +409,17 @@ function handleDraw(e) {
 // ---------------------------------------------------------------------------
 // Spawn point maintenance view
 // ---------------------------------------------------------------------------
+function setMaintenanceChrome(active) {
+  const qb = $('spawn-quickbar'); if (qb) qb.hidden = !active;
+  const tg = $('spawn-edit-toggle');
+  if (tg) {
+    tg.setAttribute('aria-pressed', String(active));
+    const label = active ? 'Done editing spawn points' : 'Edit spawn points';
+    tg.title = label;
+    tg.setAttribute('aria-label', label);
+  }
+}
+
 function enterMaintenance() {
   if (maintenance) return;
   maintenance = true;
@@ -404,6 +427,7 @@ function enterMaintenance() {
   setPaused(true);
   document.querySelector('main').classList.add('spawn-mode');
   $('spawn-panel').hidden = false;
+  setMaintenanceChrome(true);
   selectPoint(null);
 }
 
@@ -415,6 +439,7 @@ function exitMaintenance() {
   setPaused(pausedBeforeMaint);
   document.querySelector('main').classList.remove('spawn-mode');
   $('spawn-panel').hidden = true;
+  setMaintenanceChrome(false);
   selectPoint(null);
   saveFarm();
 }
@@ -433,20 +458,26 @@ function setPaused(p) {
 function selectPoint(s) {
   selectedPoint = s;
   const label = $('spawn-selected-label'), slider = $('spawn-size-slider'), del = $('spawn-delete');
-  if (!label) return;
+  const sqLabel = $('sq-selected'), sqButtons = ['sq-smaller', 'sq-bigger', 'sq-delete'].map($);
   if (s) {
     const list = spawnPoints[pointIsRed(s) ? 'red' : 'yellow'];
-    label.textContent = `${pointIsRed(s) ? 'Rival ant' : 'Ant'} point ${list.indexOf(s) + 1} of ${list.length}`;
-    slider.disabled = false; slider.value = s.r;
-    del.disabled = false;
+    const idx = list.indexOf(s) + 1, kind = pointIsRed(s) ? 'Rival ant' : 'Ant';
+    if (label)  label.textContent = `${kind} point ${idx} of ${list.length}`;
+    if (slider) { slider.disabled = false; slider.value = s.r; }
+    if (del)    del.disabled = false;
+    if (sqLabel) sqLabel.textContent = `${pointIsRed(s) ? 'Rival' : 'Ant'} ${idx}`;
+    for (const b of sqButtons) if (b) b.disabled = false;
   } else {
-    label.textContent = 'Nothing selected. Click a point on the map.';
-    slider.disabled = true;
-    del.disabled = true;
+    if (label)  label.textContent = 'Nothing selected. Click a point on the map.';
+    if (slider) slider.disabled = true;
+    if (del)    del.disabled = true;
+    if (sqLabel) sqLabel.textContent = 'Tap a point';
+    for (const b of sqButtons) if (b) b.disabled = true;
   }
 }
 
 function addPointFromPanel(isRed) {
+  if (!maintenance) enterMaintenance();   // on-canvas add works even from a fresh map
   // New points land near the middle, nudged so a run of adds doesn't stack.
   const jitter = () => (Math.random() - 0.5) * 80;
   const s = addSpawnPoint(isRed, canvas.width / 2 + jitter(), canvas.height / 2 + jitter());
@@ -457,6 +488,22 @@ function addPointFromPanel(isRed) {
 function deleteSelectedPoint() {
   if (!selectedPoint) return;
   removeSpawnPoint(selectedPoint);
+  selectPoint(null);
+  saveFarm();
+}
+
+// Nudge the selected point's radius, keeping the panel slider and labels in step.
+function resizeSelectedPoint(delta) {
+  if (!selectedPoint) return;
+  selectedPoint.r = clamp(selectedPoint.r + delta, NEST_MIN_R, NEST_MAX_R);
+  selectPoint(selectedPoint);
+  saveFarm();
+}
+
+// Scatter a fresh random layout (varied counts, sizes and spots) for both colonies.
+function randomiseSpawnPoints() {
+  if (!maintenance) enterMaintenance();
+  spawnPoints = randomSpawnLayout();
   selectPoint(null);
   saveFarm();
 }

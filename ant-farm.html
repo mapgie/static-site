@@ -124,6 +124,7 @@
           <input type="range" id="spawn-size-slider" min="24" max="120" value="40" disabled>
           <button id="spawn-delete" class="subtle" disabled>Delete Point</button>
         </div>
+        <button id="spawn-randomise" class="subtle">Randomise Points</button>
         <button id="spawn-delete-all" class="subtle">Delete All Points</button>
         <label><input type="checkbox" id="show-spawn-points"> Show spawn points during play</label>
         <button id="spawn-done">Done</button>
@@ -139,6 +140,20 @@
         <div id="antagonist-bar"></div>
       </div>
       <div id="hud-stats" aria-hidden="true"></div>
+      <!-- On-canvas spawn editing: toggle in the corner, plus a floating tool
+           strip so points can be managed without opening the side menu. -->
+      <button id="spawn-edit-toggle" type="button" class="canvas-overlay-btn"
+              title="Edit spawn points" aria-label="Edit spawn points" aria-pressed="false">&#9673;</button>
+      <div id="spawn-quickbar" aria-label="Spawn point tools" hidden>
+        <button id="sq-add-yellow" type="button" title="Add an ant spawn point">+ Ant</button>
+        <button id="sq-add-red" type="button" title="Add a rival spawn point">+ Rival</button>
+        <button id="sq-randomise" type="button" title="Randomise all spawn points">Randomise</button>
+        <span id="sq-selected" class="sq-selected">Tap a point</span>
+        <button id="sq-smaller" type="button" title="Make the selected point smaller" disabled>&minus;</button>
+        <button id="sq-bigger" type="button" title="Make the selected point bigger" disabled>+</button>
+        <button id="sq-delete" type="button" title="Delete the selected point" disabled>Delete</button>
+        <button id="sq-done" type="button" title="Finish editing spawn points">Done</button>
+      </div>
       <canvas id="antCanvas" width="1000" height="600" aria-label="Ant farm"></canvas>
     </div>
     <div id="mobile-bar" aria-label="Quick controls">

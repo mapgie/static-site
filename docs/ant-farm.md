@@ -14,7 +14,9 @@ world autosaves to `localStorage`.
 | **Rival colony** (the antagonist) | muted jade `#3cb399` | amethyst light `#9f95b5` | jade |
 
 Each colony has one or more **spawn points** (nests). New ants appear at a spawn
-point and food is hauled to the nearest one. Each colony is capped at 500 ants.
+point and food is hauled to the nearest one. Each colony is capped at 500 ants. A
+fresh farm starts with two default nests — the main colony near the top of the
+board and the rival colony near the bottom.
 
 Rival ants hunt and bite main-colony ants; their **Aggression** control sets how
 keenly they chase and how often a bite lands. A bite kills instantly. A **hungry**
@@ -160,6 +162,15 @@ fold it away; each card remembers whether you left it open.
 
 - **Ant Controls** — add ants, open the spawn-point maintenance view, and set mating
   conditions, lifespan, and speed for the main colony.
+
+  In the **spawn-point maintenance view** the game pauses so you can arrange nests:
+  drag a point to move it, click to select, then resize or delete it. **Add Ant
+  Point** / **Add Rival Ant Point** drop a new nest, **Randomise Points** scatters a
+  fresh random layout (varied counts, sizes and spots) for both colonies, and
+  **Delete All Points** clears them (an empty colony falls back to the board
+  centre). The same tools are available on the map itself: the target button in the
+  canvas corner opens a floating strip of these controls, so points can be edited
+  without opening the side menu.
 - **Rival Ant Controls** — add rival ants; set their lifespan, speed, breeding,
   aggression, and **Sadist mode**.
 - **Food** — pick a food type, see what each does, and set the decay rate.
