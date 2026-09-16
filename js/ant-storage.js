@@ -140,11 +140,11 @@ function loadFarm() {
   let d;
   try {
     const s = localStorage.getItem(SAVE_KEY);
-    if (!s) return;
-    d = JSON.parse(s);
+    if (s) d = JSON.parse(s);
   } catch (err) {
     console.warn('Could not load ant farm', err);
-    return;
   }
-  applyState(d);
+  // A fresh farm (or an unreadable save) starts on the default spawn layout.
+  if (d) applyState(d);
+  else seedDefaultSpawnPoints();
 }

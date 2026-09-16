@@ -52,6 +52,43 @@ function removeSpawnPoint(s) {
 
 function pointIsRed(s) { return spawnPoints.red.includes(s); }
 
+// The out-of-the-box layout: one main nest near the top of the board and one
+// rival nest near the bottom, both centred horizontally. Positions are worked
+// out from the live canvas size so they land well on any screen, and are kept
+// far enough from the edges that each ring stays fully on the board.
+function defaultSpawnPoints() {
+  const w = canvas.width, h = canvas.height, r = NEST_RADIUS;
+  const top = clamp(h * 0.14, r + 8, h / 2);
+  const bot = clamp(h * 0.86, h / 2, h - r - 8);
+  return {
+    yellow: [{ x: w / 2, y: top, r }],
+    red:    [{ x: w / 2, y: bot, r }],
+  };
+}
+
+function seedDefaultSpawnPoints() { spawnPoints = defaultSpawnPoints(); }
+
+// A scattered layout: each colony gets a small random number of nests at random
+// spots and sizes, always kept fully on the board.
+function randomSpawnLayout() {
+  const w = canvas.width, h = canvas.height;
+  const hiR = Math.max(NEST_MIN_R + 1, Math.min(NEST_MAX_R, Math.min(w, h) / 3));
+  const makePoint = () => {
+    const r = NEST_MIN_R + Math.random() * (hiR - NEST_MIN_R);
+    const m = r + 6;
+    return {
+      x: m + Math.random() * Math.max(1, w - 2 * m),
+      y: m + Math.random() * Math.max(1, h - 2 * m),
+      r,
+    };
+  };
+  const count = () => 1 + (Math.random() * 3 | 0);   // 1..3 per colony
+  return {
+    yellow: Array.from({ length: count() }, makePoint),
+    red:    Array.from({ length: count() }, makePoint),
+  };
+}
+
 // The clear centre of a nest grows a little with the nest.
 function nestCore(s) { return clamp(s.r * 0.3, 8, NEST_CORE * 2.5); }
 
