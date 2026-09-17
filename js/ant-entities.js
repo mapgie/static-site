@@ -721,6 +721,21 @@ function layPheromone(x, y, strength = 1, kind = 'trail') {
   pheromones.push({ x, y, strength, kind });
 }
 
+// Lay (or reinforce) a food trail. Depositing onto a nearby dot strengthens it up to
+// TRAIL_MAX instead of littering new ones, so a well-used route builds a bright,
+// persistent lane — the classic emergent ant trail.
+function layTrail(x, y) {
+  const m2 = TRAIL_MERGE * TRAIL_MERGE;
+  for (const p of pheromones) {
+    if (p.kind === 'trail' && dist2(p.x, p.y, x, y) < m2) {
+      p.strength = Math.min(p.strength + TRAIL_START * 0.6, TRAIL_MAX);
+      return;
+    }
+  }
+  if (pheromones.length >= MAX_PHEROMONES) pheromones.shift();
+  pheromones.push({ x, y, strength: TRAIL_START, kind: 'trail' });
+}
+
 function killAnt(index) {
   const a = ants[index];
   ants.splice(index, 1);

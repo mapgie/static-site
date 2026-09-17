@@ -20,6 +20,7 @@ function animate() {
     maybeSadistPoison();   // Sadist-only hazard, independent of the living-world food toggle
     updateFoods();
     updateAnts();
+    updatePheromones();
     updateEggs();
     updateQueens();
     whiteCalmMs += TICK_MS;
@@ -195,6 +196,23 @@ function strongestPheromone(ant, kind, range) {
 
 function strongestTrail(ant) { return strongestPheromone(ant, 'trail', SENSE_TRAIL); }
 
+// The strongest food trail near an ant that leads OUTWARD (farther from home than the
+// ant is now) — so a searching forager walks the lane toward the find, not back to
+// the nest. This directional following is what turns a scent into a marching column.
+function outwardTrail(ant) {
+  const home = nestAnchor(ant.isRed);
+  const dHome = dist2(home.x, home.y, ant.x, ant.y);
+  const r2 = SENSE_TRAIL * SENSE_TRAIL;
+  let best = null, bs = 0.15;
+  for (const p of pheromones) {
+    if ((p.kind || 'trail') !== 'trail' || p.strength <= bs) continue;
+    if (dist2(p.x, p.y, ant.x, ant.y) >= r2) continue;
+    if (dist2(home.x, home.y, p.x, p.y) <= dHome) continue;   // must be farther out than the ant
+    bs = p.strength; best = p;
+  }
+  return best;
+}
+
 // How a main-colony ant answers a danger scent. Rivals are the aggressors and
 // never react. Everyone flees by default; a strong, steady colony instead rallies
 // home ('swarm') when the danger is laid at its own nest or queen. (Standing and
@@ -300,6 +318,17 @@ function pruneHaulers() {
   for (const f of foods) if (f.haulers) f.haulers = f.haulers.filter(id => alive.has(id));
 }
 
+// Pheromones evaporate every tick (game logic, not just rendering): a trail nobody
+// refreshes fades away, so lanes track where the food actually is.
+function updatePheromones() {
+  let w = 0;
+  for (const p of pheromones) {
+    p.strength -= (p.kind === 'danger') ? DANGER_EVAP : TRAIL_EVAP;
+    if (p.strength > 0) pheromones[w++] = p;
+  }
+  pheromones.length = w;
+}
+
 function updateFoods() {
   // Age everything; drop loose pieces that have finally rotted away (carried and
   // being-hauled pieces are left alone so nothing vanishes out of an ant's grip).
@@ -371,12 +400,10 @@ function pickUp(ant, food) {
   ant.carrying   = { type: food.type, age: food.age || 0, size: food.size || 4 };
   ant.dropOffset = pickDropOffset(4, ant.isRed, ant.x, ant.y);
   ant.carryTicks = 0;
-  ant.trail = 90;                  // lay a trail from the find back to the nest
-  // Broadcast the find: a strong, slow-fading mark on the spot itself keeps the
-  // coordinate appealing while the trail lasts, so nestmates fall in line and
-  // process over to carry off whatever food is left.
-  layPheromone(food.x, food.y, 1.5);   // a modest mark, not a magnet that ants orbit
-  layPheromone(ant.x, ant.y);
+  ant.trailTick  = 0;              // start laying the trail home from here
+  // Anchor a strong scent right on the find, so a leftover pile keeps recruiting
+  // carriers to it (the ant then lays the route home as it walks — see updateAnts).
+  layTrail(food.x, food.y); layTrail(food.x, food.y);
 }
 
 // A raider lifts a piece of the enemy's stockpile and hauls it home to its own
@@ -385,10 +412,9 @@ function stealFood(ant, food) {
   ant.carrying   = { type: food.type, age: food.age || 0, size: food.size || 4 };
   ant.dropOffset = pickDropOffset(4, ant.isRed, ant.x, ant.y);
   ant.carryTicks = 0;
-  ant.trail = 90;
+  ant.trailTick  = 0;
   if (Number.isFinite(food.servings) && food.servings > 1) food.servings--;
   else { const i = foods.indexOf(food); if (i !== -1) foods.splice(i, 1); }
-  layPheromone(ant.x, ant.y);
 }
 
 function dropOff(ant) {
@@ -634,19 +660,23 @@ function updateAnts() {
         target = nearestFood(a, Infinity);
         if (target) { steerToward(a, target.x, target.y, 0.12); chase = target; }
       } else if (!prey) {
-        // A fed forager brings food home. It heads for the nearest food it can sense
-        // (within SENSE_FOOD), keenest when the scent is right under it; beyond that
-        // a pheromone trail guides it, and with neither it wanders onto a find.
+        // A fed forager brings food home, foraging by SCENT: it only makes for food
+        // it can smell up close; farther out it follows a food trail OUTWARD toward
+        // the find (reinforcing the lane), and with neither it wanders until it
+        // stumbles onto a scent. `target` stays the nearest food so the grab check
+        // can lift anything that comes within reach.
         target = nearestFood(a);
-        const p = strongestTrail(a);
-        if (target) {
-          const near = dist2(target.x, target.y, a.x, a.y) < SENSE_SMELL * SENSE_SMELL;
-          const keen = near ? ({ sugar: 0.25, fruit: 0.22, protein: 0.2, insect: 0.2 }[target.type] || 0.12) : 0.13;
-          steerToward(a, target.x, target.y, keen);
-          chase = target;
-        } else if (p) {
-          steerToward(a, p.x, p.y, 0.10);
-          chase = p;
+        const smell = target && dist2(target.x, target.y, a.x, a.y) < SENSE_SMELL * SENSE_SMELL ? target : null;
+        if (smell) {
+          const keen = { sugar: 0.25, fruit: 0.22, protein: 0.2, insect: 0.2 }[smell.type] || 0.14;
+          steerToward(a, smell.x, smell.y, keen);
+          chase = smell;
+        } else {
+          const p = outwardTrail(a);
+          if (p) { steerToward(a, p.x, p.y, 0.16); chase = p; }           // follow the lane to the find
+          else if (target && dist2(target.x, target.y, a.x, a.y) < FORAGE_SIGHT * FORAGE_SIGHT) {
+            steerToward(a, target.x, target.y, 0.12); chase = target;      // close on food within short sight
+          }
         }
       }
     }
@@ -724,10 +754,10 @@ function updateAnts() {
       a.confinedMs = 0;
     }
 
-    // Trail laying after a good meal
-    if (a.trail > 0) {
-      a.trail--;
-      if (a.trail % 6 === 0) layPheromone(a.x, a.y);
+    // Lay a food trail the WHOLE way home while carrying, so the scent spans the
+    // route from the find to the nest and other foragers can follow it out.
+    if (a.carrying && !a.isQueen) {
+      if ((a.trailTick = (a.trailTick || 0) + 1) % TRAIL_STEP === 0) layTrail(a.x, a.y);
     }
 
     // Red ants bite white ants; biting a poisoned one poisons the biter.

@@ -245,20 +245,22 @@ function drawFoods() {
 }
 
 function drawPheromones() {
-  let w = 0;
   for (const p of pheromones) {
-    if (!animationPaused) p.strength -= 0.004;
     if (p.strength <= 0) continue;
-    pheromones[w++] = p;
+    const danger = p.kind === 'danger';
     ctx.beginPath();
-    const a = Math.min(p.strength, 1) * 0.6;
-    // Trails are the familiar yellow; a danger scent glows red so a threatened
-    // stretch of the map reads at a glance.
-    ctx.fillStyle = p.kind === 'danger' ? `rgba(255,60,40,${a})` : `rgba(255,230,0,${a})`;
-    ctx.arc(p.x, p.y, p.kind === 'danger' ? 3 : 2, 0, Math.PI * 2);
+    // A busy lane reads brighter and a touch fatter than a lone wandering mark, so
+    // the trail stands out; a danger scent glows red.
+    if (danger) {
+      ctx.fillStyle = `rgba(255,60,40,${Math.min(p.strength, 1) * 0.6})`;
+      ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+    } else {
+      const s = Math.min(p.strength / TRAIL_MAX, 1);      // 0..1 lane intensity
+      ctx.fillStyle = `rgba(255,${210 - Math.round(s * 60)},0,${0.18 + s * 0.62})`;
+      ctx.arc(p.x, p.y, 1.8 + s * 2.2, 0, Math.PI * 2);
+    }
     ctx.fill();
   }
-  pheromones.length = w;
 }
 
 function drawAnt(a) {

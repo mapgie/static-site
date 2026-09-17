@@ -23,6 +23,17 @@ const SENSE_TRAIL = 60;
 const SENSE_SMELL = 26;   // how close food must be before an ant "smells" it (poor vision — trails carry farther)
 const SENSE_DANGER = 90;  // how far a 'danger' pheromone (a mate killed nearby) reaches — wider than a food trail
 
+// Food-trail pheromones: an ant carrying food home lays a scent the whole way; other
+// foragers follow it OUTWARD to the find and reinforce it, so a busy route grows into
+// a bright lane while a spent one evaporates. This is what makes marching trails form.
+const TRAIL_START = 1.4;      // strength of a fresh trail deposit
+const TRAIL_MAX   = 5;        // a well-trodden lane saturates here
+const TRAIL_EVAP  = 0.0016;   // per-frame fade — a quiet trail is gone in ~15s, a busy one lasts far longer
+const DANGER_EVAP = 0.006;    // danger scent fades faster
+const TRAIL_MERGE = 9;        // deposits within this distance reinforce one dot instead of stacking new ones
+const TRAIL_STEP  = 5;        // ticks between deposits while carrying
+const FORAGE_SIGHT = 70;      // a fed forager will close on food it can see this near (short, so distant food still needs a trail)
+
 // Danger response. A main-colony ant that senses danger flees, unless its nest
 // or queen is under threat and the colony is strong and steady enough to rally
 // home and stand its ground (swarm). "Strong enough" tracks the queen threshold

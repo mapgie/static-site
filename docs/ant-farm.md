@@ -96,11 +96,16 @@ yourself.
 
 ### Trails, scent, and wandering
 
-A **well-fed** ant forages: it heads for the nearest food it can sense and carries it
-home to the pantry, laying a **pheromone trail** so nestmates fall in line and process
-over to the find, carrying off the pile trip by trip. Beyond sensing range the trail
-guides them, and with neither scent nor trail nearby an ant simply **wanders** until
-it stumbles onto a find.
+A **well-fed** ant forages by scent, and the colony finds food through **emergent
+trails**. A forager that picks up food lays a **pheromone trail the whole way home**;
+laying onto an existing trail reinforces it, so a used route builds into a bright,
+fat **lane** while an unused one evaporates. Other foragers that can't yet smell food
+follow a trail **outward** (away from the nest, toward the find) and reinforce it as
+they go — so once one ant discovers a food patch, a marching column forms between it
+and the nest, and dissolves when the patch runs out. With neither scent nor trail
+nearby an ant **wanders** until it stumbles onto a find (or comes within short sight
+of one). Trails show as a yellow lane that brightens with traffic; you'll see them
+best over a **cluster** of food (paint a patch and watch the column form).
 
 **Eating (World Building Mode).** A **hungry** ant doesn't starve in the field: if the
 **pantry is stocked** it heads home and eats from the communal store (reaching the
