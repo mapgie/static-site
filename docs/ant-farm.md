@@ -77,6 +77,10 @@ A **carcass** works the same way: once enough haulers gather, the team drags it 
 nest entrance and it's stored; if the team jams against a wall for too long it lets
 go, leaving the carcass to be found again instead of grinding in place.
 
+Loose food on the map is capped so it can't pile up without limit, but a **carrier's
+delivery to the pantry always goes through** — stocking the store is a transfer, not
+new clutter, so a food-strewn map never blocks the colony from filling its pantry.
+
 **Painting.** A dragged brush scatters spaced drops, not a solid line, and each food
 has its own spacing: sugar sits closest, fruit wider, protein wider still, and a dead
 insect drops only **once per press**. **Brush thickness** also sets each drop's

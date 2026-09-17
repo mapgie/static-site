@@ -530,7 +530,13 @@ function makeFood(x, y, type, extra = {}) {
 }
 
 function addFood(x, y, type, extra = {}) {
-  if (foods.length >= MAX_FOOD) return false;
+  // MAX_FOOD caps LOOSE ambient food (the clutter autoFood/painting scatter). A
+  // DELIVERED drop is a carrier stocking the pantry — a transfer, not new clutter —
+  // so it bypasses that cap (with a higher hard ceiling as a safety net); otherwise
+  // a full field would block every delivery and food would never reach the pantry.
+  const hard = MAX_FOOD * 2;
+  if (foods.length >= hard) return false;
+  if (!extra.delivered && foods.length >= MAX_FOOD) return false;
   foods.push(makeFood(x, y, type, extra));
   return true;
 }
