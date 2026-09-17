@@ -337,7 +337,9 @@ your choice is remembered.
   or **Bulldoze**; set brush thickness; undo or clear structures. **Walls, soil and
   water all block ants** — an ant that meets one **follows along it** (tracing round an
   obstacle, hugging a wall until it finds a doorway or a scent pulls it off) rather
-  than crossing it, and it never crosses water. The **Bulldozer** clears terrain and
+  than crossing it, and it never crosses water. The **arena edge is a hard boundary**
+too (ants don't wrap around it), and an ant left circling a corner or dead-end kicks
+itself off in a new direction rather than looping forever. The **Bulldozer** clears terrain and
   loose food, and it **breaches nest walls** — a hole ants pour through that stays
   open until you hit **Repair nest** (in the World Building card).
 - **Danger Zone** — kill the rivals, kill everything, **Destroy Nest** (removes the

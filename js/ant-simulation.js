@@ -704,36 +704,52 @@ function updateAnts() {
     const ny = a.y + Math.sin(a.angle) * speed;
     a.wet = false;   // ants no longer enter water — it blocks and repels like a wall
 
-    if (speed > 0 && blockedForAnt(nx, ny)) {
-      // Blocked by wall, soil or water: hug it and march ALONG it (keeping to the
-      // side nearest its heading) until the way ahead opens — so it traces a wall
-      // in a circle, rounds obstacles, and finds doorway gaps, instead of bouncing.
-      const o = nearestObstacle(nx, ny, 40) || nearestObstacle(a.x, a.y, 40);
-      if (o) {
-        const normal = Math.atan2(a.y - o.y, a.x - o.x);          // away from the wall
-        const t1 = normal + Math.PI / 2, t2 = normal - Math.PI / 2;
-        a.angle = Math.abs(angleDiff(t1, a.angle)) <= Math.abs(angleDiff(t2, a.angle)) ? t1 : t2;
-        let moved = false;
-        for (let k = 0; k < 6; k++) {   // at a corner, keep turning toward open ground
-          const bx = a.x + Math.cos(a.angle) * speed, by = a.y + Math.sin(a.angle) * speed;
-          if (!blockedForAnt(bx, by)) {
-            a.x = (bx + canvas.width) % canvas.width; a.y = (by + canvas.height) % canvas.height;
-            moved = true; break;
-          }
-          a.angle += angleDiff(normal, a.angle) >= 0 ? 0.5 : -0.5;
-        }
-        a.stuckMs = moved ? 0 : a.stuckMs + TICK_MS;
-        // Truly sealed in and getting nowhere: one ant burrows a hole out.
-        if (a.stuckMs >= BURROW_STUCK_MS && !a.isQueen && inAnyRoom(a.x, a.y)) {
-          if (burrowHole(a.x + Math.cos(a.angle) * (SOIL_R + 5), a.y + Math.sin(a.angle) * (SOIL_R + 5)) ||
-              burrowHole(a.x, a.y)) a.stuckMs = 0;
-        }
+    // The canvas edge is a hard boundary (no wrap-around teleporting across walls),
+    // so blocked = a wall/soil/water OR off the edge.
+    const M = SOIL_R;
+    const blocked = (x, y) => x < M || y < M || x > canvas.width - M || y > canvas.height - M || blockedForAnt(x, y);
+
+    if (speed > 0 && blocked(nx, ny)) {
+      // Blocked by wall, soil, water or the edge: hug it and march ALONG it (keeping
+      // to the side nearest its heading) until the way ahead opens — so it traces a
+      // wall in a circle, rounds obstacles, and finds doorway gaps, instead of bouncing.
+      const o = nearestObstacle(nx, ny, 40) || nearestObstacle(a.x, a.y, 40) || { x: clamp(nx, 0, canvas.width), y: clamp(ny, 0, canvas.height) };
+      const normal = Math.atan2(a.y - o.y, a.x - o.x);          // away from the wall/edge
+      const t1 = normal + Math.PI / 2, t2 = normal - Math.PI / 2;
+      a.angle = Math.abs(angleDiff(t1, a.angle)) <= Math.abs(angleDiff(t2, a.angle)) ? t1 : t2;
+      let moved = false;
+      for (let k = 0; k < 6; k++) {   // at a corner, keep turning toward open ground
+        const bx = a.x + Math.cos(a.angle) * speed, by = a.y + Math.sin(a.angle) * speed;
+        if (!blocked(bx, by)) { a.x = bx; a.y = by; moved = true; break; }
+        a.angle += angleDiff(normal, a.angle) >= 0 ? 0.5 : -0.5;
+      }
+      a.stuckMs = moved ? 0 : a.stuckMs + TICK_MS;
+      // Truly sealed in and getting nowhere: one ant burrows a hole out.
+      if (a.stuckMs >= BURROW_STUCK_MS && !a.isQueen && inAnyRoom(a.x, a.y)) {
+        if (burrowHole(a.x + Math.cos(a.angle) * (SOIL_R + 5), a.y + Math.sin(a.angle) * (SOIL_R + 5)) ||
+            burrowHole(a.x, a.y)) a.stuckMs = 0;
       }
     } else {
-      a.x = (nx + canvas.width) % canvas.width;
-      a.y = (ny + canvas.height) % canvas.height;
+      a.x = nx; a.y = ny;
       a.stuckMs = 0;
     }
+
+    // Anti-orbit: an ant that's trying to travel but has made no net progress for a
+    // spell (circling a corner, an obstacle or a doorway) gets kicked in a fresh
+    // direction so it can never loop forever. Builders, feeders, haulers and the
+    // queen are exempt — they're meant to stay put.
+    if (speed > 0 && !holdStill && !building && !feed && !a.hauling && !a.isQueen) {
+      a.pMs = (a.pMs || 0) + TICK_MS;
+      if (a.pAnchorX === undefined) { a.pAnchorX = a.x; a.pAnchorY = a.y; }
+      if (a.pMs >= 1500) {
+        if (dist2(a.x, a.y, a.pAnchorX, a.pAnchorY) < 26 * 26) {
+          a.angle = Math.random() * Math.PI * 2;
+          a.speedBoost = Math.max(a.speedBoost, 20);
+          a.wallCooldown = 8;
+        }
+        a.pAnchorX = a.x; a.pAnchorY = a.y; a.pMs = 0;
+      }
+    } else { a.pAnchorX = a.x; a.pAnchorY = a.y; a.pMs = 0; }
 
     // Trapped-forager relief: an ant that should be out foraging but has been stuck
     // inside the nest too long digs its own way out, radially through the nearest
