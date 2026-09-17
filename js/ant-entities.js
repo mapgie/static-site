@@ -605,12 +605,58 @@ function dropTarget(ant) {
   return { x: anchor.x + Math.cos(ang) * r, y: anchor.y + Math.sin(ang) * r };
 }
 
-// Where a single carrier should steer to bring food home. The pantry's own doorway
-// faces the nest interior, so from outside a sealed nest it's unreachable directly:
-// aim for the entry's outer door until the ant is inside, then for the pantry.
+// --- Nest routing: walk the room graph so ants actually reach a deep room -------
+function roomById(id) { for (const r of rooms) if (r.id === id) return r; return null; }
+
+// The room an ant is "in": the disc that contains it, else the nearest of its team.
+function roomAt(team, x, y) {
+  let inside = null, insideD = Infinity, near = null, nearD = Infinity;
+  for (const r of rooms) {
+    if (r.team !== team) continue;
+    const d = dist2(r.x, r.y, x, y);
+    if (d < r.r * r.r && d < insideD) { insideD = d; inside = r; }
+    if (d < nearD) { nearD = d; near = r; }
+  }
+  return inside || near;
+}
+
+// A steering point that moves `ant` one hop closer to `dest` along the corridors:
+// BFS the link graph from the ant's current room, then aim at the doorway leading to
+// the next room on the path. Returns dest's own doorway/centre once adjacent, or the
+// fallback when already there / no path.
+function routeAim(ant, dest, fallback) {
+  const cur = roomAt(ant.isRed, ant.x, ant.y);
+  if (!cur || cur === dest) return fallback;
+  const prev = new Map([[cur.id, null]]);
+  const q = [cur];
+  while (q.length) {
+    const r = q.shift();
+    if (r === dest) break;
+    for (const id of r.links) if (!prev.has(id)) { prev.set(id, r.id); const nr = roomById(id); if (nr && nr.team === ant.isRed) q.push(nr); }
+  }
+  if (!prev.has(dest.id)) return fallback;   // graph disconnected — let the caller aim direct
+  let step = dest.id;                         // walk back to the first hop out of `cur`
+  while (prev.get(step) !== cur.id) step = prev.get(step);
+  const next = roomById(step);
+  const ang = Math.atan2(next.y - cur.y, next.x - cur.x);
+  // Aim a bit past cur's ring toward next, i.e. into the corridor mouth.
+  return { x: cur.x + Math.cos(ang) * (cur.r + SOIL_R + 12),
+           y: cur.y + Math.sin(ang) * (cur.r + SOIL_R + 12) };
+}
+
+// Steer an ant to `room` and, once inside it, to `inner` (a point in that room).
+function aimToRoom(ant, room, inner) {
+  if (dist2(ant.x, ant.y, room.x, room.y) < room.r * room.r) return inner;   // arrived
+  return routeAim(ant, room, inner);
+}
+
+// Where a single carrier should steer to bring food home. From outside the sealed
+// nest it heads for the entry's outer door; once inside it routes through the
+// corridors to the pantry.
 function carryHomeAim(ant) {
   const store = builtRoom(ant.isRed, 'pantry');
-  if (!insideMyBuiltRoom(ant.isRed, ant.x, ant.y)) {
+  // Truly outside the nest (not even in a corridor): make for the entry's outer door.
+  if (!inNestZone(ant.x, ant.y)) {
     const entry = builtRoom(ant.isRed, 'entry');
     if (entry) {
       const o = SOIL_R + 12;
@@ -618,15 +664,35 @@ function carryHomeAim(ant) {
                y: entry.y + Math.sin(entry.gapAngle) * (entry.r + o) };
     }
   }
-  if (store) {
-    if (dist2(ant.x, ant.y, store.x, store.y) > store.r * store.r) {
-      const o = SOIL_R + 12;
-      return { x: store.x + Math.cos(store.gapAngle) * (store.r + o),
-               y: store.y + Math.sin(store.gapAngle) * (store.r + o) };
-    }
-    return { x: store.x, y: store.y };
-  }
+  // In the nest zone: route through the corridors to the pantry.
+  if (store) return aimToRoom(ant, store, { x: store.x, y: store.y });
   return dropTarget(ant);
+}
+
+// Steer an ant OUT of the sealed nest to go foraging: route through the corridors to
+// the entry room, then aim through its outer door. Null if there's no entry.
+function exitAim(ant) {
+  const entry = builtRoom(ant.isRed, 'entry');
+  if (!entry) return null;
+  const o = SOIL_R + 14;
+  const outDoor = { x: entry.x + Math.cos(entry.gapAngle) * (entry.r + o),
+                    y: entry.y + Math.sin(entry.gapAngle) * (entry.r + o) };
+  if (dist2(ant.x, ant.y, entry.x, entry.y) < entry.r * entry.r) return outDoor;   // in the entry: step out
+  return routeAim(ant, entry, outDoor);
+}
+
+// Nearest edible food in the colony's own store (the communal larder). Ignores who
+// delivered it — a hungry ant may eat from the store even food it carried in — and
+// has no range limit, so a starving forager will trek home to the pantry.
+function nearestColonyFood(ant) {
+  let best = null, bd = Infinity;
+  for (const f of foods) {
+    if (!f.delivered || f.team !== ant.isRed) continue;
+    if (Number.isFinite(f.servings) && f.servings <= 0) continue;
+    const d = dist2(f.x, f.y, ant.x, ant.y);
+    if (d < bd) { bd = d; best = f; }
+  }
+  return best;
 }
 
 // Same idea for a carcass haul team: aim at the entry door from outside, otherwise

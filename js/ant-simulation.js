@@ -139,6 +139,19 @@ function nearestFood(ant, range = SENSE_FOOD) {
   return best;
 }
 
+// Nearest loose (undelivered) food an ant could eat on the spot — sugar/fruit/protein
+// within range, no carcasses (those need a team) and never poison/spoiled.
+function nearestFreshFood(ant, range = SENSE_FOOD) {
+  let best = null, bd = range * range;
+  for (const f of foods) {
+    if (f.delivered) continue;
+    if (f.type !== 'sugar' && f.type !== 'fruit' && f.type !== 'protein') continue;
+    const d = dist2(f.x, f.y, ant.x, ant.y);
+    if (d < bd) { bd = d; best = f; }
+  }
+  return best;
+}
+
 function nearestWhiteAnt(ant) {
   let best = null, bd = SENSE_PREY * SENSE_PREY;
   for (const o of ants) {
@@ -430,6 +443,15 @@ function applyMeal(ant, food) {
   }
 }
 
+// A hungry ant eats a loose piece where it finds it (rather than hauling it home):
+// one unit's worth of nutrition, and the pile shrinks by a unit.
+function eatFresh(ant, food) {
+  applyMeal(ant, food);
+  const i = foods.indexOf(food);
+  if (i === -1) return;
+  if (food.units > 1) food.units--; else foods.splice(i, 1);
+}
+
 function eat(ant, food) {
   const i = foods.indexOf(food);
   if (i !== -1) foods.splice(i, 1);
@@ -509,7 +531,7 @@ function updateAnts() {
 
     // Decide what to chase. Right after a wall bump this is paused so the ant peels
     // away instead of steering straight back into the wall and grinding to a stop.
-    let target = null, prey = null, chase = null, holdStill = false, building = false;
+    let target = null, prey = null, chase = null, holdStill = false, building = false, feed = null;
     if (a.wallCooldown > 0) {
       a.wallCooldown--;
     } else {
@@ -536,6 +558,13 @@ function updateAnts() {
         const cap  = a.isRed ? buildCapR : buildCapW;
         if (t && (t.urgent || busy < cap)) { build = t; building = true; if (a.isRed) activeBuildersR++; else activeBuildersW++; }
       }
+      // Hungry with a stocked pantry: head home and eat from the store rather than
+      // starve in the field. Foragers (well-fed) are the ones who bring food in.
+      if (!prey && !a.carrying && !react && a.fullness < a.hungerPoint) feed = nearestColonyFood(a);
+      // A would-be forager still inside the sealed nest can't find food in there —
+      // route it out through the entry first, then it forages in the open.
+      let exitPt = null;
+      if (!prey && !a.carrying && !react && !build && !feed && inNestZone(a.x, a.y)) exitPt = exitAim(a);
       if (!prey && a.carrying) {
         // Haul it home. Head for a reachable opening — the entry's outer door when
         // still outside the sealed nest, the pantry's doorway once inside — so the
@@ -575,6 +604,29 @@ function updateAnts() {
             a.buildStuck = 0;
           }
         }
+      } else if (feed) {
+        // Hungry, and the pantry is stocked: go eat from the reliable store rather
+        // than chase scattered crumbs. Entry door first if still outside, then
+        // routed through the corridors to the food; `target` is set so the eat
+        // check below consumes a serving on arrival.
+        const store = builtRoom(a.isRed, 'pantry');
+        let aim = feed;
+        const e = builtRoom(a.isRed, 'entry');
+        if (!inNestZone(a.x, a.y) && e) {
+          const o = SOIL_R + 12;
+          aim = { x: e.x + Math.cos(e.gapAngle) * (e.r + o), y: e.y + Math.sin(e.gapAngle) * (e.r + o) };
+        } else if (store) {
+          aim = aimToRoom(a, store, feed);
+        }
+        steerToward(a, aim.x, aim.y, 0.22);
+        chase = feed; target = feed;
+      } else if (exitPt) {
+        // Leave the nest to forage.
+        steerToward(a, exitPt.x, exitPt.y, 0.25); chase = exitPt;
+      } else if (!prey && a.fullness < a.hungerPoint && (target = nearestFreshFood(a, SENSE_FOOD))) {
+        // Hungry with an empty pantry: actively chase the nearest loose food in
+        // sensing range and eat it on the spot (a fed forager, below, carries it home).
+        steerToward(a, target.x, target.y, 0.2); chase = target;
       } else if (!prey && a.isRed) {
         // Raider: seek out food anywhere — ambient drops or the enemy store when
         // it's breached — and haul it back to the rival pantry. (Hunting whites is
@@ -582,18 +634,16 @@ function updateAnts() {
         target = nearestFood(a, Infinity);
         if (target) { steerToward(a, target.x, target.y, 0.12); chase = target; }
       } else if (!prey) {
-        // Main colony forages by smell, not sight. Food only pulls when it's very
-        // close (as if it carried a faint scent of its own); at that range it
-        // trumps a trail. Farther off, a pheromone trail wins; with neither, the
-        // ant just wanders until it stumbles onto a scent. `target` is still the
-        // nearest food so the pickup check below can grab anything in reach.
+        // A fed forager brings food home. It heads for the nearest food it can sense
+        // (within SENSE_FOOD), keenest when the scent is right under it; beyond that
+        // a pheromone trail guides it, and with neither it wanders onto a find.
         target = nearestFood(a);
-        const smell = target && dist2(target.x, target.y, a.x, a.y) < SENSE_SMELL * SENSE_SMELL ? target : null;
         const p = strongestTrail(a);
-        if (smell) {
-          const keen = { sugar: 0.25, fruit: 0.22, protein: 0.2, insect: 0.2 }[smell.type] || 0.12;
-          steerToward(a, smell.x, smell.y, keen);
-          chase = smell;
+        if (target) {
+          const near = dist2(target.x, target.y, a.x, a.y) < SENSE_SMELL * SENSE_SMELL;
+          const keen = near ? ({ sugar: 0.25, fruit: 0.22, protein: 0.2, insect: 0.2 }[target.type] || 0.12) : 0.13;
+          steerToward(a, target.x, target.y, keen);
+          chase = target;
         } else if (p) {
           steerToward(a, p.x, p.y, 0.10);
           chase = p;
@@ -662,7 +712,7 @@ function updateAnts() {
     // Only a HUNGRY forager that urgently needs to get out digs its way free — a
     // well-fed ant milling indoors (e.g. during construction) doesn't, so builders
     // don't churn the walls they're raising.
-    if (!a.isQueen && !a.carrying && !building && !prey && a.fullness < a.hungerPoint && inNestZone(a.x, a.y)) {
+    if (!a.isQueen && !a.carrying && !building && !prey && !feed && a.fullness < a.hungerPoint && inNestZone(a.x, a.y)) {
       a.confinedMs = (a.confinedMs || 0) + TICK_MS;
       if (a.confinedMs >= CONFINE_BURROW_MS) {
         const rm = rooms.find(r => dist2(r.x, r.y, a.x, a.y) < r.r * r.r);
@@ -709,6 +759,14 @@ function updateAnts() {
         const t = dropTarget(a);
         if (dist2(t.x, t.y, a.x, a.y) < EAT_RANGE * EAT_RANGE) dropOff(a);
       }
+    } else if (feed && target === feed) {
+      // Feeding from the communal store: the colony shares food, so a hungry ant
+      // that has reached the nest (any room or corridor) eats from the store — it
+      // doesn't have to pinpoint a morsel deep in the pantry and starve trying.
+      if (inNestZone(a.x, a.y)) {
+        const f = nearestColonyFood(a);
+        if (f) eat(a, f);
+      }
     } else if (target) {
       const reach = EAT_RANGE + (target.type === 'insect' ? INSECT_RADIUS : 0);
       if (dist2(target.x, target.y, a.x, a.y) < reach * reach) {
@@ -718,7 +776,8 @@ function updateAnts() {
           else if (!eat(a, target)) continue;                               // hungry (or own store): eat
         }
         else if (target.type === 'insect') joinTeam(a, target);
-        else                            pickUp(a, target);
+        else if (a.fullness < a.hungerPoint) eatFresh(a, target);   // hungry: eat it here
+        else                            pickUp(a, target);          // fed: haul it home to the pantry
       }
     }
 

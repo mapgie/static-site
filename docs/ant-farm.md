@@ -96,14 +96,18 @@ yourself.
 
 ### Trails, scent, and wandering
 
-Ants forage by **smell, not sight**. Food only pulls an ant when it is very close —
-as if each morsel carried a faint scent of its own — and at that range the scent
-**trumps** everything. Farther off, a **pheromone trail** wins, so nestmates fall in
-line and process over to a find, carrying off the pile trip by trip; with neither
-scent nor trail nearby, an ant simply **wanders** — a small random turn each tick, a
-drunkard's walk with no goal — until it stumbles onto one. When an ant does find food
-and carry it home it lays a trail and marks the spot, keeping it appealing while the
-trail fades. (Food within reach is always grabbed.)
+A **well-fed** ant forages: it heads for the nearest food it can sense and carries it
+home to the pantry, laying a **pheromone trail** so nestmates fall in line and process
+over to the find, carrying off the pile trip by trip. Beyond sensing range the trail
+guides them, and with neither scent nor trail nearby an ant simply **wanders** until
+it stumbles onto a find.
+
+**Eating (World Building Mode).** A **hungry** ant doesn't starve in the field: if the
+**pantry is stocked** it heads home and eats from the communal store (reaching the
+nest is enough — the colony shares food), and if the pantry is empty it chases down
+loose food and eats it on the spot. Ants leave and re-enter the sealed nest through
+the **entry**, routing along the corridors to the pantry and back. (In the classic
+sandbox, with no pantry, ants just eat whatever they find.)
 
 Ants also **keep out of each other's way**: a soft separation nudge pushes any two
 that get too close apart each tick, so they don't stack up or walk over one another.
