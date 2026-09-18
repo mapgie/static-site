@@ -241,11 +241,17 @@ function awayFromRival(team) {
 // A doorway opening as wide as the tunnel channel, so an ant can actually pass.
 function gapArcFor(r) { return 2 * Math.asin(Math.min(0.85, DOORWAY_HALF / Math.max(r, DOORWAY_HALF))); }
 
-// Is an angle within any of a ring's doorway gaps?
+// Is an angle within any of a ring's doorway gaps? Uses the true minimal angular
+// distance, computed so it's correct for ANY gap angle — the entry's outer door is
+// stored as atan2(...)+2π (a +π for the inner door, another for the outer), and the
+// old `%`-based offset went wrong for angles ≥ 2π (JS % keeps a negative sign), so
+// the gap was missed and the ring walled the doorway shut — sealing the ants in.
 function inAnyGap(ang, gaps) {
+  const TAU = Math.PI * 2;
   for (const g of gaps) {
-    const off = Math.abs(((ang - g.angle + Math.PI) % (Math.PI * 2)) - Math.PI);
-    if (off < g.arc / 2) return true;
+    let d = Math.abs(ang - g.angle) % TAU;   // [0, 2π)
+    if (d > Math.PI) d = TAU - d;            // fold to the shorter way round, [0, π]
+    if (d < g.arc / 2) return true;
   }
   return false;
 }

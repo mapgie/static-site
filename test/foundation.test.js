@@ -305,6 +305,49 @@ test('the built nest is geometrically sealed: only the entry door reaches the ou
   }
 });
 
+test('inAnyGap detects a doorway whose angle wraps past 2π (the entry outer door)', () => {
+  // The entry's outer door is stored as atan2(...)+2π. inAnyGap must still see an
+  // angle pointing through it as inside the gap; the old %-based test went wrong for
+  // angles ≥ 2π and walled the doorway shut. Guards that regression directly.
+  const g = freshApi();
+  const dir = Math.PI / 2;                       // door faces +y
+  const gaps = [{ angle: dir + 2 * Math.PI, arc: 1.9 }];   // same wrap the nest produces
+  assert.ok(g.inAnyGap(dir, gaps), 'the door direction is recognised as open');
+  assert.ok(g.inAnyGap(dir + 2 * Math.PI, gaps), 'and so is the same angle unwrapped');
+  assert.ok(!g.inAnyGap(dir + Math.PI, gaps), 'the opposite side is still wall');
+});
+
+test('the entrance actually opens: the built nest is reachable from outside through the entry', () => {
+  // The complement of the seal test. A nest that is sealed everywhere is useless if
+  // its one door is walled over too — the ants would be trapped. Flood from outside
+  // with NOTHING plugged and require the entry interior to be reachable.
+  const g = colony(freshApi(), 8);
+  g.planNest(false);
+  const white = g.rooms.filter(r => r.team === false);
+  for (const room of white) {
+    for (const s of room.sites.concat(room.tunnelSites || [])) { g.digSoil(s.x, s.y, true); s.done = true; }
+    g.refreshBuilt(room);
+  }
+  g.rebuildEnvGrid();
+  const step = 2, W = g.canvas.width, H = g.canvas.height;
+  const cols = Math.ceil(W / step), rows = Math.ceil(H / step), idx = (cx, cy) => cy * cols + cx;
+  const free = new Uint8Array(cols * rows);
+  for (let cy = 0; cy < rows; cy++) for (let cx = 0; cx < cols; cx++)
+    free[idx(cx, cy)] = g.blockedForAnt(cx * step, cy * step) ? 0 : 1;
+  const seen = new Uint8Array(cols * rows), st = [idx(0, 0)]; seen[idx(0, 0)] = 1;
+  while (st.length) {
+    const c = st.pop(), cx = c % cols, cy = (c / cols) | 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = cx + dx, ny = cy + dy;
+      if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+      const n = idx(nx, ny); if (seen[n] || !free[n]) continue; seen[n] = 1; st.push(n);
+    }
+  }
+  const entry = white.find(r => r.type === 'entry');
+  const cx = Math.round(entry.x / step), cy = Math.round(entry.y / step);
+  assert.ok(seen[idx(cx, cy)], 'the entry interior is reachable from outside — the ants have a way in and out');
+});
+
 test('eggs: a mating with a built nursery lays an egg that later hatches', () => {
   const g = freshApi();
   g.spawnPoints = { yellow: [{ x: 200, y: 300, r: 40 }], red: [] };

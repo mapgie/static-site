@@ -78,7 +78,7 @@ const EDGE_MARGIN = 12;  // keep-out buffer at the canvas edge: ants turn back h
 // `sym` is drawn at the room centre (a symbol, not a word); empty/entry show none
 // (an entry is obvious from its opening to the outside).
 const ROOM_SPECS = {
-  empty:   { r: 24, order: 0, color: '#8a8fa0' },              // connector node / pathway hub — unlabelled
+  empty:   { r: 32, order: 0, color: '#8a8fa0' },              // connector hub — big enough that its 3 doorways still leave solid wall between them (a smaller ring is nearly all doorway and reads as unfinished)
   entry:   { r: 22, order: 1, color: '#c9a227' },              // unlabelled — its outside door speaks for it
   pantry:  { r: 34, order: 2, color: '#7ea63c', sym: '🍎' },
   nursery: { r: 40, order: 3, color: '#c86fb0', sym: '🥚' },

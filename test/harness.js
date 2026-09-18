@@ -39,7 +39,7 @@ const FUNCS = [
   'canConnect', 'addGap', 'nearestConnectable',
   'roomRadius', 'stealFood', 'maybeSadistPoison', 'decay', 'dropTarget', 'dropOff',
   'updateFoods', 'inAnyRoom', 'burrowHole', 'gapArcFor',
-  'doorwayPoint', 'corridorWalls', 'collidesWall', 'updateQueens', 'blockedForAnt',
+  'doorwayPoint', 'corridorWalls', 'collidesWall', 'updateQueens', 'blockedForAnt', 'inAnyGap',
   'updatePheromones', 'layTrail', 'outwardTrail', 'nearestFreshFood', 'nearestColonyFood'
 ];
 
