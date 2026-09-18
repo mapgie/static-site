@@ -296,8 +296,12 @@ function setBar(id, value, happyColor, queenColor, hasQueen) {
 }
 
 function updateHappinessBars() {
-  setBar('happiness-bar',  whiteHappiness, 'lime',    '#c77dff', !!queens.white);
-  setBar('antagonist-bar', redHappiness,   '#3cb399', '#7d6f9e', !!queens.red);
+  // Happiness is a colony reading, so an empty colony shows an empty bar rather
+  // than the neutral 50 the mood defaults to.
+  const w = countWhiteAnts() > 0 ? whiteHappiness : 0;
+  const r = countRedAnts()   > 0 ? redHappiness   : 0;
+  setBar('happiness-bar',  w, 'lime',    '#c77dff', !!queens.white);
+  setBar('antagonist-bar', r, '#3cb399', '#7d6f9e', !!queens.red);
 }
 
 function updateStats() {
@@ -309,7 +313,7 @@ function updateStats() {
     `Total Alive: ${ants.length}<br>` +
     `Yellow Ants: Alive ${w} | Born ${totalBornWhite} | Dead ${totalDeadWhite} (${killedWhite} killed)<br>` +
     `Rival Ants: Alive ${r} | Born ${totalBornRed} | Dead ${totalDeadRed} (${killedRed} killed)<br>` +
-    `Food: ${foods.length} (${atNest} at nest) | Happiness: ${Math.round(whiteHappiness)} | Rival: ${Math.round(redHappiness)}`;
+    `Food: ${foods.length} (${atNest} at nest) | Happiness: ${w > 0 ? Math.round(whiteHappiness) : '—'} | Rival: ${r > 0 ? Math.round(redHappiness) : '—'}`;
 
   const hud = $('hud-stats');
   if (hud) {
