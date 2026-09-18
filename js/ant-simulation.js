@@ -926,7 +926,7 @@ function tryBreeding(a) {
     return;
   }
 
-  if (a.happiness < a.mateUrge) return;   // not in the mood — must clear its own horniness threshold
+  if (a.happiness < a.mateUrge) return;   // not in the mood — must clear its own mate-urge threshold
 
   const r2 = MATE_RANGE * MATE_RANGE;
   let mate = null, crowd = 0;

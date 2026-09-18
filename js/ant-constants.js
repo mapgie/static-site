@@ -200,7 +200,7 @@ const TUNE_DEFAULTS = {
   POP_CAPACITY: 100,
   // Breeding & queens
   MATE_URGE_MIN: 65,     // an ant will only mate once its own happiness clears a personal
-  MATE_URGE_MAX: 95,     // threshold in this band ("horniness"); above newborn start mood, so
+  MATE_URGE_MAX: 95,     // mate-urge threshold in this band; above newborn start mood, so
                          // the young must mature and cheer up before they can breed
   MATE_CHANCE: 0.35,     // base chance a willing, encountered pair actually breeds
   CROWD_MATE_STEP: 0.05, // each nearby colony-mate trims that chance by this

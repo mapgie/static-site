@@ -30,7 +30,7 @@ colony builds its own, smaller nest to stash the loot.
 
 **Until a colony has a queen**, its workers do the breeding. Ants breed only when
 **both** partners are *in the mood* — each has its own hidden happiness threshold (its
-"horniness", jittered per ant), so they don't all become ready at once — they
+**mate urge**, jittered per ant), so they don't all become ready at once — they
 **encounter** each other nearby, and a probability roll passes. The young start below
 that threshold, so they must mature and cheer up before they can breed. Both parents
 then rest before mating again, and **overcrowding** trims the odds, so a colony grows

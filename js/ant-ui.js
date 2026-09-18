@@ -27,58 +27,61 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // Live balance knobs, grouped: [key, label, min, max, step]. A '*' in the label
 // marks a value that only takes effect on newly born ants.
+// [key, label, min, max, step, description]. The description shows as a tooltip on
+// the slider. A "*" in a label means the value is stamped on an ant when it's born,
+// so a change only affects ants spawned afterwards, not the ones already alive.
 const TUNABLES = [
   ['Happiness · gains', [
-    ['H_EAT', 'Eat', 0, 20, 0.5],
-    ['H_GOOD_FOOD', 'Good-food bonus', 0, 20, 0.5],
-    ['H_MATE', 'Mate', 0, 30, 0.5],
-    ['H_DELIVER', 'Deliver food', 0, 20, 0.5],
-    ['H_SATIATED', 'Well-fed /s', 0, 10, 0.1],
-    ['H_SURVIVE', 'Survive /s (main)', 0, 10, 0.1],
-    ['H_ATTACK', 'Kill (rival)', 0, 20, 0.5],
-    ['RED_FACTOR', 'Rival gain factor', 0, 1.5, 0.05],
-    ['ATTACK_CALM_S', 'Calm before survive (s)', 1, 30, 1],
+    ['H_EAT', 'Eat', 0, 20, 0.5, 'Happiness gained each time an ant eats a serving of food.'],
+    ['H_GOOD_FOOD', 'Good-food bonus', 0, 20, 0.5, 'Extra happiness on top of Eat when the meal is protein or an insect (richer food, bigger lift).'],
+    ['H_MATE', 'Mate', 0, 30, 0.5, 'Happiness both partners gain when they successfully mate.'],
+    ['H_DELIVER', 'Deliver food', 0, 20, 0.5, 'Happiness an ant gains for carrying food home and delivering it to the store/pantry.'],
+    ['H_SATIATED', 'Well-fed /s', 0, 10, 0.1, 'Happiness gained per second while an ant\'s fullness is above the Well-fed level.'],
+    ['H_SURVIVE', 'Survive /s (main)', 0, 10, 0.1, 'Happiness the MAIN colony gains each second it goes un-attacked (only after the calm delay below).'],
+    ['H_ATTACK', 'Kill (rival)', 0, 20, 0.5, 'Happiness a RIVAL ant gains for killing a main-colony ant (rivals thrive on kills, not food security).'],
+    ['RED_FACTOR', 'Rival gain factor', 0, 1.5, 0.05, 'Multiplier on ALL happiness gains for rival ants — below 1 makes rivals harder to keep content than the main colony.'],
+    ['ATTACK_CALM_S', 'Calm before survive (s)', 1, 30, 1, 'Seconds the main colony must go un-attacked before the "Survive /s" happiness starts building.'],
   ]],
   ['Happiness · losses', [
-    ['HAPPINESS_DECAY', 'Decay /s', 0, 5, 0.1],
-    ['H_POISON_HIT', 'Get poisoned', 0, 30, 0.5],
-    ['H_POISON_DECAY', 'Poisoned /s', 0, 5, 0.1],
-    ['H_ALLY_LOST', 'Ally killed', 0, 30, 0.5],
-    ['WITNESS_RADIUS', 'Witness radius', 0, 200, 5],
+    ['HAPPINESS_DECAY', 'Decay /s', 0, 5, 0.1, 'Baseline happiness lost every second — mood always drifts down unless something lifts it.'],
+    ['H_POISON_HIT', 'Get poisoned', 0, 30, 0.5, 'One-time happiness hit the moment an ant becomes poisoned.'],
+    ['H_POISON_DECAY', 'Poisoned /s', 0, 5, 0.1, 'Extra happiness lost each second an ant stays poisoned (on top of normal decay).'],
+    ['H_ALLY_LOST', 'Ally killed', 0, 30, 0.5, 'Happiness lost by nearby colony-mates when one of them is killed (grief).'],
+    ['WITNESS_RADIUS', 'Witness radius', 0, 200, 5, 'How close an ant must be to a death to feel the "Ally killed" grief.'],
   ]],
   ['Sadist-only losses', [
-    ['H_QUEEN_LEFT', 'Queen leaves', 0, 30, 0.5],
-    ['H_WET', 'Wet /s', 0, 10, 0.1],
-    ['H_SLOW', 'Slowed /s', 0, 10, 0.1],
+    ['H_QUEEN_LEFT', 'Queen leaves', 0, 30, 0.5, 'Happiness hit when a queen departs. Only applies in Sadist mode.'],
+    ['H_WET', 'Wet /s', 0, 10, 0.1, 'Happiness lost per second while an ant is in water. Only applies in Sadist mode.'],
+    ['H_SLOW', 'Slowed /s', 0, 10, 0.1, 'Happiness lost per second while an ant is slowed (by spoiled food). Only applies in Sadist mode.'],
   ]],
   ['Fullness · hunger', [
-    ['FULLNESS_DECAY', 'Fullness decay /s', 0, 10, 0.1],
-    ['FULLNESS_MEAL', 'Meal refill', 0, 100, 1],
-    ['FULLNESS_FEAST', 'Insect refill', 0, 100, 1],
-    ['SATIATED_LEVEL', 'Well-fed level', 0, 100, 1],
-    ['HUNGER_MIN', 'Hunger point min *', 0, 100, 1],
-    ['HUNGER_MAX', 'Hunger point max *', 0, 100, 1],
+    ['FULLNESS_DECAY', 'Fullness decay /s', 0, 10, 0.1, 'How fast fullness drops (hunger builds) each second. Reach 0 and the ant starts to starve.'],
+    ['FULLNESS_MEAL', 'Meal refill', 0, 100, 1, 'Fullness restored by eating one ordinary serving (sugar/fruit/protein).'],
+    ['FULLNESS_FEAST', 'Insect refill', 0, 100, 1, 'Fullness restored by an insect meal — a bigger feast than an ordinary serving.'],
+    ['SATIATED_LEVEL', 'Well-fed level', 0, 100, 1, 'Fullness above which an ant counts as "well-fed" and earns the Well-fed /s happiness.'],
+    ['HUNGER_MIN', 'Hunger point min *', 0, 100, 1, 'Each ant gets a random hunger threshold in the min–max band; below it, it stops other tasks and looks for food. * set at birth.'],
+    ['HUNGER_MAX', 'Hunger point max *', 0, 100, 1, 'Top of the random hunger-threshold band (see min). Higher = ants get "hungry" sooner. * set at birth.'],
   ]],
   ['New-ant seed *', [
-    ['HAPPINESS_START', 'Start mood', 0, 100, 1],
-    ['HAPPINESS_JITTER', 'Mood jitter', 0, 50, 1],
-    ['FULLNESS_START', 'Start fullness', 0, 100, 1],
-    ['FULLNESS_JITTER', 'Fullness jitter', 0, 50, 1],
-    ['TEMPERAMENT_SPREAD', 'Temperament spread', 0, 1, 0.05],
+    ['HAPPINESS_START', 'Start mood', 0, 100, 1, 'Happiness a newly born/spawned ant starts with.'],
+    ['HAPPINESS_JITTER', 'Mood jitter', 0, 50, 1, 'Random ± spread on the starting mood, so new ants aren\'t identical.'],
+    ['FULLNESS_START', 'Start fullness', 0, 100, 1, 'Fullness a newly born/spawned ant starts with.'],
+    ['FULLNESS_JITTER', 'Fullness jitter', 0, 50, 1, 'Random ± spread on the starting fullness.'],
+    ['TEMPERAMENT_SPREAD', 'Temperament spread', 0, 1, 0.05, 'Width of each ant\'s hidden "temperament" multiplier, which scales how strongly happiness gains hit it. Wider = more varied personalities.'],
   ]],
   ['Breeding · queens', [
-    ['MATE_URGE_MIN', 'Horniness min * (mood)', 0, 100, 1],
-    ['MATE_URGE_MAX', 'Horniness max * (mood)', 0, 100, 1],
-    ['MATE_CHANCE', 'Mate chance', 0, 1, 0.01],
-    ['CROWD_MATE_STEP', 'Crowd penalty /ant', 0, 0.2, 0.005],
-    ['CROWD_MATE_FLOOR', 'Crowd floor', 0, 1, 0.05],
-    ['POP_CAPACITY', 'Ideal colony size', 10, 500, 5],
-    ['QUEEN_MIN_ANTS', 'Queen needs ≥ ants', 1, 100, 1],
-    ['NURSERY_REQUIRED_ABOVE', 'Nursery needed > ants', 1, 200, 1],
-    ['QUEEN_HIGH', 'Queen arrives ≥', 50, 100, 1],
-    ['QUEEN_LOW', 'Queen leaves <', 0, 60, 1],
-    ['SADIST_SPAWN', 'Sadist queen <', 0, 60, 1],
-    ['SADIST_LEAVE', 'Sadist queen leaves >', 0, 100, 1],
+    ['MATE_URGE_MIN', 'Mate urge min * (mood)', 0, 100, 1, 'An ant will only mate once its happiness reaches a threshold picked at random in this min–max band. Higher = fewer ants ready to breed. * set at birth.'],
+    ['MATE_URGE_MAX', 'Mate urge max * (mood)', 0, 100, 1, 'Top of the mate-readiness band (see min). * set at birth.'],
+    ['MATE_CHANCE', 'Mate chance', 0, 1, 0.01, 'Base probability that a ready pair actually breeds when they meet.'],
+    ['CROWD_MATE_STEP', 'Crowd penalty /ant', 0, 0.2, 0.005, 'How much the mate chance drops for each nearby ant — crowding suppresses breeding.'],
+    ['CROWD_MATE_FLOOR', 'Crowd floor', 0, 1, 0.05, 'The lowest fraction the crowd penalty can push mate chance to, so breeding never fully stops from crowding alone.'],
+    ['POP_CAPACITY', 'Ideal colony size', 10, 500, 5, 'The colony size the happiness bar treats as "full strength" — below it the bar scales down with size, so a tiny colony reads lower even when content.'],
+    ['QUEEN_MIN_ANTS', 'Queen needs ≥ ants', 1, 100, 1, 'Minimum colony size before a queen can arise at all.'],
+    ['NURSERY_REQUIRED_ABOVE', 'Nursery needed > ants', 1, 200, 1, 'Above this colony size, breeding stalls until a nursery has been built (World Building Mode).'],
+    ['QUEEN_HIGH', 'Queen arrives ≥', 50, 100, 1, 'Colony happiness must reach and hold this for a spell before a queen appears.'],
+    ['QUEEN_LOW', 'Queen leaves <', 0, 60, 1, 'If colony happiness falls below this, the queen departs.'],
+    ['SADIST_SPAWN', 'Sadist queen <', 0, 60, 1, 'Sadist mode: the rival queen appears when the MAIN colony\'s happiness drops below this (she feeds on their misery).'],
+    ['SADIST_LEAVE', 'Sadist queen leaves >', 0, 100, 1, 'Sadist mode: the rival queen leaves once the main colony\'s happiness climbs back above this.'],
   ]],
 ];
 
@@ -91,9 +94,10 @@ function buildTuning() {
     g.className = 'tune-group';
     g.textContent = group;
     host.appendChild(g);
-    for (const [key, label, min, max, step] of params) {
+    for (const [key, label, min, max, step, desc] of params) {
       const row = document.createElement('div');
       row.className = 'tune-row';
+      if (desc) row.title = desc;   // hover/long-press to see what the value does
       const head = document.createElement('div');
       head.className = 'tune-head';
       const name = document.createElement('span'); name.textContent = label;
