@@ -254,7 +254,7 @@ function drawPheromones() {
 }
 
 function drawAnt(a) {
-  const r = a.isQueen ? 12 : 4;
+  const r = a.isQueen ? 12 : 3.5;
   ctx.beginPath();
   // Rival colony is a muted jade; poisoned ants of each colony turn an amethyst shade.
   if (a.poisoned) ctx.fillStyle = a.isRed ? '#9f95b5' : '#7d6f9e';
@@ -265,7 +265,7 @@ function drawAnt(a) {
   if (a.carrying) {              // the haul rides just ahead of the ant
     ctx.beginPath();
     ctx.fillStyle = getFoodColor(a.carrying.type);
-    ctx.arc(a.x + Math.cos(a.angle) * 5, a.y + Math.sin(a.angle) * 5, 2.5, 0, Math.PI * 2);
+    ctx.arc(a.x + Math.cos(a.angle) * 3, a.y + Math.sin(a.angle) * 3, 2.2, 0, Math.PI * 2);
     ctx.fill();
   }
 

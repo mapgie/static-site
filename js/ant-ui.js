@@ -247,6 +247,7 @@ function writeSettingsToControls() {
   $('sadist-mode').checked          = sadistMode;
   $('red-aggression-slider').value  = redAggressionLevel;
   $('thickness-slider').value       = penWidth;
+  if ($('mbar-brush')) $('mbar-brush').value = penWidth;
   $('decay-slider').value           = foodDecayRate;
   $('show-spawn-points').checked    = showSpawnPoints;
   if ($('auto-food')) $('auto-food').checked = autoFood;
@@ -260,7 +261,7 @@ function writeSettingsToControls() {
 function setupUI() {
   const on = (id, ev, fn) => $(id)?.addEventListener(ev, fn);
 
-  on('thickness-slider', 'input', e => { penWidth = +e.target.value; });
+  on('thickness-slider', 'input', e => { penWidth = +e.target.value; const b = $('mbar-brush'); if (b) b.value = penWidth; });
 
   // Food effects are a spoiler: hidden until the player asks
   on('food-info', 'click', e => {
@@ -373,10 +374,21 @@ function setupUI() {
   // The bar's food and tool pickers mirror the panel selects both ways, so the
   // two stay in step whichever one you use.
   const mirror = (from, to) => { const s = $(to); if (s) s.value = $(from).value; };
+  // The food picker only makes sense while a food tool is active (tap-to-drop or
+  // paint food); the brush size only while painting, not tapping.
+  const syncMbarTool = () => {
+    const tool = $('mbar-tool') ? $('mbar-tool').value : 'none';
+    const food = $('mbar-food-wrap') || $('mbar-food');
+    const brush = $('mbar-brush-wrap');
+    if (food)  food.style.display  = (tool === 'none' || tool === 'food') ? '' : 'none';
+    if (brush) brush.style.display = (tool === 'none') ? 'none' : '';
+  };
   on('mbar-food',        'change', () => mirror('mbar-food', 'food-type'));
   on('food-type',        'change', () => mirror('food-type', 'mbar-food'));
-  on('mbar-tool',        'change', () => mirror('mbar-tool', 'environment-tool'));
-  on('environment-tool', 'change', () => mirror('environment-tool', 'mbar-tool'));
+  on('mbar-tool',        'change', () => { mirror('mbar-tool', 'environment-tool'); syncMbarTool(); });
+  on('environment-tool', 'change', () => { mirror('environment-tool', 'mbar-tool'); syncMbarTool(); });
+  on('mbar-brush',       'input',  e => { penWidth = +e.target.value; const t = $('thickness-slider'); if (t) t.value = penWidth; });
+  syncMbarTool();
 
   on('pause-resume', 'click', () => { animationPaused = !animationPaused; syncPauseLabels(); });
 

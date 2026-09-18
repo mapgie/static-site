@@ -527,6 +527,13 @@ function spawnNear(parent, isRed) {
 }
 
 function makeFood(x, y, type, extra = {}) {
+  // Keep loose food a buffer in from the edge so it never wedges into a corner
+  // where ants (held off by the same margin) can't reach it. Delivered pantry
+  // drops land at a room spot that's already well inside, so leave those be.
+  if (!extra.delivered && canvas) {
+    x = clamp(x, EDGE_MARGIN, canvas.width  - EDGE_MARGIN);
+    y = clamp(y, EDGE_MARGIN, canvas.height - EDGE_MARGIN);
+  }
   const f = { x, y, type, delivered: false, foundBy: null, age: 0 };
   if (type === 'insect') Object.assign(f, { haulers: [], servings: insectServings(), dropOffset: null, stuck: 0, waited: 0, heading: 0 });
   Object.assign(f, extra);

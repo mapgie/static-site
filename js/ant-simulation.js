@@ -734,7 +734,7 @@ function updateAnts() {
 
     // The canvas edge is a hard boundary (no wrap-around teleporting across walls),
     // so blocked = a wall/soil/water OR off the edge.
-    const M = SOIL_R;
+    const M = EDGE_MARGIN;
     const blocked = (x, y) => x < M || y < M || x > canvas.width - M || y > canvas.height - M || blockedForAnt(x, y);
 
     if (speed > 0 && blocked(nx, ny)) {
@@ -899,8 +899,10 @@ function separateAnts() {
           const d = Math.sqrt(d2), push = (gap - d) / 2;
           const nx = a.x + (dx / d) * push, ny = a.y + (dy / d) * push;
           if (!blockedForAnt(nx, ny)) {
-            a.x = (nx + canvas.width) % canvas.width;
-            a.y = (ny + canvas.height) % canvas.height;
+            // Nudge apart, but keep inside the edge buffer — never wrap across the
+            // canvas, which used to fling an edge ant to the far side.
+            a.x = clamp(nx, EDGE_MARGIN, canvas.width  - EDGE_MARGIN);
+            a.y = clamp(ny, EDGE_MARGIN, canvas.height - EDGE_MARGIN);
           }
         }
       }

@@ -108,6 +108,20 @@ main {
   }
   #mobile-bar select { border: 1px solid #555; padding: 0.55rem 0.4rem; }
   #mobile-bar #mbar-menu { background: #00b4d8; color: #fff; }
+  /* Brush size: an icon + slider sharing one flex cell alongside the selects. */
+  #mbar-brush-wrap {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid #555;
+    border-radius: 6px;
+    background: #333;
+  }
+  .mbar-brush-icon { color: #aaa; font-size: 0.95rem; line-height: 1; }
+  #mbar-brush { flex: 1 1 0; min-width: 0; margin: 0; }
 
   /* The round toggle only appears while the drawer is open, as its close button. */
   main:not(.controls-hidden) #toggle-controls { display: block; }

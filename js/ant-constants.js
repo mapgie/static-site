@@ -68,7 +68,8 @@ const PROTEIN_BOOST_TICKS = 600; // ~10s of extra vigour and mating drive after 
 const SOIL_COLOR = '#6b4423';
 const SOIL_R     = 4;    // radius of a placed soil block (walls are kept thin)
 const DIG_TICKS  = 3;    // in-situ digging ticks to raise one soil block
-const WALL_DRAW  = SOIL_R * 1.8;  // rendered thickness of a soil wall line
+const WALL_DRAW  = SOIL_R * 1.5;  // rendered thickness of a soil wall line (kept a touch thinner than the block spacing so walls read slim)
+const EDGE_MARGIN = 12;  // keep-out buffer at the canvas edge: ants turn back here and dropped food lands no closer, so nothing wedges into a corner
 
 // Nest rooms. The colony auto-builds a walled complex: it plans room sites, then
 // idle ants dig the soil walls block by block, leaving a doorway gap facing the

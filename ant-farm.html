@@ -190,14 +190,6 @@
         <button id="mbar-pause" type="button" title="Pause or resume">Pause</button>
       </div>
       <div class="mbar-row">
-        <select id="mbar-food" aria-label="Food type" title="Food to drop">
-          <option value="sugar">Sugar</option>
-          <option value="fruit">Fruit</option>
-          <option value="protein">Protein</option>
-          <option value="insect">Dead Insect</option>
-          <option value="spoiled">Spoiled</option>
-          <option value="poison">Poison</option>
-        </select>
         <select id="mbar-tool" aria-label="Tool" title="Tap-to-drop food, or drag to paint">
           <option value="none">Tap: food</option>
           <option value="food">Paint food</option>
@@ -206,6 +198,18 @@
           <option value="soil">Soil wall</option>
           <option value="bulldozer">Bulldozer</option>
         </select>
+        <select id="mbar-food" aria-label="Food type" title="Food to drop">
+          <option value="sugar">Sugar</option>
+          <option value="fruit">Fruit</option>
+          <option value="protein">Protein</option>
+          <option value="insect">Dead Insect</option>
+          <option value="spoiled">Spoiled</option>
+          <option value="poison">Poison</option>
+        </select>
+        <label id="mbar-brush-wrap" title="Brush size">
+          <span class="mbar-brush-icon" aria-hidden="true">◍</span>
+          <input type="range" id="mbar-brush" min="1" max="20" value="4" aria-label="Brush size">
+        </label>
       </div>
     </div>
     <div id="config-compare-modal" role="dialog" aria-modal="true" aria-label="Compare configurations">
