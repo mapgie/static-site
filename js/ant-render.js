@@ -76,9 +76,9 @@ function drawRooms() {
   }
   ctx.setLineDash([]);
   // Pass 1: room bodies — an opaque dark disc (a hollow room, and it hides trails
-  // that would otherwise show through) plus a faint colour tint and the centre
-  // symbol. Drawn first, so the soil walls (rings AND corridor side-walls) stroke
-  // cleanly OVER every disc in pass 2 and tuck into the rooms they join.
+  // that would otherwise show through), a faint colour tint, the thin room outline,
+  // and the centre symbol. EVERYTHING that belongs to a room's body goes here, so
+  // pass 2 can be nothing but soil wall lines drawn over the top.
   for (const room of rooms) {
     const spec = ROOM_SPECS[room.type];
     const col = (spec && spec.color) || '#c9a227';
@@ -88,6 +88,13 @@ function drawRooms() {
     ctx.fill();
     ctx.fillStyle = hexToRgba(col, room.built ? 0.16 : 0.07);
     ctx.fill();
+    // The thin room outline lives with the body, NOT with the walls — otherwise one
+    // room's outline can paint over a neighbour's corridor wall.
+    ctx.lineWidth = room.breached ? 2.5 : 1.5;
+    ctx.setLineDash(room.built ? [] : [4, 4]);
+    ctx.strokeStyle = room.breached ? 'rgba(255,60,40,0.9)' : hexToRgba(col, room.built ? 0.9 : 0.5);
+    ctx.stroke();
+    ctx.setLineDash([]);
     if (spec && spec.sym) {   // a symbol at the centre; empty/entry stay unlabelled
       ctx.globalAlpha = room.built ? 1 : 0.7;
       ctx.font = Math.round(room.r * 0.8) + 'px system-ui, sans-serif';
@@ -96,20 +103,12 @@ function drawRooms() {
       ctx.textBaseline = 'alphabetic'; ctx.globalAlpha = 1;
     }
   }
-  // Pass 2: the soil walls. Corridors are TWO side-walls with a dark walkable
-  // channel between them (the black board shows through) — a tunnel an ant threads,
-  // not a solid plug. The ring and the corridor walls are the same soil, stroked
-  // smoothly, so they read as one continuous nest wall with a doorway at each mouth.
+  // Pass 2: the soil wall lines, drawn LAST so they all sit in front of every room
+  // body. Corridors are TWO side-walls with a dark walkable channel between them (the
+  // black board shows through) — a tunnel an ant threads, not a solid plug. Rings and
+  // corridor walls are the same soil, stroked smoothly into one continuous nest wall
+  // with a doorway at each mouth, tucking cleanly into the rooms they join.
   for (const room of rooms) {
-    const spec = ROOM_SPECS[room.type];
-    const col = (spec && spec.color) || '#c9a227';
-    ctx.lineWidth = room.breached ? 2.5 : 1.5;
-    ctx.setLineDash(room.built ? [] : [4, 4]);
-    ctx.strokeStyle = room.breached ? 'rgba(255,60,40,0.9)' : hexToRgba(col, room.built ? 0.9 : 0.5);
-    ctx.beginPath();
-    ctx.arc(room.x, room.y, room.r, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
     strokeWall(room.sites);              // the ring's raised soil
     strokeWall(room.tunnelSites || []);  // the corridor side-walls out to linked rooms
     if (room.barricadeSites) strokeWall(room.barricadeSites);
