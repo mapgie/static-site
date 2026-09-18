@@ -51,6 +51,30 @@ function strokeWall(sites) {
 function drawRooms() {
   if (!worldBuilding) return;
   ctx.save();
+  // Pass 0: a faint "blueprint" line down each planned corridor, shown until BOTH of
+  // its rooms are built. Digging a corridor takes a while, and until it lands the two
+  // side-walls are just stubs poking out of each room — which reads as unconnected
+  // rooms (the very bug this nest is meant to fix). The guide makes the intended link
+  // visible from the moment it's planned, so a half-built nest reads as "wiring itself
+  // up", not "broken". It disappears once the corridor's solid walls take over.
+  const linked = new Set();
+  ctx.setLineDash([5, 6]);
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(201,138,55,0.28)';
+  for (const room of rooms) {
+    for (const id of room.links) {
+      const key = room.id < id ? room.id + '-' + id : id + '-' + room.id;
+      if (linked.has(key)) continue;
+      linked.add(key);
+      const b = rooms.find(r => r.id === id);
+      if (!b || (room.built && b.built)) continue;   // finished corridor: the walls speak for it
+      ctx.beginPath();
+      ctx.moveTo(room.x, room.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+  }
+  ctx.setLineDash([]);
   // Pass 1: room bodies — an opaque dark disc (a hollow room, and it hides trails
   // that would otherwise show through) plus a faint colour tint and the centre
   // symbol. Drawn first, so the soil walls (rings AND corridor side-walls) stroke
