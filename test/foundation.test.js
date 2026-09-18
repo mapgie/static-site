@@ -233,6 +233,78 @@ test('rooms are joined by corridors, and a room needs its walls and corridors to
   assert.strictEqual(hub.built, true, 'ring + corridors done -> built');
 });
 
+test('corridor walls run all the way to the far room\'s ring (no gap at the mouth)', () => {
+  // Each corridor is two walls offset ±hoff from the A→B axis. On the far ring those
+  // offset points sit back from B's centre by sqrt(b.r²−hoff²), so a wall's far end
+  // must land ON B's ring (distance ≈ b.r from B's centre). The old code stopped the
+  // walls a flat b.r short of B's CENTRE, leaving them ~sqrt(b.r²+hoff²)−b.r ≈ 6–9px
+  // adrift of the ring — a gap at every corridor mouth. This asserts they meet.
+  const g = colony(freshApi(), 8);
+  g.planNest(false);
+  const byId = new Map(g.rooms.map(r => [r.id, r]));
+  let checked = 0;
+  for (const a of g.rooms.filter(r => !r.team)) {
+    for (const bId of a.links) {
+      const b = byId.get(bId);
+      if (!b || (a.tunnelSites || []).length === 0) continue;   // walls live on the parent
+      // The a-owned wall sites heading toward b: those nearer b than to any other link.
+      const toward = a.tunnelSites.filter(s => {
+        let best = a; for (const oId of a.links) { const o = byId.get(oId); if (o && Math.hypot(s.x - o.x, s.y - o.y) < Math.hypot(s.x - best.x, s.y - best.y)) best = o; }
+        return best === b;
+      });
+      if (!toward.length) continue;
+      // The far-most site toward b should sit essentially on b's ring.
+      const far = toward.reduce((m, s) => Math.hypot(s.x - a.x, s.y - a.y) > Math.hypot(m.x - a.x, m.y - a.y) ? s : m);
+      const dFromB = Math.hypot(far.x - b.x, far.y - b.y);
+      assert.ok(Math.abs(dFromB - b.r) <= 6 || dFromB < b.r,   // within a soil block of the ring (or inside it)
+        `corridor ${a.type}->${b.type}: wall ends ${dFromB.toFixed(1)}px from ${b.type} centre, ring at ${b.r} (gap at the mouth)`);
+      checked++;
+    }
+  }
+  assert.ok(checked >= 4, `expected to check several corridors, checked ${checked}`);
+});
+
+test('the built nest is geometrically sealed: only the entry door reaches the outside', () => {
+  // Raise the whole nest (place the real soil for every wall site), then flood-fill
+  // the walkable space from a far corner with the entry's OUTER door plugged. If any
+  // room can be reached from outside, a wall has a gap — outsiders would get in and
+  // "nothing crosses a nest wall" is broken. This guards the corridor-mouth seal.
+  const g = colony(freshApi(), 8);
+  g.planNest(false);
+  const white = g.rooms.filter(r => r.team === false);
+  for (const room of white) {
+    for (const s of room.sites.concat(room.tunnelSites || [])) { g.digSoil(s.x, s.y, true); s.done = true; }
+    g.refreshBuilt(room);
+  }
+  g.rebuildEnvGrid();
+
+  const entry = white.find(r => r.type === 'entry');
+  const door = { x: entry.x + Math.cos(entry.gapAngle) * entry.r, y: entry.y + Math.sin(entry.gapAngle) * entry.r };
+  const step = 2, W = g.canvas.width, H = g.canvas.height;   // fine enough to catch a ~6px corridor-mouth gap
+  const cols = Math.ceil(W / step), rows = Math.ceil(H / step), idx = (cx, cy) => cy * cols + cx;
+  const free = new Uint8Array(cols * rows);
+  for (let cy = 0; cy < rows; cy++) for (let cx = 0; cx < cols; cx++) {
+    const x = cx * step, y = cy * step;
+    let blocked = g.blockedForAnt(x, y);
+    if (!blocked && (x - door.x) ** 2 + (y - door.y) ** 2 < 30 * 30) blocked = true;   // plug the legit entrance
+    free[idx(cx, cy)] = blocked ? 0 : 1;
+  }
+  const seen = new Uint8Array(cols * rows), st = [idx(0, 0)]; seen[idx(0, 0)] = 1;
+  while (st.length) {
+    const c = st.pop(), cx = c % cols, cy = (c / cols) | 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = cx + dx, ny = cy + dy;
+      if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+      const n = idx(nx, ny); if (seen[n] || !free[n]) continue; seen[n] = 1; st.push(n);
+    }
+  }
+  for (const room of white) {
+    if (room.type === 'entry') continue;   // the entry legitimately opens outside (plugged above)
+    const cx = Math.round(room.x / step), cy = Math.round(room.y / step);
+    assert.ok(!seen[idx(cx, cy)], `${room.type} is reachable from outside — the nest wall leaks`);
+  }
+});
+
 test('eggs: a mating with a built nursery lays an egg that later hatches', () => {
   const g = freshApi();
   g.spawnPoints = { yellow: [{ x: 200, y: 300, r: 40 }], red: [] };
