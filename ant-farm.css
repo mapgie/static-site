@@ -701,7 +701,8 @@ main.spawn-mode #hud-stats { display: none; }
 .config-row .config-actions button.subtle { background: #555; }
 
 /* --- Compare modal --- */
-#config-compare-modal {
+#config-compare-modal,
+#tuning-info-modal {
   display: none;
   position: fixed;
   inset: 0;
@@ -711,7 +712,21 @@ main.spawn-mode #hud-stats { display: none; }
   justify-content: center;
   padding: 1rem;
 }
-#config-compare-modal.open { display: flex; }
+#config-compare-modal.open,
+#tuning-info-modal.open { display: flex; }
+
+.tune-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.info-body { overflow: auto; margin-top: 0.5rem; }
+.info-group {
+  color: #00b4d8; font-weight: 600; font-size: 0.85rem;
+  margin: 0.9rem 0 0.35rem; padding-bottom: 0.2rem; border-bottom: 1px solid #3a3a3a;
+}
+.info-group:first-child { margin-top: 0; }
+.info-item { display: grid; grid-template-columns: 11rem 1fr; gap: 0.6rem; padding: 0.3rem 0; align-items: baseline; }
+.info-name { color: #eee; font-size: 0.82rem; }
+.info-desc { color: #b8b8b8; font-size: 0.8rem; line-height: 1.35; }
+.info-note { color: #b8b8b8; font-size: 0.8rem; margin: 0 0 0.4rem; }
+@media (max-width: 520px) { .info-item { grid-template-columns: 1fr; gap: 0.1rem; } }
 .compare-panel {
   background: #222;
   border: 1px solid #444;

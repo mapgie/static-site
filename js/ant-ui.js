@@ -19,6 +19,7 @@ window.addEventListener('DOMContentLoaded', () => {
   setupUI();
   buildTuning();
   $('tuning-reset').addEventListener('click', () => { TUNE = { ...TUNE_DEFAULTS }; buildTuning(); saveFarm(); });
+  setupTuningInfo();
   setupConfigUI();
   setupCollapsibleCards();
   updateStats();
@@ -111,6 +112,26 @@ function buildTuning() {
       host.appendChild(row);
     }
   }
+}
+
+// The ℹ️ guide: a modal listing every tuning value and what it does, built from the
+// same TUNABLES the sliders use (labels/descriptions are static, so innerHTML is safe).
+function setupTuningInfo() {
+  const modal = $('tuning-info-modal'), body = $('tuning-info-body'), openBtn = $('tuning-info');
+  if (!modal || !body || !openBtn) return;
+  let html = '<p class="info-note">A <b>*</b> marks values stamped on an ant when it is born — changing one only affects ants spawned afterwards.</p>';
+  for (const [group, params] of TUNABLES) {
+    html += `<div class="info-group">${group}</div>`;
+    for (const [, label, , , , desc] of params) {
+      html += `<div class="info-item"><span class="info-name">${label}</span><span class="info-desc">${desc || ''}</span></div>`;
+    }
+  }
+  body.innerHTML = html;
+  const close = () => modal.classList.remove('open');
+  openBtn.addEventListener('click', () => modal.classList.add('open'));
+  $('tuning-info-close').addEventListener('click', close);
+  modal.addEventListener('click', e => { if (e.target === modal) close(); });   // tap the backdrop to dismiss
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
 }
 
 // Each control card's heading folds its card away, so the growing dashboard

@@ -111,7 +111,10 @@
         <h2>Tuning</h2>
         <p class="hint">Live balance knobs — changes apply instantly and are saved. A <b>*</b> marks values that only affect newly born ants.</p>
         <div id="tuning"></div>
-        <button id="tuning-reset">Reset tuning</button>
+        <div class="tune-actions">
+          <button id="tuning-info" type="button">ℹ️ What each value does</button>
+          <button id="tuning-reset">Reset tuning</button>
+        </div>
       </div>
       <div class="controls-section">
         <h2>Configurations</h2>
@@ -213,6 +216,15 @@
         </div>
         <p class="hint">Rows where the configurations differ are highlighted.</p>
         <div id="config-compare-body" class="compare-body"></div>
+      </div>
+    </div>
+    <div id="tuning-info-modal" role="dialog" aria-modal="true" aria-label="Tuning value guide">
+      <div class="compare-panel">
+        <div class="compare-head">
+          <h2>What each tuning value does</h2>
+          <button id="tuning-info-close" type="button" aria-label="Close">&times;</button>
+        </div>
+        <div id="tuning-info-body" class="info-body"></div>
       </div>
     </div>
   </main>
