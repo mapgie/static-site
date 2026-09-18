@@ -32,7 +32,8 @@ const TRAIL_EVAP  = 0.0016;   // per-frame fade — a quiet trail is gone in ~15
 const DANGER_EVAP = 0.006;    // danger scent fades faster
 const TRAIL_MERGE = 9;        // deposits within this distance reinforce one dot instead of stacking new ones
 const TRAIL_STEP  = 5;        // ticks between deposits while carrying
-const FORAGE_SIGHT = 70;      // a fed forager will close on food it can see this near (short, so distant food still needs a trail)
+const FORAGE_SIGHT = 130;     // a fed forager will close on food it can see this near — wide enough to actually gather scattered food and stock the pantry
+const FORAGE_REACH = 260;     // auto-food mostly lands within this of a nest, so the colony can actually collect it
 
 // Danger response. A main-colony ant that senses danger flees, unless its nest
 // or queen is under threat and the colony is strong and steady enough to rally

@@ -94,7 +94,11 @@ Decay Rate** slider controls how fast fruit ripens and spoiled food turns to poi
 
 By default the world feeds itself: food rains at random over time, weighted by
 rarity — **sugar** often, **fruit** less so, **protein** seldom, and a **dead
-insect** as a rare treat (poison and spoiled never fall on their own). Turn it off
+insect** as a rare treat (poison and spoiled never fall on their own). The rain
+**scales with colony size** — a bigger colony gets more frequent, bigger drops — and
+most of it lands **within foraging range of a nest** so the ants can actually reach
+it, rather than starving beside food scattered clear across the board. (A very large
+colony still settles toward the carrying capacity its food supports.) Turn it off
 with the **Auto food drops** checkbox in the Food panel to hand-feed the colony
 yourself.
 
@@ -255,7 +259,12 @@ walls, water, or a queen.**
 opening to the outside is the **entry**. Rooms are joined by walled **corridors**
 with a genuine walkable channel, and each room's ring has a real **doorway gap**
 sized to that channel. Ants **can't cross walls or water** — they navigate by
-**following walls** to the gaps — so they come and go only through the entry.
+**following walls** to the gaps — so they come and go only through the entry. The
+nest **grows toward open space** (the board's middle) rather than off the nearest
+edge, so a spawn tucked in a corner still spreads inward instead of cramming its
+rooms and entry against the wall. Every unfinished room is dug **in parallel** (each
+builder works the nearest one), so even a big or hand-extended nest gets raised
+without the whole colony piling onto a single room.
 
 **Nursery at the heart.** The **nursery** is planted right on the colony's spawn
 point and anchors the nest; the **throne** and an **empty room** (a hub) branch off

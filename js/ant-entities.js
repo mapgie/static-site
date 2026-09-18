@@ -429,8 +429,14 @@ function buildRoomAt(team, type, cx, cy, manual = true) {
 // at the spawn with the rooms hung off it), grown once. Only the entry opens out.
 function growNest(team) {
   if (rooms.some(r => r.team === team)) return;   // already laid out
-  const a = nestAnchor(team), baseDir = awayFromRival(team);
+  const a = nestAnchor(team);
   const W = canvas.width, H = canvas.height;
+  // Grow the nest toward OPEN SPACE (the board's middle) rather than blindly away
+  // from the rival, so a spawn tucked near an edge spreads inward instead of cramming
+  // the rooms — and the entry — into a corner. Only when the spawn is already central
+  // does the rival direction decide which way it faces.
+  const toCentre = Math.atan2(H / 2 - a.y, W / 2 - a.x);
+  const baseDir = Math.hypot(W / 2 - a.x, H / 2 - a.y) > 120 ? toCentre : awayFromRival(team);
   const tree = (team ? NEST_TREE.red : NEST_TREE.white).root;
 
   const place = (node, parent, dir) => {
@@ -467,19 +473,21 @@ function growNest(team) {
   }
 }
 
-// Reliability backstop: if the room currently being built makes no progress for a
-// long spell (crowding, an unreachable block), finish its remaining walls outright
-// so the nest can never permanently deadlock. Ants are shoved clear, not buried.
+// Reliability backstop: EVERY unbuilt room tracks its own stall, and any that makes
+// no progress for a spell has its remaining walls finished outright — so a whole
+// backlog of rooms (e.g. several hand-placed ones) can never deadlock waiting on one
+// another. Ants are shoved clear, not buried.
 function forceUnstall(team) {
-  const room = rooms.filter(r => r.team === team && !r.built).sort((a, b) => a.order - b.order)[0];
-  if (!room) return;
-  const all = room.sites.concat(room.tunnelSites || []);
-  const done = all.reduce((n, s) => n + (s.done ? 1 : 0), 0);
-  if (done !== room._lastDone) { room._lastDone = done; room._stall = 0; return; }
-  if ((room._stall = (room._stall || 0) + 1) > 600) {   // ~10s with zero progress
-    for (const s of all) if (!s.done && (digSoil(s.x, s.y, true) || soilAt(s.x, s.y))) s.done = true;
-    refreshBuilt(room);
-    room._stall = 0;
+  for (const room of rooms) {
+    if (room.team !== team || room.built) continue;
+    const all = room.sites.concat(room.tunnelSites || []);
+    const done = all.reduce((n, s) => n + (s.done ? 1 : 0), 0);
+    if (done !== room._lastDone) { room._lastDone = done; room._stall = 0; continue; }
+    if ((room._stall = (room._stall || 0) + 1) > 360) {   // ~6s with zero progress
+      for (const s of all) if (!s.done && (digSoil(s.x, s.y, true) || soilAt(s.x, s.y))) s.done = true;
+      refreshBuilt(room);
+      room._stall = 0;
+    }
   }
 }
 

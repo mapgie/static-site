@@ -56,11 +56,32 @@ function autoDropFood() {
   autoFoodTimer += TICK_MS;
   if (autoFoodTimer < autoFoodNext) return;
   autoFoodTimer = 0;
-  autoFoodNext = AUTO_FOOD_MS * (0.6 + Math.random() * 0.8);   // jittered gap so drops aren't metronomic
-  if (foods.length >= MAX_FOOD || !canvas) return;
-  for (let tries = 0; tries < 8; tries++) {
-    const x = Math.random() * canvas.width, y = Math.random() * canvas.height;
-    if (foodSpawnAllowed(x, y)) { addFood(x, y, pickAutoFood(), { size: 5 }); break; }
+  // Feed the colony in proportion to its size: a big colony gets more frequent and
+  // bigger drops so it doesn't simply starve, while a small one keeps the occasional
+  // sparse drip. (The loose-food cap in addFood still bounds the clutter.)
+  const pop = ants.length;
+  const rate = clamp(pop / 10, 1, 12);                       // up to 12× more often
+  autoFoodNext = (AUTO_FOOD_MS / rate) * (0.6 + Math.random() * 0.8);
+  if (!canvas) return;
+  const batch = clamp(Math.round(pop / 12), 1, 12);          // and up to a dozen pieces at once
+  const spots = [...spawnPoints.yellow, ...spawnPoints.red];
+  for (let n = 0; n < batch; n++) {
+    if (foods.length >= MAX_FOOD) break;
+    // Most drops land within a colony's foraging range so the ants can actually reach
+    // them; some still fall out in the open. Food scattered clear across the board
+    // never gets collected, and the colony starves beside a full map.
+    const near = spots.length && Math.random() < 0.75 ? spots[(Math.random() * spots.length) | 0] : null;
+    for (let tries = 0; tries < 8; tries++) {
+      let x, y;
+      if (near) {
+        const ang = Math.random() * Math.PI * 2, rad = near.r + 30 + Math.random() * FORAGE_REACH;
+        x = clamp(near.x + Math.cos(ang) * rad, 0, canvas.width);
+        y = clamp(near.y + Math.sin(ang) * rad, 0, canvas.height);
+      } else {
+        x = Math.random() * canvas.width; y = Math.random() * canvas.height;
+      }
+      if (foodSpawnAllowed(x, y)) { addFood(x, y, pickAutoFood(), { size: 5 }); break; }
+    }
   }
 }
 
@@ -256,14 +277,19 @@ function buildTaskFor(a) {
     const s = nearestUndug(a, room.barricadeSites);
     if (s) return { room, site: s, urgent: true };
   }
-  // 2) Raise the structure: lowest-order unbuilt room, its ring then its tunnel.
-  const mine = rooms.filter(r => r.team === team && !r.built).sort((x, y) => x.order - y.order);
-  for (const room of mine) {
-    // Dig the corridor first, so the room is only walled once it's connected.
+  // 2) Raise the structure. Each builder works the NEAREST unbuilt room (corridor
+  //    first, so a room is only walled once it's connected) — this spreads builders
+  //    across every unfinished room instead of piling the whole colony onto one, so
+  //    a multi-room nest actually gets built in parallel.
+  let best = null, bestSite = null, bd = Infinity;
+  for (const room of rooms) {
+    if (room.team !== team || room.built) continue;
     const s = nearestUndug(a, room.tunnelSites || []) || nearestUndug(a, room.sites);
-    if (s) return { room, site: s, urgent: false };
+    if (!s) continue;
+    const d = dist2(room.x, room.y, a.x, a.y);
+    if (d < bd) { bd = d; best = room; bestSite = s; }
   }
-  return null;
+  return best ? { room: best, site: bestSite, urgent: false } : null;
 }
 
 // Ages fruit → spoiled → (Sadist only) poison. Returns true when the piece should
@@ -584,9 +610,12 @@ function updateAnts() {
         const cap  = a.isRed ? buildCapR : buildCapW;
         if (t && (t.urgent || busy < cap)) { build = t; building = true; if (a.isRed) activeBuildersR++; else activeBuildersW++; }
       }
-      // Hungry with a stocked pantry: head home and eat from the store rather than
-      // starve in the field. Foragers (well-fed) are the ones who bring food in.
-      if (!prey && !a.carrying && !react && a.fullness < a.hungerPoint) feed = nearestColonyFood(a);
+      // Hungry: eat the nearest LOOSE food if any is within reach (handled by the
+      // forage branch below); only when none is near does it trek home to eat from
+      // the pantry store — so ants don't march past food to a distant larder.
+      if (!prey && !a.carrying && !react && a.fullness < a.hungerPoint && !nearestFreshFood(a, SENSE_FOOD)) {
+        feed = nearestColonyFood(a);
+      }
       // A would-be forager still inside the sealed nest can't find food in there —
       // route it out through the entry first, then it forages in the open.
       let exitPt = null;
@@ -738,7 +767,7 @@ function updateAnts() {
     // spell (circling a corner, an obstacle or a doorway) gets kicked in a fresh
     // direction so it can never loop forever. Builders, feeders, haulers and the
     // queen are exempt — they're meant to stay put.
-    if (speed > 0 && !holdStill && !building && !feed && !a.hauling && !a.isQueen) {
+    if (speed > 0 && !holdStill && !feed && !a.hauling && !a.isQueen) {
       a.pMs = (a.pMs || 0) + TICK_MS;
       if (a.pAnchorX === undefined) { a.pAnchorX = a.x; a.pAnchorY = a.y; }
       if (a.pMs >= 1500) {
