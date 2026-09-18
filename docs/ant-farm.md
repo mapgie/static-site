@@ -256,9 +256,9 @@ walls, water, or a queen.**
 
 **Auto-built sealed nest.** Once the colony is a handful of ants strong, it digs a
 **sealed nest**: a connected tree of rooms, grown from the spawn, where the only
-opening to the outside is the **entry**. Rooms are joined by walled **corridors**
-with a genuine walkable channel, and each room's ring has a real **doorway gap**
-sized to that channel. Ants **can't cross walls or water** — they navigate by
+opening to the outside is the **entry**. Rooms are joined by **corridors** — drawn as
+solid soil **tubes** running room-to-room, with a walkable channel down the middle —
+and each room's ring has a real **doorway gap** where its tube meets it. Ants **can't cross walls or water** — they navigate by
 **following walls** to the gaps — so they come and go only through the entry. The
 nest **grows toward open space** (the board's middle) rather than off the nearest
 edge, so a spawn tucked in a corner still spreads inward instead of cramming its

@@ -51,11 +51,33 @@ function strokeWall(sites) {
 function drawRooms() {
   if (!worldBuilding) return;
   ctx.save();
+  // Corridors first, as solid brown tubes joining linked rooms (drawn UNDER the room
+  // discs so the tube ends tuck cleanly into each room). This reads as a real tunnel
+  // instead of the two thin sketchy wall-lines.
+  ctx.strokeStyle = SOIL_COLOR;
+  ctx.lineWidth = TUNNEL_HALF_W * 2;
+  ctx.lineCap = 'round';
+  const drawn = new Set();
+  for (const room of rooms) {
+    for (const id of room.links) {
+      const key = room.id < id ? room.id + '-' + id : id + '-' + room.id;
+      if (drawn.has(key)) continue;
+      drawn.add(key);
+      const b = rooms.find(r => r.id === id);
+      if (!b) continue;
+      ctx.beginPath();
+      ctx.moveTo(room.x, room.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+  }
   for (const room of rooms) {
     const spec = ROOM_SPECS[room.type];
     const col = (spec && spec.color) || '#c9a227';
     ctx.beginPath();
     ctx.arc(room.x, room.y, room.r, 0, Math.PI * 2);
+    ctx.fillStyle = '#080808';                       // opaque dark base: a hollow room, and it masks the corridor tube inside the ring
+    ctx.fill();
     ctx.fillStyle = hexToRgba(col, room.built ? 0.16 : 0.07);
     ctx.fill();
     ctx.lineWidth = room.breached ? 2.5 : 1.5;
@@ -70,9 +92,9 @@ function drawRooms() {
       ctx.fillText(spec.sym, room.x, room.y + 1);
       ctx.textBaseline = 'alphabetic'; ctx.globalAlpha = 1;
     }
-    // Smooth soil walls over the disc.
+    // Smooth soil ring over the disc (corridors are drawn as tubes above, so their
+    // twin walls aren't stroked here).
     strokeWall(room.sites);
-    if (room.tunnelSites) strokeWall(room.tunnelSites);
     if (room.barricadeSites) strokeWall(room.barricadeSites);
   }
   // A room the player is dragging into place: dashed ghost, red if it overlaps.
