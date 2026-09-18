@@ -275,20 +275,33 @@ function roomWallSites(cx, cy, r, gaps) {
   return sites;
 }
 
-// A corridor whose two walls START at a room's doorway edges and run straight to a
-// target (the junction, or another room), so the corridor joins the ring wall
+// A corridor whose two walls START at a room's doorway edges and run straight to
+// the FAR room's matching doorway edges, so the corridor joins both ring walls
 // with no gap and leaves a channel exactly as wide as the doorway.
+//
+// The walls run parallel to the A→B axis at ±hoff (the door-edge offset). On the
+// far ring those ±hoff points sit sqrt(b.r² − hoff²) back from B's centre — closer
+// than b.r — so the walls must reach that far. Stopping them a flat `b.r` short of
+// B's centre (as the old code did) left every corridor ~1 block shy of the far
+// doorway and opened a gap at each mouth that the nest leaked through.
 function corridorWalls(cx, cy, r, gapAngle, gapArc, tx, ty, endPad = 0) {
-  const doorx = cx + Math.cos(gapAngle) * r, doory = cy + Math.sin(gapAngle) * r;
-  const p1x = cx + Math.cos(gapAngle + gapArc / 2) * r, p1y = cy + Math.sin(gapAngle + gapArc / 2) * r;
-  const p2x = cx + Math.cos(gapAngle - gapArc / 2) * r, p2y = cy + Math.sin(gapAngle - gapArc / 2) * r;
-  const len = Math.max(0, Math.hypot(tx - doorx, ty - doory) - endPad);
-  const ux = Math.cos(gapAngle), uy = Math.sin(gapAngle);
+  const ux = Math.cos(gapAngle), uy = Math.sin(gapAngle);   // A→B axis (unit)
+  const px = -uy, py = ux;                                  // perpendicular (unit)
+  const hoff = r * Math.sin(gapArc / 2);                    // channel half-width = A's door-edge offset
+  const bR   = endPad || 0;                                 // far room radius
+  const D    = Math.hypot(tx - cx, ty - cy);                // centre-to-centre distance
+  const sA   = Math.sqrt(Math.max(0, r * r   - hoff * hoff)); // A door edge, axial from A's centre
+  const sBack = Math.sqrt(Math.max(0, bR * bR - hoff * hoff)); // B door edge, axial back from B's centre
+  const len  = Math.max(0, D - sBack - sA);                 // wall run, from A's door edge onward
+  const doorx = cx + ux * sA, doory = cy + uy * sA;         // channel centre at A's mouth
   const sites = [];
-  for (let d = 0; d <= len; d += ROOM_SITE_STEP) {
-    const mx = doorx + ux * d, my = doory + uy * d;   // channel centre (the ant works from here)
-    for (const [ex, ey] of [[p1x, p1y], [p2x, p2y]]) {
-      sites.push({ x: clamp(ex + ux * d, 0, canvas.width), y: clamp(ey + uy * d, 0, canvas.height),
+  const n = Math.max(1, Math.ceil(len / ROOM_SITE_STEP));   // even spacing, both ends included
+  for (let k = 0; k <= n; k++) {
+    const d = (len * k) / n;
+    const mx = doorx + ux * d, my = doory + uy * d;         // channel centre (the ant works from here)
+    for (const side of [1, -1]) {
+      sites.push({ x: clamp(mx + px * hoff * side, 0, canvas.width),
+                   y: clamp(my + py * hoff * side, 0, canvas.height),
                    ax: clamp(mx, 0, canvas.width), ay: clamp(my, 0, canvas.height), done: false, tries: 0 });
     }
   }
