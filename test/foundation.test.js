@@ -117,12 +117,11 @@ test('nursery gate: past the threshold, no births without a built nursery', () =
   const bigColony = g => { g.spawnPoints = { yellow: [{ x: 200, y: 300, r: 40 }], red: [] };
                            g.ants = []; for (let i = 0; i < g.TUNE.NURSERY_REQUIRED_ABOVE + 1; i++) g.ants.push(mk(g)); };
 
-  // No nursery -> the gate blocks every attempt, and posts the nudge.
+  // No nursery -> the gate blocks every attempt.
   const g = freshApi(); g.rooms = []; bigColony(g);
   let births = 0;
   for (let i = 0; i < 200; i++) { const n = g.ants.length; g.tryBreeding(g.ants[0]); if (g.ants.length > n) births++; g.ants.length = Math.min(g.ants.length, g.TUNE.NURSERY_REQUIRED_ABOVE + 1); }
   assert.strictEqual(births, 0, 'blocked without a nursery');
-  assert.ok(g.nurseryNoticeUntil > Date.now() - 1000, 'the "needs a nursery" nudge was posted');
 
   // A built nursery reopens breeding — as eggs laid in the nursery.
   const g2 = freshApi(); bigColony(g2);

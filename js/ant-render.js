@@ -142,38 +142,6 @@ function hexToRgba(hex, a) {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
-// A transient nudge over the map (e.g. "the colony needs a nursery to grow").
-function drawCanvasNotice() {
-  if (Date.now() >= nurseryNoticeUntil) { noticeBounds = null; return; }
-  const msg = 'The colony needs a built nursery to keep growing';
-  ctx.save();
-  ctx.font = '13px system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  const pad = 24, closeW = 22;
-  const w = ctx.measureText(msg).width + pad + closeW;
-  const cx = canvas.width / 2, x = cx - w / 2, y = 16, h = 26;
-  ctx.fillStyle = 'rgba(20,20,20,0.8)';
-  ctx.strokeStyle = 'rgba(200,111,176,0.9)';
-  roundRect(x, y, w, h, 6); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#f2d6ea';
-  ctx.fillText(msg, cx - closeW / 2, y + 17);
-  // A close (✕) affordance on the right; its rect is stored so a tap can dismiss it.
-  ctx.fillStyle = '#e0a8cf';
-  ctx.fillText('✕', x + w - closeW / 2, y + 17);
-  noticeBounds = { x, y, w, h };   // tap anywhere on the bar to dismiss
-  ctx.restore();
-}
-
-function roundRect(x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
-
 function getFoodColor(type) {
   switch (type) {
     case 'protein': return '#ef9a9a';

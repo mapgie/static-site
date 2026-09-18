@@ -36,7 +36,6 @@ const TUNABLES = [
     ['H_EAT', 'Eat', 0, 20, 0.5, 'Happiness gained each time an ant eats a serving of food.'],
     ['H_GOOD_FOOD', 'Good-food bonus', 0, 20, 0.5, 'Extra happiness on top of Eat when the meal is protein or an insect (richer food, bigger lift).'],
     ['H_MATE', 'Mate', 0, 30, 0.5, 'Happiness both partners gain when they successfully mate.'],
-    ['H_DELIVER', 'Deliver food', 0, 20, 0.5, 'Happiness an ant gains for carrying food home and delivering it to the store/pantry.'],
     ['H_SATIATED', 'Well-fed /s', 0, 10, 0.1, 'Happiness gained per second while an ant\'s fullness is above the Well-fed level.'],
     ['H_SURVIVE', 'Survive /s (main)', 0, 10, 0.1, 'Happiness the MAIN colony gains each second it goes un-attacked (only after the calm delay below).'],
     ['H_ATTACK', 'Kill (rival)', 0, 20, 0.5, 'Happiness a RIVAL ant gains for killing a main-colony ant (rivals thrive on kills, not food security).'],
@@ -328,7 +327,7 @@ function setupUI() {
 
   on('destroy-world', 'click', () => {
     ants = []; foods = []; pheromones = []; environment = []; environmentHistory = [];
-    rooms = []; nextRoomId = 1; eggs = []; nurseryNoticeUntil = 0; placingRoom = null;
+    rooms = []; nextRoomId = 1; eggs = []; placingRoom = null;
     queens.white = queens.red = null;
     seedDefaultSpawnPoints();
     whiteHappiness = redHappiness = 50; whiteCalmMs = 0;
@@ -342,7 +341,7 @@ function setupUI() {
   // Tear down just the nests: rooms, their soil walls and any eggs, leaving painted
   // walls, water, loose food and the ants where they are.
   on('destroy-nest', 'click', () => {
-    rooms = []; nextRoomId = 1; eggs = []; nurseryNoticeUntil = 0; placingRoom = null;
+    rooms = []; nextRoomId = 1; eggs = []; placingRoom = null;
     environment = environment.filter(o => !(o.type === 'soil' && o.room));
     activeBuildersW = activeBuildersR = 0;
     markEnvDirty();
@@ -418,16 +417,8 @@ function setupUI() {
   // Single click with no tool selected drops one piece of food
   canvas.addEventListener('click', e => {
     if (placingRoom) { placingPointerMove(e); return; }   // tap moves the room being placed
-    const c = getCanvasCoords(e);
-    // Tapping the "needs a nursery" nudge dismisses it (and eats the tap so it
-    // doesn't also drop food underneath).
-    if (noticeBounds && c.x >= noticeBounds.x && c.x <= noticeBounds.x + noticeBounds.w &&
-        c.y >= noticeBounds.y && c.y <= noticeBounds.y + noticeBounds.h) {
-      nurseryNoticeUntil = 0; noticeBounds = null;
-      nurseryNoticeMuteMs = Date.now() + NURSERY_NOTICE_MUTE_MS;   // don't nag again for a bit
-      return;
-    }
     if (maintenance || $('environment-tool').value !== 'none') return;
+    const c = getCanvasCoords(e);
     if (addFood(c.x, c.y, $('food-type').value)) saveFarm();
   });
 

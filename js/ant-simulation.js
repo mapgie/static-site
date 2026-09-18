@@ -31,7 +31,6 @@ function animate() {
   if (queens.white) drawAnt(queens.white);
   if (queens.red)   drawAnt(queens.red);
   for (const a of ants) drawAnt(a);
-  drawCanvasNotice();
   if (maintenance) drawMaintenanceBanner();
 
   if ((statsTimer += TICK_MS) >= 250) { statsTimer = 0; updateStats(); }
@@ -450,9 +449,9 @@ function dropOff(ant) {
   // protein two, a poison drop a whole crowd. units:0 — it's a meal now, not a haul.
   const extra = { delivered: true, foundBy: ant.id, age: c.age, team: ant.isRed,
                   size: c.size, servings: deliveredServings(c.type), units: 0 };
-  // If the nest is full the haul waits on the ant until there's room.
+  // If the nest is full the haul waits on the ant until there's room. Delivering
+  // isn't a happiness reward in itself — the payoff is the colony eating the store.
   if (!addFood(t.x, t.y, c.type, extra)) return;
-  bumpHappiness(ant, TUNE.H_DELIVER);   // colony-building: food is home
   ant.carrying = null;
   ant.dropOffset = null;
   ant.carryTicks = 0;
@@ -918,11 +917,10 @@ function tryBreeding(a) {
     if (!allowRedBreeding || countRedAnts() >= MAX_RED_ANTS) return;
   } else if (countWhiteAnts() >= MAX_WHITE_ANTS) return;
 
-  // Once a colony is past a certain size, growth needs somewhere to raise the
-  // young: no built nursery, no more births (World Building Mode only). A brief
-  // on-canvas nudge tells the player why the colony has stopped growing.
+  // Once a colony is past a certain size, growth needs somewhere to raise the young:
+  // no built nursery, no more births (World Building Mode only). The colony auto-digs
+  // a nursery, so this rarely bites and needs no on-screen warning.
   if (worldBuilding && !a.isRed && countWhiteAnts() >= TUNE.NURSERY_REQUIRED_ABOVE && !hasBuiltRoom(false, 'nursery')) {
-    if (Date.now() >= nurseryNoticeMuteMs) nurseryNoticeUntil = Date.now() + ROOM_MSG_MS;   // stays dismissed for a while after a tap
     return;
   }
 

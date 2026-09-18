@@ -117,8 +117,6 @@ const CORRIDOR_LEN = 40;   // gap between two connected rooms, spanned by a corr
 const ROOM_SITE_STEP = SOIL_R * 2.2;  // spacing of wall blocks — wide as it can be while overlapping blocks (r+3) still seal, so walls are solid with fewer blocks to dig
 const MIN_BUILD_ANTS = 6;     // the colony only starts building once it's this many strong
 const BUILD_SENSE    = 4000;  // a well-fed idle ant will return from anywhere to work the nest (until it's done)
-const ROOM_MSG_MS    = 4000;  // how long the "needs a nursery" nudge shows
-const NURSERY_NOTICE_MUTE_MS = 45000;  // after the player dismisses the nudge, stay quiet this long
 const MAX_BUILDERS   = 5;     // floor on how many ants dig at once; the cap also scales with colony size
 const BUILDER_SHARE  = 0.6;   // up to this fraction of a colony can be on the nest at once
 const ANT_SEP        = 10;    // ants keep at least this far apart, so they don't stack/walk on each other
@@ -165,7 +163,6 @@ const TUNE_DEFAULTS = {
   H_EAT: 5,          // any meal
   H_GOOD_FOOD: 6,    // extra for protein / fruit / insect
   H_MATE: 8,         // a successful pairing (both parents)
-  H_DELIVER: 5,      // colony-building: dropping food at the nest
   H_SATIATED: 2.5,   // per second while well-fed
   H_SURVIVE: 1.5,    // per second, main colony only, while unattacked
   H_ATTACK: 6,       // per kill, antagonist only (replaces the survival tick)

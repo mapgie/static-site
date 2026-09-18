@@ -19,7 +19,7 @@ const STATE = [
   'worldBuilding', 'autoFood', 'autoFoodTimer', 'autoFoodNext', 'animationPaused',
   'whiteHappiness', 'redHappiness', 'TUNE', 'matingSpeed', 'nextAntId',
   'envDirty', 'whiteCalmMs', 'killedWhite', 'killedRed', 'redAggressionLevel',
-  'rooms', 'nextRoomId', 'nurseryNoticeUntil', 'eggs',
+  'rooms', 'nextRoomId', 'eggs',
   'sadistMode', 'poisonReadyMs', 'activeBuildersW', 'activeBuildersR',
   'spawnedWhite', 'matedWhite', 'spawnedRed', 'matedRed', 'totalBornWhite',
   'whiteQueenReadyMs'

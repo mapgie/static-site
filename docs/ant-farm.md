@@ -189,7 +189,6 @@ Happiness **rises** from:
 - eating (a bigger lift for protein, fruit, or insect)
 - being well-fed (fullness high)
 - mating (both parents)
-- delivering food to the nest (colony-building)
 - **main colony:** a slow background lift the longer the colony goes unattacked
 - **rival colony:** a boost for each ant it kills, in place of the survival lift
 
