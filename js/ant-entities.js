@@ -352,10 +352,37 @@ function makeRoom(team, type, cx, cy, manual = false) {
 }
 
 // Open a doorway in a room's ring toward `angle`, rebuilding its wall around it.
+// The block positions are fixed for a given room, so dig progress is carried over:
+// wiring a new room into a FINISHED one asks only for the new work, never a full
+// re-dig of the standing ring (which sent builders frantic). The wall soil that
+// used to sit where the doorway now opens is cleared, so the door isn't left blocked.
 function addGap(room, angle) {
   if (!room.gaps.length) room.gapAngle = angle;   // the first opening is the "primary" (barricade target)
-  room.gaps.push({ angle, arc: gapArcFor(room.r) });
+  const arc = gapArcFor(room.r);
+  room.gaps.push({ angle, arc });
+  const prev = room.sites || [];
   room.sites = roomWallSites(room.x, room.y, room.r, room.gaps);
+  for (const s of room.sites) {
+    for (const p of prev) {
+      if (p.done && Math.abs(p.x - s.x) < 0.5 && Math.abs(p.y - s.y) < 0.5) { s.done = true; break; }
+    }
+  }
+  clearRingSoilInGap(room, angle, arc);
+}
+
+// Remove this room's own wall soil that now falls inside a doorway gap, so an opened
+// door is a real opening rather than a rendered gap with a leftover block wedged in it.
+function clearRingSoilInGap(room, angle, arc) {
+  let removed = false;
+  for (let i = environment.length - 1; i >= 0; i--) {
+    const o = environment[i];
+    if (o.type !== 'soil' || !o.room) continue;
+    if (Math.abs(Math.hypot(o.x - room.x, o.y - room.y) - room.r) > SOIL_R * 2) continue;
+    if (Math.abs(angleDiff(Math.atan2(o.y - room.y, o.x - room.x), angle)) < arc / 2) {
+      environment.splice(i, 1); removed = true;
+    }
+  }
+  if (removed) markEnvDirty();
 }
 
 // Wire two rooms together: a doorway in each facing the other, plus a corridor
