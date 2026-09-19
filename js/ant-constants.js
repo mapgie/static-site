@@ -10,6 +10,16 @@
 'use strict';
 
 const SAVE_KEY       = 'antFarmSave';
+// The simulation runs on a FIXED logical board, independent of how big the
+// canvas is drawn on screen. Everything (ant positions, spawn points, nest
+// rooms, walls) lives in these coordinates and is stored in them, so a world
+// looks the same and keeps its layout on every device — resizing the display
+// only rescales the picture, it never moves anything. The canvas bitmap is set
+// to this size once and never changed; CSS scales it to fit the viewport, and a
+// view transform handles pan/zoom. 1000x900 covers the largest board the old
+// responsive canvas ever produced, so existing saves load without shifting.
+const WORLD_W        = 1000;
+const WORLD_H        = 900;
 const MAX_WHITE_ANTS = 500;
 const MAX_RED_ANTS   = 500;
 const MAX_FOOD       = 300;

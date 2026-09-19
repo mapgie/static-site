@@ -37,10 +37,8 @@
       </div>
       <div class="controls-section">
         <h2>Food</h2>
-        <div class="label-row">
-          <label for="food-type">Select Food:</label>
-          <button type="button" id="food-info" class="info-btn" aria-expanded="false" aria-controls="food-legend" title="Reveal what each food does (spoiler)">i</button>
-        </div>
+        <button type="button" id="food-info" class="info-btn card-info" aria-expanded="false" aria-controls="food-legend" title="Reveal what each food does (spoiler)" aria-label="Reveal what each food does">i</button>
+        <label for="food-type">Select Food:</label>
         <select id="food-type">
           <option value="sugar">Sugar</option>
           <option value="fruit">Fruit</option>
@@ -110,9 +108,9 @@
       <div class="controls-section" data-collapsed="true">
         <h2>Tuning</h2>
         <p class="hint">Live balance knobs — changes apply instantly and are saved. A <b>*</b> marks values that only affect newly born ants.</p>
+        <button id="tuning-info" class="info-btn card-info" type="button" aria-haspopup="dialog" title="What each value does" aria-label="What each value does">i</button>
         <div id="tuning"></div>
         <div class="tune-actions">
-          <button id="tuning-info" type="button">ℹ️ What each value does</button>
           <button id="tuning-reset">Reset tuning</button>
         </div>
       </div>
@@ -151,6 +149,10 @@
     <div id="controls-backdrop"></div>
     <button id="toggle-controls" type="button" aria-label="Show controls" aria-expanded="false" title="Show controls">&#9776;</button>
     <div class="canvas-container">
+      <!-- The stage shrink-wraps the board so every overlay (mood bars, HUD,
+           zoom + eye toggles, spawn strip) anchors to the canvas itself, however
+           the canvas is scaled to fit the viewport. -->
+      <div class="canvas-stage">
       <div id="happiness-bar-container" title="Colony happiness">
         <div id="happiness-bar"></div>
       </div>
@@ -167,6 +169,13 @@
         <svg class="eye-open" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
         <svg class="eye-shut" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20C5 20 1 12 1 12a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
       </button>
+      <!-- Map navigation: zoom in/out and reset the view. Pinch and two-finger
+           drag do the same on touch; the wheel and middle-drag on a desktop. -->
+      <div id="view-controls" aria-label="Zoom the map">
+        <button id="zoom-in" type="button" title="Zoom in" aria-label="Zoom in">+</button>
+        <button id="zoom-out" type="button" title="Zoom out" aria-label="Zoom out" disabled>&minus;</button>
+        <button id="zoom-reset" type="button" title="Reset view" aria-label="Reset view">&#8982;</button>
+      </div>
       <!-- On-canvas spawn editing: a floating tool strip, shown only while the
            maintenance view is open, so points can be managed without the side
            menu. -->
@@ -180,7 +189,8 @@
         <button id="sq-delete" type="button" title="Delete the selected point" disabled>Delete</button>
         <button id="sq-done" type="button" title="Finish editing spawn points">Done</button>
       </div>
-      <canvas id="antCanvas" width="1000" height="600" aria-label="Ant farm"></canvas>
+      <canvas id="antCanvas" width="1000" height="900" aria-label="Ant farm"></canvas>
+      </div>
     </div>
     <div id="mobile-bar" aria-label="Quick controls">
       <div class="mbar-row">
