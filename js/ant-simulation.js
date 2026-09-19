@@ -6,7 +6,9 @@
 // ---------------------------------------------------------------------------
 function animate() {
   if (envDirty) rebuildEnvGrid();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);          // clear in screen space
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  applyViewTransform();                        // then draw the world through the pan/zoom
   drawRooms();
   drawEnvironment();
   drawEggs();
@@ -31,6 +33,8 @@ function animate() {
   if (queens.white) drawAnt(queens.white);
   if (queens.red)   drawAnt(queens.red);
   for (const a of ants) drawAnt(a);
+
+  ctx.setTransform(1, 0, 0, 1, 0, 0);          // chrome sits over the map, unscaled
   if (maintenance) drawMaintenanceBanner();
 
   if ((statsTimer += TICK_MS) >= 250) { statsTimer = 0; updateStats(); }

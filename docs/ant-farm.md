@@ -335,7 +335,21 @@ Both modes are covered by the test suite (`npm test`).
 ## Controls
 
 The control panel is a column of **collapsible cards** — click a card's heading to
-fold it away; each card remembers whether you left it open.
+fold it away (buttons and all); each card remembers whether you left it open. A card
+with extra detail carries a small round **"i"** at the right of its heading — the same
+affordance everywhere: **Food**'s reveals its legend inline, **Tuning**'s opens the
+value guide.
+
+A **quick bar** stays docked below the map with the buttons you reach for most — add
+an ant or a rival, pause, and the tool / food / brush pickers — so you rarely need the
+full panel open. On a phone it spans the bottom in two rows and gains a **Menu** button
+that opens the controls drawer; on desktop the panel is always there, so the Menu
+button is dropped.
+
+The map itself can be **panned and zoomed**: **pinch** and **two-finger drag** on a
+touchscreen, the **wheel** (zoom) and **middle-drag** (pan) on a desktop, or the
+**＋ / − / reset** buttons stacked under the eye toggle. Zooming never pulls the board
+edge into view, so the whole world stays reachable.
 
 An **eye toggle** in the top-right corner of the map folds the on-canvas overlay
 (the happiness bars and the population readout) away for a clean view, and back;

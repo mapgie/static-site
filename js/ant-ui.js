@@ -145,6 +145,16 @@ function setupCollapsibleCards() {
     head.setAttribute('role', 'button');
     head.setAttribute('tabindex', '0');
     const key = 'antfarm-collapsed-' + (head.textContent.trim() || idx);
+    // A card's "more info" button (the little "i") rides in the heading, so every
+    // card exposes its extra detail the same way. It keeps its own click (reveal a
+    // legend, open a modal…) and must not fold the card, so swallow the bubble.
+    // Moved after the storage key is derived, so the appended "i" never taints it.
+    const info = sec.querySelector('.card-info');
+    if (info) {
+      head.appendChild(info);
+      info.addEventListener('click', e => e.stopPropagation());
+      info.addEventListener('keydown', e => e.stopPropagation());
+    }
     const apply = collapsed => {
       sec.classList.toggle('collapsed', collapsed);
       head.setAttribute('aria-expanded', String(!collapsed));
@@ -192,6 +202,59 @@ function setHudHidden(hidden) {
   try { localStorage.setItem(HUD_HIDE_KEY, hidden ? '1' : '0'); } catch (e) { /* private mode */ }
 }
 
+// ---------------------------------------------------------------------------
+// Map view: pan & zoom. The world is the size of the canvas bitmap, so at scale
+// 1 the board fills the view exactly; zooming in lets you inspect a crowd, and
+// panning (two-finger drag, middle-drag, or the wheel) moves within the bounds.
+// ---------------------------------------------------------------------------
+const MAX_ZOOM = 5;
+
+function applyViewTransform() {
+  ctx.setTransform(view.scale, 0, 0, view.scale, view.x, view.y);
+}
+
+// Keep the whole board covering the viewport: never zoom out past a full fit,
+// and never pan the edge of the world inside the frame.
+function clampView() {
+  const W = canvas.width, H = canvas.height;
+  view.scale = clamp(view.scale, 1, MAX_ZOOM);
+  view.x = clamp(view.x, W * (1 - view.scale), 0);
+  view.y = clamp(view.y, H * (1 - view.scale), 0);
+}
+
+// Zoom by `factor` while pinning the world point under (bx, by) — bitmap
+// coordinates — so the spot beneath the fingers / cursor stays put.
+function zoomAt(bx, by, factor) {
+  const prev = view.scale;
+  const next = clamp(prev * factor, 1, MAX_ZOOM);
+  if (next === prev) return;
+  view.x = bx - (bx - view.x) * (next / prev);
+  view.y = by - (by - view.y) * (next / prev);
+  view.scale = next;
+  clampView();
+}
+
+function zoomByButton(factor) {
+  zoomAt(canvas.width / 2, canvas.height / 2, factor);
+  refreshViewControls();
+}
+
+function resetView() {
+  view.scale = 1; view.x = 0; view.y = 0;
+  refreshViewControls();
+}
+
+// Reveal the reset button only when zoomed, and grey out a zoom button that
+// can't do anything more.
+function refreshViewControls() {
+  const zoomed = view.scale > 1.001;
+  const wrap = canvas && canvas.parentElement;
+  if (wrap) wrap.classList.toggle('view-zoomed', zoomed);
+  const zi = $('zoom-in'), zo = $('zoom-out');
+  if (zo) zo.disabled = !zoomed;
+  if (zi) zi.disabled = view.scale >= MAX_ZOOM - 0.001;
+}
+
 function resizeCanvas() {
   const container = canvas.parentElement;
   const cs = getComputedStyle(container);
@@ -211,6 +274,8 @@ function resizeCanvas() {
   for (const list of [spawnPoints.yellow, spawnPoints.red]) {
     for (const s of list) { s.x = clamp(s.x, 0, width); s.y = clamp(s.y, 0, height); }
   }
+  clampView();          // the board changed size — keep the zoom within its new bounds
+  refreshViewControls();
 }
 
 function readSettingsFromControls() {
@@ -439,6 +504,7 @@ function setupUI() {
   const endDraw   = () => { if (placingRoom || maintenance) return maintPointerUp(); lastX = lastY = lastFoodX = lastFoodY = null; };
 
   canvas.addEventListener('mousedown', e => {
+    if (e.button === 1) { startPan(e); e.preventDefault(); return; }   // middle button pans
     if (e.button !== 0) return;
     startDraw(e);
     canvas.addEventListener('mousemove', handleDraw);
@@ -447,13 +513,70 @@ function setupUI() {
     endDraw();
     canvas.removeEventListener('mousemove', handleDraw);
   }));
+
+  // --- Map navigation: wheel to zoom, middle-drag / two-finger to pan ---------
+  let panning = null;   // active middle-button pan { x, y } in client px
+  const startPan = e => { panning = { x: e.clientX, y: e.clientY }; canvas.classList.add('panning'); };
+  window.addEventListener('mousemove', e => {
+    if (!panning) return;
+    const r = canvas.getBoundingClientRect();
+    view.x += (e.clientX - panning.x) * (canvas.width  / r.width);
+    view.y += (e.clientY - panning.y) * (canvas.height / r.height);
+    panning = { x: e.clientX, y: e.clientY };
+    clampView(); refreshViewControls();
+  });
+  window.addEventListener('mouseup', () => { if (panning) { panning = null; canvas.classList.remove('panning'); } });
+
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const p = eventBitmapCoords(e);
+    zoomAt(p.x, p.y, Math.exp(-e.deltaY * 0.0015));
+    refreshViewControls();
+  }, { passive: false });
+
+  on('zoom-in',    'click', () => zoomByButton(1.4));
+  on('zoom-out',   'click', () => zoomByButton(1 / 1.4));
+  on('zoom-reset', 'click', resetView);
+
+  // A pinch is measured in bitmap coordinates: the two touches' midpoint (to pan)
+  // and the distance between them (to scale).
+  const pinchState = e => {
+    const r = canvas.getBoundingClientRect();
+    const sx = canvas.width / r.width, sy = canvas.height / r.height;
+    const ax = (e.touches[0].clientX - r.left) * sx, ay = (e.touches[0].clientY - r.top) * sy;
+    const bx = (e.touches[1].clientX - r.left) * sx, by = (e.touches[1].clientY - r.top) * sy;
+    return { cx: (ax + bx) / 2, cy: (ay + by) / 2, d: Math.hypot(bx - ax, by - ay) };
+  };
+  let pinch = null, touchDrawing = false;
+
   canvas.addEventListener('touchstart', e => {
+    if (e.touches.length >= 2) {                 // two fingers: pan / zoom the map
+      if (touchDrawing) { endDraw(); canvas.removeEventListener('touchmove', handleDraw); touchDrawing = false; }
+      e.preventDefault();
+      pinch = pinchState(e);
+      return;
+    }
+    touchDrawing = true;
     startDraw(e);
     canvas.addEventListener('touchmove', handleDraw, { passive: false });
   }, { passive: false });
-  ['touchend', 'touchcancel'].forEach(evt => canvas.addEventListener(evt, () => {
+
+  canvas.addEventListener('touchmove', e => {
+    if (!pinch || e.touches.length < 2) return;
+    e.preventDefault();
+    const now = pinchState(e);
+    view.x += now.cx - pinch.cx;                 // follow the fingers (pan)
+    view.y += now.cy - pinch.cy;
+    if (pinch.d > 0 && now.d > 0) zoomAt(now.cx, now.cy, now.d / pinch.d);   // spread / squeeze (zoom)
+    clampView(); refreshViewControls();
+    pinch = now;
+  }, { passive: false });
+
+  ['touchend', 'touchcancel'].forEach(evt => canvas.addEventListener(evt, e => {
+    if (pinch) { if (e.touches.length < 2) pinch = null; return; }
     endDraw();
     canvas.removeEventListener('touchmove', handleDraw);
+    touchDrawing = false;
   }));
 }
 

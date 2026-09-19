@@ -64,3 +64,8 @@ let envGrid   = new Map();
 let envDirty  = true;
 let statsTimer = 0;
 
+// Map view transform for pan / zoom. Screen(bitmap) = world * scale + offset.
+// scale 1 with a zero offset shows the whole board; higher zooms in and the
+// offset pans within bounds so the world always fills the view.
+let view = { scale: 1, x: 0, y: 0 };
+
