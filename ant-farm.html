@@ -69,6 +69,7 @@
           <option value="food">Food</option>
           <option value="water">Water</option>
           <option value="wall">Wall</option>
+          <option value="soil">Soil wall</option>
           <option value="bulldozer">Bulldozer</option>
         </select>
         <label for="thickness-slider">Brush Thickness:</label>
@@ -76,10 +77,24 @@
         <button id="undoStructure">Undo Last</button>
         <button id="delete-structures">Delete All Structures</button>
       </div>
+      <div class="controls-section">
+        <h2>World Building</h2>
+        <label title="Ants dig soil into brown walls and build nest rooms."><input type="checkbox" id="world-building" checked> World Building Mode</label>
+        <p class="hint">On: the colony auto-builds a sealed nest (entry, pantry, nursery, throne) linked by corridors through empty connector rooms; ants come and go only through the entry. Past ~10 ants a built nursery is needed to keep growing. Off: the classic sandbox.</p>
+        <div id="nest-actions">
+          <button id="add-entry" type="button" title="Place another entrance (connects to an empty room)">+ Entrance</button>
+          <button id="add-pantry" type="button" title="Place another food store (connects to a pantry or empty room)">+ Food store</button>
+          <button id="add-nursery" type="button" title="Place the nursery — connects to a throne or empty room (max 1)">+ Nursery</button>
+          <button id="add-throne" type="button" title="Place the throne — connects to a nursery or empty room (max 1)">+ Throne</button>
+          <button id="add-empty" type="button" title="Place an empty room — a connector node to route new pathways">+ Empty room</button>
+          <button id="repair-nest" type="button" title="Send ants to rebuild any knocked-out nest walls">Repair nest</button>
+        </div>
+      </div>
       <div class="controls-section danger-zone">
         <h2 style="color:red;">Danger Zone</h2>
         <button id="kill-red-ants" class="kill-all">Kill All Rival Ants</button>
         <button id="kill-all-ants" class="kill-all">Kill All Ants</button>
+        <button id="destroy-nest" class="kill-all">Destroy Nest</button>
         <button id="destroy-world" class="kill-all">Destroy World</button>
       </div>
       <div id="stats" class="controls-section">
@@ -96,7 +111,10 @@
         <h2>Tuning</h2>
         <p class="hint">Live balance knobs — changes apply instantly and are saved. A <b>*</b> marks values that only affect newly born ants.</p>
         <div id="tuning"></div>
-        <button id="tuning-reset">Reset tuning</button>
+        <div class="tune-actions">
+          <button id="tuning-info" type="button">ℹ️ What each value does</button>
+          <button id="tuning-reset">Reset tuning</button>
+        </div>
       </div>
       <div class="controls-section">
         <h2>Configurations</h2>
@@ -140,6 +158,15 @@
         <div id="antagonist-bar"></div>
       </div>
       <div id="hud-stats" aria-hidden="true"></div>
+      <div id="room-place-bar" hidden>
+        <span id="room-place-label">Drag to place</span>
+        <button id="room-place-ok" type="button">Place here</button>
+        <button id="room-place-cancel" type="button">Cancel</button>
+      </div>
+      <button id="hud-toggle" type="button" aria-pressed="false" aria-label="Hide stats overlay" title="Hide stats">
+        <svg class="eye-open" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        <svg class="eye-shut" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20C5 20 1 12 1 12a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+      </button>
       <!-- On-canvas spawn editing: a floating tool strip, shown only while the
            maintenance view is open, so points can be managed without the side
            menu. -->
@@ -163,6 +190,14 @@
         <button id="mbar-pause" type="button" title="Pause or resume">Pause</button>
       </div>
       <div class="mbar-row">
+        <select id="mbar-tool" aria-label="Tool" title="Tap-to-drop food, or drag to paint">
+          <option value="none">Tap: food</option>
+          <option value="food">Paint food</option>
+          <option value="water">Water</option>
+          <option value="wall">Wall</option>
+          <option value="soil">Soil wall</option>
+          <option value="bulldozer">Bulldozer</option>
+        </select>
         <select id="mbar-food" aria-label="Food type" title="Food to drop">
           <option value="sugar">Sugar</option>
           <option value="fruit">Fruit</option>
@@ -171,13 +206,10 @@
           <option value="spoiled">Spoiled</option>
           <option value="poison">Poison</option>
         </select>
-        <select id="mbar-tool" aria-label="Tool" title="Tap-to-drop food, or drag to paint">
-          <option value="none">Tap: food</option>
-          <option value="food">Paint food</option>
-          <option value="water">Water</option>
-          <option value="wall">Wall</option>
-          <option value="bulldozer">Bulldozer</option>
-        </select>
+        <label id="mbar-brush-wrap" title="Brush size">
+          <span class="mbar-brush-icon" aria-hidden="true">◍</span>
+          <input type="range" id="mbar-brush" min="1" max="20" value="4" aria-label="Brush size">
+        </label>
       </div>
     </div>
     <div id="config-compare-modal" role="dialog" aria-modal="true" aria-label="Compare configurations">
@@ -188,6 +220,15 @@
         </div>
         <p class="hint">Rows where the configurations differ are highlighted.</p>
         <div id="config-compare-body" class="compare-body"></div>
+      </div>
+    </div>
+    <div id="tuning-info-modal" role="dialog" aria-modal="true" aria-label="Tuning value guide">
+      <div class="compare-panel">
+        <div class="compare-head">
+          <h2>What each tuning value does</h2>
+          <button id="tuning-info-close" type="button" aria-label="Close">&times;</button>
+        </div>
+        <div id="tuning-info-body" class="info-body"></div>
       </div>
     </div>
   </main>

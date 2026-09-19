@@ -108,6 +108,20 @@ main {
   }
   #mobile-bar select { border: 1px solid #555; padding: 0.55rem 0.4rem; }
   #mobile-bar #mbar-menu { background: #00b4d8; color: #fff; }
+  /* Brush size: an icon + slider sharing one flex cell alongside the selects. */
+  #mbar-brush-wrap {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid #555;
+    border-radius: 6px;
+    background: #333;
+  }
+  .mbar-brush-icon { color: #aaa; font-size: 0.95rem; line-height: 1; }
+  #mbar-brush { flex: 1 1 0; min-width: 0; margin: 0; }
 
   /* The round toggle only appears while the drawer is open, as its close button. */
   main:not(.controls-hidden) #toggle-controls { display: block; }
@@ -343,6 +357,65 @@ button#delete-structures:hover {
 #hud-stats .yellow { color: #fff0b3; }
 #hud-stats .rival  { color: #3cb399; }
 #hud-stats b { color: #fff; font-weight: 600; }
+
+#nest-actions { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+#nest-actions button { flex: 1 1 auto; }
+
+#room-place-bar {
+  position: absolute;
+  top: calc(var(--canvas-pad) + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 12;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid #555;
+  border-radius: 8px;
+  background: rgba(20, 20, 20, 0.9);
+  color: #eee;
+  font-size: 12px;
+  max-width: calc(100% - 20px);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+#room-place-bar button {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #666;
+  background: #2a2a2a;
+  color: #eee;
+  cursor: pointer;
+}
+#room-place-bar #room-place-ok { background: #2f6b3a; border-color: #3c8a4c; }
+#room-place-bar[hidden] { display: none; }   /* let the hidden attribute win over display:flex */
+
+/* Show/hide the on-canvas overlay (bars + population readout). */
+#hud-toggle {
+  position: absolute;
+  top: calc(var(--canvas-pad) + 10px);
+  right: calc(var(--canvas-pad) + 10px);
+  z-index: 11;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid #555;
+  border-radius: 6px;
+  background: rgba(20, 20, 20, 0.55);
+  color: #cfcfcf;
+  cursor: pointer;
+}
+#hud-toggle:hover { background: rgba(40, 40, 40, 0.8); color: #fff; }
+#hud-toggle .eye-shut { display: none; }
+.canvas-container.hud-hidden #hud-toggle .eye-open { display: none; }
+.canvas-container.hud-hidden #hud-toggle .eye-shut { display: inline; }
+.canvas-container.hud-hidden #hud-stats,
+.canvas-container.hud-hidden #happiness-bar-container,
+.canvas-container.hud-hidden #antagonist-bar-container { display: none; }
 
 /* --- Mode Selector (Tools & Foods) --- */
 .mode-selector {
@@ -642,7 +715,8 @@ main.spawn-mode #hud-stats { display: none; }
 .config-row .config-actions button.subtle { background: #555; }
 
 /* --- Compare modal --- */
-#config-compare-modal {
+#config-compare-modal,
+#tuning-info-modal {
   display: none;
   position: fixed;
   inset: 0;
@@ -652,7 +726,21 @@ main.spawn-mode #hud-stats { display: none; }
   justify-content: center;
   padding: 1rem;
 }
-#config-compare-modal.open { display: flex; }
+#config-compare-modal.open,
+#tuning-info-modal.open { display: flex; }
+
+.tune-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.info-body { overflow: auto; margin-top: 0.5rem; }
+.info-group {
+  color: #00b4d8; font-weight: 600; font-size: 0.85rem;
+  margin: 0.9rem 0 0.35rem; padding-bottom: 0.2rem; border-bottom: 1px solid #3a3a3a;
+}
+.info-group:first-child { margin-top: 0; }
+.info-item { display: grid; grid-template-columns: 11rem 1fr; gap: 0.6rem; padding: 0.3rem 0; align-items: baseline; }
+.info-name { color: #eee; font-size: 0.82rem; }
+.info-desc { color: #b8b8b8; font-size: 0.8rem; line-height: 1.35; }
+.info-note { color: #b8b8b8; font-size: 0.8rem; margin: 0 0 0.4rem; }
+@media (max-width: 520px) { .info-item { grid-template-columns: 1fr; gap: 0.1rem; } }
 .compare-panel {
   background: #222;
   border: 1px solid #444;

@@ -11,7 +11,7 @@ function collectSettings() {
   return {
     matingSpeed, normalAntLifespan, redAntLifespan,
     allowRedBreeding, sadistMode, redAggressionLevel, penWidth, foodDecayRate,
-    normalAntSpeed, redAntSpeed, autoFood, tune: { ...TUNE }
+    normalAntSpeed, redAntSpeed, autoFood, worldBuilding, tune: { ...TUNE }
   };
 }
 
@@ -22,9 +22,10 @@ function serializeWorld() {
   return {
     ants: ants.map(serialiseAnt),
     queens: { white: queens.white && serialiseAnt(queens.white), red: queens.red && serialiseAnt(queens.red) },
-    foods, environment, spawnPoints, showSpawnPoints,
+    foods, environment, rooms, nextRoomId, eggs, spawnPoints, showSpawnPoints,
     totalBornWhite, totalDeadWhite, totalBornRed, totalDeadRed,
     matedWhite, spawnedWhite, matedRed, spawnedRed,
+    killedWhite, killedRed,
     ...collectSettings()
   };
 }
@@ -52,6 +53,7 @@ function applySettings(d) {
   penWidth           = d.penWidth || penWidth;
   foodDecayRate      = d.foodDecayRate || foodDecayRate;
   autoFood           = d.autoFood !== undefined ? !!d.autoFood : autoFood;
+  worldBuilding      = d.worldBuilding !== undefined ? !!d.worldBuilding : worldBuilding;
   normalAntSpeed     = Number.isFinite(d.normalAntSpeed) ? clamp(d.normalAntSpeed, 0.5, 2) : normalAntSpeed;
   redAntSpeed        = Number.isFinite(d.redAntSpeed)    ? clamp(d.redAntSpeed,    0.5, 2) : redAntSpeed;
 }
@@ -107,6 +109,9 @@ function applyWorld(d) {
     if (a) a.hauling = f;
   }
   environment  = Array.isArray(d.environment) ? d.environment : [];
+  rooms        = Array.isArray(d.rooms) ? d.rooms : [];
+  nextRoomId   = d.nextRoomId || (rooms.reduce((m, r) => Math.max(m, r.id || 0), 0) + 1);
+  eggs         = Array.isArray(d.eggs) ? d.eggs : [];
   showSpawnPoints = !!d.showSpawnPoints;
 
   totalBornWhite = d.totalBornWhite || 0;
@@ -117,6 +122,8 @@ function applyWorld(d) {
   spawnedWhite = d.spawnedWhite || 0;
   matedRed     = d.matedRed     || 0;
   spawnedRed   = d.spawnedRed   || 0;
+  killedWhite  = d.killedWhite  || 0;
+  killedRed    = d.killedRed    || 0;
 }
 
 // Restore a complete payload (settings + spawn points + world).

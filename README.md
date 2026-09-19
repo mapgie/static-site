@@ -32,6 +32,15 @@ Minimal static site.
 3. Run `bash .pipeline/check-and-inject.sh`.  
 4. Deploy via Netlify or any static host.
 
+## Tests
+
+The Ant Farm simulation logic has a Node-based unit/regression suite (no browser
+needed — the modules load into a VM with small DOM stubs):
+
+```sh
+npm test
+```
+
 ## CI
 
 On push to `main`, GitHub Actions regenerates and reinjects header.  

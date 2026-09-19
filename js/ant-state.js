@@ -9,6 +9,14 @@ let foods              = [];
 let pheromones         = [];
 let environment        = [];
 let environmentHistory = [];
+let rooms              = [];   // planned / built nest rooms (World Building Mode)
+let nextRoomId         = 1;
+let eggs               = [];   // eggs laid in a nursery, waiting to hatch
+let activeBuildersW    = 0;    // main-colony ants digging this tick, capped at MAX_BUILDERS
+let activeBuildersR    = 0;    // ...and the rival colony's, capped separately
+let placingRoom        = null; // { type, x, y } a room the player is dragging into place
+let placingBefore      = false;// paused state to restore after placing
+let poisonReadyMs      = 0;    // ms the main colony has been over-happy (Sadist poison timer)
 let queens             = { white: null, red: null };
 let spawnPoints        = { yellow: [], red: [] };   // per colony; empty = canvas centre
 let showSpawnPoints    = false;  // during play; the maintenance view always shows them
@@ -42,11 +50,15 @@ let totalBornRed   = 0, totalDeadRed   = 0;
 // Of the born total, how many came from mating vs. were spawned (queen / hand-added).
 let matedWhite = 0, spawnedWhite = 0;
 let matedRed   = 0, spawnedRed   = 0;
+// Of the dead total, how many were killed by a rival (vs. died of hunger / age / poison).
+let killedWhite = 0, killedRed = 0;
 
 let canvas, ctx;
 let lastX = null, lastY = null;
 let lastFoodX = null, lastFoodY = null;   // last painted sugar piece, for drop spacing
 let penWidth = 4;
+
+let worldBuilding  = true;   // World Building Mode: ants dig soil and build rooms (on by default for now)
 
 let envGrid   = new Map();
 let envDirty  = true;

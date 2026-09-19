@@ -1,0 +1,8 @@
+{
+  "name": "ant-farm",
+  "private": true,
+  "description": "Ant Farm simulator — static site with a Node-based logic test suite.",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
+}
