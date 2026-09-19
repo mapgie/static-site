@@ -346,7 +346,13 @@ full panel open. On a phone it spans the bottom in two rows and gains a **Menu**
 that opens the controls drawer; on desktop the panel is always there, so the Menu
 button is dropped.
 
-The map itself can be **panned and zoomed**: **pinch** and **two-finger drag** on a
+The board is a **fixed size**, independent of the screen it's drawn on: a world keeps
+its exact layout whether you're on a phone or a desktop, and switching between them
+never nudges an ant, a spawn point or a wall. The display just scales the same board
+to fit — on a small screen the whole board is shown scaled down, and you zoom in for
+detail.
+
+The map can be **panned and zoomed**: **pinch** and **two-finger drag** on a
 touchscreen, the **wheel** (zoom) and **middle-drag** (pan) on a desktop, or the
 **＋ / − / reset** buttons stacked under the eye toggle. Zooming never pulls the board
 edge into view, so the whole world stays reachable.

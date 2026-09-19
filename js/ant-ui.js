@@ -7,6 +7,11 @@
 window.addEventListener('DOMContentLoaded', () => {
   canvas = $('antCanvas');
   ctx    = canvas.getContext('2d');
+  // The board is a fixed logical size, set once. It never changes again, so
+  // world coordinates are stable across every screen — resizing only rescales
+  // how the fixed bitmap is drawn, it never moves an ant or a spawn point.
+  canvas.width  = WORLD_W;
+  canvas.height = WORLD_H;
   // On phones the controls start as a closed drawer so the map gets the full
   // width; on wider screens they sit inline and this class is a no-op.
   if (window.matchMedia('(max-width: 767px)').matches) {
@@ -255,26 +260,22 @@ function refreshViewControls() {
   if (zi) zi.disabled = view.scale >= MAX_ZOOM - 0.001;
 }
 
+// Fit the fixed board into the available space (contain) and let CSS scale the
+// pixels. The bitmap — and therefore every world coordinate — is left untouched,
+// so nothing shifts when the display size changes.
 function resizeCanvas() {
-  const container = canvas.parentElement;
+  const container = canvas.closest('.canvas-container');
+  if (!container) return;
   const cs = getComputedStyle(container);
   const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
   const padY = parseFloat(cs.paddingTop)  + parseFloat(cs.paddingBottom);
   const headerH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 80;
-  const borderX = canvas.offsetWidth  - canvas.clientWidth;   // canvas border, so the
-  const borderY = canvas.offsetHeight - canvas.clientHeight;  // bitmap is never scaled
-  const width  = clamp(Math.floor(container.clientWidth - padX - borderX), 160, 1000);
-  const height = clamp(Math.floor(window.innerHeight - headerH - padY - borderY), 240, 900);
-  if (canvas.width === width && canvas.height === height) return;
-  canvas.width  = width;
-  canvas.height = height;
-  // keep everything on the board
-  for (const a of ants) { a.x = clamp(a.x, 0, width); a.y = clamp(a.y, 0, height); }
-  for (const q of [queens.white, queens.red]) if (q) { q.x = clamp(q.x, 0, width); q.y = clamp(q.y, 0, height); }
-  for (const list of [spawnPoints.yellow, spawnPoints.red]) {
-    for (const s of list) { s.x = clamp(s.x, 0, width); s.y = clamp(s.y, 0, height); }
-  }
-  clampView();          // the board changed size — keep the zoom within its new bounds
+  const availW = Math.max(80, container.clientWidth - padX);
+  const availH = Math.max(80, window.innerHeight - headerH - padY);
+  const scale  = Math.min(availW / WORLD_W, availH / WORLD_H);
+  canvas.style.width  = Math.round(WORLD_W * scale) + 'px';
+  canvas.style.height = Math.round(WORLD_H * scale) + 'px';
+  clampView();
   refreshViewControls();
 }
 

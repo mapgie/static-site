@@ -149,6 +149,10 @@
     <div id="controls-backdrop"></div>
     <button id="toggle-controls" type="button" aria-label="Show controls" aria-expanded="false" title="Show controls">&#9776;</button>
     <div class="canvas-container">
+      <!-- The stage shrink-wraps the board so every overlay (mood bars, HUD,
+           zoom + eye toggles, spawn strip) anchors to the canvas itself, however
+           the canvas is scaled to fit the viewport. -->
+      <div class="canvas-stage">
       <div id="happiness-bar-container" title="Colony happiness">
         <div id="happiness-bar"></div>
       </div>
@@ -185,7 +189,8 @@
         <button id="sq-delete" type="button" title="Delete the selected point" disabled>Delete</button>
         <button id="sq-done" type="button" title="Finish editing spawn points">Done</button>
       </div>
-      <canvas id="antCanvas" width="1000" height="600" aria-label="Ant farm"></canvas>
+      <canvas id="antCanvas" width="1000" height="900" aria-label="Ant farm"></canvas>
+      </div>
     </div>
     <div id="mobile-bar" aria-label="Quick controls">
       <div class="mbar-row">
