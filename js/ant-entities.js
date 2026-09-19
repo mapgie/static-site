@@ -230,6 +230,14 @@ function builtRoom(team, type) {
 }
 function hasBuiltRoom(team, type) { return !!builtRoom(team, type); }
 
+// The colony's room of a type whether or not its walls are up yet. The nest is
+// planned from the very start (hidden until the colony can build it), so a forager
+// always has a real pantry spot to carry food to — never the bare spawn point.
+function plannedRoom(team, type) {
+  for (const r of rooms) if (r.team === team && r.type === type) return r;
+  return null;
+}
+
 // The colony's primary nest, and the direction that points away from its rival —
 // where the nursery and throne want to sit.
 function nestAnchor(team) { return colonySpawnPoints(team)[0]; }
@@ -241,11 +249,13 @@ function awayFromRival(team) {
 // A doorway opening as wide as the tunnel channel, so an ant can actually pass.
 function gapArcFor(r) { return 2 * Math.asin(Math.min(0.85, DOORWAY_HALF / Math.max(r, DOORWAY_HALF))); }
 
-// Is an angle within any of a ring's doorway gaps?
+// Is an angle within any of a ring's doorway gaps? Uses the fully-normalised
+// angleDiff so it holds for gap angles outside [0, 2π) too — an OUTER entry door
+// is stored as innerAngle + π, which can land above 2π, and a raw JS modulo goes
+// negative there and silently failed to leave the doorway open (a sealed entry).
 function inAnyGap(ang, gaps) {
   for (const g of gaps) {
-    const off = Math.abs(((ang - g.angle + Math.PI) % (Math.PI * 2)) - Math.PI);
-    if (off < g.arc / 2) return true;
+    if (Math.abs(angleDiff(ang, g.angle)) < g.arc / 2) return true;
   }
   return false;
 }
@@ -506,9 +516,12 @@ function forceUnstall(team) {
 
 function planNest(team) {
   if (!worldBuilding) return;
+  // Lay the plan out from the start — it stays hidden and undug until the colony
+  // is big enough to build (see buildTaskFor / drawRooms), but its pantry exists
+  // right away so carried food is routed there instead of to the spawn point.
+  growNest(team);
   const count = team ? countRedAnts() : countWhiteAnts();
   if (count < MIN_BUILD_ANTS) return;
-  growNest(team);
   forceUnstall(team);
 }
 
@@ -619,8 +632,9 @@ function nearestColonyDelivered(s, isRed) {
 
 function dropTarget(ant) {
   // Food is stored ONLY in the pantry (packed against what's already inside it).
-  // Until a pantry is built, it piles at the nest instead.
-  const pantry = builtRoom(ant.isRed, 'pantry');
+  // The pantry is planned from the start, so its spot is a valid drop target even
+  // before its walls are dug — food lands where the pantry will be, not on the spawn.
+  const pantry = builtRoom(ant.isRed, 'pantry') || plannedRoom(ant.isRed, 'pantry');
   if (pantry) {
     let anchor = null, bd = pantry.r * pantry.r;   // only food already inside the pantry
     for (const f of foods) {
@@ -688,8 +702,9 @@ function aimToRoom(ant, room, inner) {
 // nest it heads for the entry's outer door; once inside it routes through the
 // corridors to the pantry.
 function carryHomeAim(ant) {
-  const store = builtRoom(ant.isRed, 'pantry');
-  // Truly outside the nest (not even in a corridor): make for the entry's outer door.
+  const store = builtRoom(ant.isRed, 'pantry') || plannedRoom(ant.isRed, 'pantry');
+  // Only route through a sealed entry once one is actually built; before then the
+  // nest has no walls, so a carrier just walks straight to the pantry spot.
   if (!inNestZone(ant.x, ant.y)) {
     const entry = builtRoom(ant.isRed, 'entry');
     if (entry) {
@@ -698,8 +713,9 @@ function carryHomeAim(ant) {
                y: entry.y + Math.sin(entry.gapAngle) * (entry.r + o) };
     }
   }
-  // In the nest zone: route through the corridors to the pantry.
-  if (store) return aimToRoom(ant, store, { x: store.x, y: store.y });
+  // A built pantry is reached through the corridors; an unbuilt (planned) one has
+  // no walls yet, so head straight for its centre.
+  if (store) return store.built ? aimToRoom(ant, store, { x: store.x, y: store.y }) : { x: store.x, y: store.y };
   return dropTarget(ant);
 }
 
@@ -740,7 +756,7 @@ function haulHomeAim(team, x, y) {
                y: entry.y + Math.sin(entry.gapAngle) * (entry.r + o) };
     }
   }
-  const store = builtRoom(team, 'pantry');
+  const store = builtRoom(team, 'pantry') || plannedRoom(team, 'pantry');
   if (store) return { x: store.x, y: store.y };
   const s = nearestSpawnPoint(team, x, y);
   return { x: s.x, y: s.y };

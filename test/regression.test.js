@@ -317,6 +317,48 @@ test('poison: spoiled only rots to poison under Sadist, and Sadist seeds it only
   assert.ok(seeded, 'Sadist seeds poison when a sustained queen is over-happy');
 });
 
+// A sealed nest's ENTRY must keep a real hole to the outside. The outer door is
+// stored as innerAngle + PI, which can exceed 2*PI; a modulo bug once left those
+// doorway blocks in place, sealing the entry. Check the doorway stays clear across
+// many spawn positions (so ants can come and go, and a bulldozed hole isn't needed).
+test('nest entry keeps an open outer doorway (no wall blocks across the gap)', () => {
+  const angDiff = (a, b) => { let d = (a - b) % (2 * Math.PI); if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI; return Math.abs(d); };
+  for (const [sx, sy, w, h] of [[500, 90, 1000, 600], [140, 90, 1000, 600], [860, 90, 1000, 600], [500, 300, 1000, 600], [380, 120, 760, 1400]]) {
+    const g = freshApi();
+    g.canvas = { width: w, height: h };
+    g.spawnPoints = { yellow: [{ x: sx, y: sy, r: 40 }], red: [{ x: w - sx, y: h - sy, r: 40 }] };
+    g.ants = []; for (let i = 0; i < 8; i++) g.ants.push(g.createAnt(false, false, sx, sy));
+    g.planNest(false);
+    const entry = g.rooms.find(r => r.type === 'entry' && r.team === false);
+    assert.ok(entry, `entry planned for spawn (${sx},${sy})`);
+    assert.ok(entry.gaps.length >= 2, 'entry has an inward and an outer doorway');
+    const arc = entry.gaps[entry.gaps.length - 1].arc;
+    const inDoor = entry.sites.filter(s => angDiff(Math.atan2(s.y - entry.y, s.x - entry.x), entry.gapAngle) < arc / 2);
+    assert.strictEqual(inDoor.length, 0, `no wall blocks inside the outer doorway for spawn (${sx},${sy})`);
+  }
+});
+
+// World-building: a carrier's load is routed to the PANTRY from the very start —
+// the nest is planned (hidden, unbuilt) before the colony can dig it, so early food
+// piles at the pantry spot, never on the bare spawn point.
+test('carried food is routed to the planned pantry, not the spawn point', () => {
+  const g = freshApi();
+  g.canvas = { width: 1000, height: 600 };
+  g.spawnPoints = { yellow: [{ x: 500, y: 90, r: 40 }], red: [{ x: 500, y: 510, r: 40 }] };
+  g.worldBuilding = true;
+  g.ants = []; for (let i = 0; i < 3; i++) g.ants.push(g.createAnt(false, false, 500, 100)); // below the build threshold
+  g.planNest(false);
+  const pantry = g.rooms.find(r => r.type === 'pantry' && r.team === false);
+  assert.ok(pantry && !pantry.built, 'pantry is planned but not yet built');
+  const ant = g.ants[0]; ant.carrying = { type: 'sugar' }; ant.x = 480; ant.y = 300;
+  const t = g.dropTarget(ant);
+  const spawn = g.spawnPoints.yellow[0];
+  const toPantry = Math.hypot(t.x - pantry.x, t.y - pantry.y);
+  const toSpawn = Math.hypot(t.x - spawn.x, t.y - spawn.y);
+  assert.ok(toPantry < toSpawn, `drop target sits at the pantry (${toPantry|0}) not the spawn (${toSpawn|0})`);
+  assert.ok(toPantry <= pantry.r, 'drop target is inside the pantry footprint');
+});
+
 // The food-placement rule and mating apply in BOTH modes.
 for (const mode of [true, false]) {
   test(`both modes (worldBuilding=${mode}): food avoids terrain and mating still gated`, () => {
