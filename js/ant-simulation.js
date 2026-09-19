@@ -270,6 +270,9 @@ function nearestUndug(a, sites) {
 function buildTaskFor(a) {
   if (!worldBuilding || a.isQueen) return null;
   const team = a.isRed;
+  // The nest is planned from the start but stays a hidden blueprint until the
+  // colony is big enough — no digging (and nothing drawn) below the build threshold.
+  if ((team ? countRedAnts() : countWhiteAnts()) < MIN_BUILD_ANTS) return null;
   // 1) Seal a breached doorway, wherever it is — this can't wait.
   for (const room of rooms) {
     if (room.team !== team || !room.barricadeSites) continue;

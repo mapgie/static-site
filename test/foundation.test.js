@@ -72,23 +72,26 @@ function colony(g, n) {                     // n white ants at the nest
   return g;
 }
 
-test('planNest lays out one of each room only when the colony is big enough and building', () => {
+test('planNest lays out the whole nest from the start; digging waits for a big enough colony', () => {
+  // The plan (one of each room) exists even for a tiny colony, so foragers always
+  // have a pantry to aim at — but nothing is built or dug until the build threshold.
   const g = colony(freshApi(), 3);
   g.planNest(false);
-  assert.strictEqual(g.rooms.length, 0, 'a tiny colony builds nothing');
-
-  colony(g, 6);
-  g.planNest(false);
   const kinds = new Set(g.rooms.map(r => r.type));
-  for (const t of ['entry', 'pantry', 'nursery', 'throne', 'empty']) assert.ok(kinds.has(t), `nest has a ${t}`);
+  for (const t of ['entry', 'pantry', 'nursery', 'throne', 'empty']) assert.ok(kinds.has(t), `nest plans a ${t} from the start`);
+  assert.ok(g.rooms.every(r => !r.built), 'a tiny colony has planned but built nothing');
+  assert.strictEqual(g.buildTaskFor(g.ants[0]), null, 'a tiny colony does not dig yet');
   const n = g.rooms.length;
   g.planNest(false);
   assert.strictEqual(g.rooms.length, n, 'planning again adds nothing');
 
+  colony(g, 6);          // same plan, now a colony big enough to build it
+  assert.ok(g.buildTaskFor(g.ants[0]), 'at the threshold the colony starts digging');
+
   const g2 = colony(freshApi(), 20);
   g2.worldBuilding = false;
   g2.planNest(false);
-  assert.strictEqual(g2.rooms.length, 0, 'no building when the mode is off');
+  assert.strictEqual(g2.rooms.length, 0, 'no nest when the mode is off');
 });
 
 test('the nursery sits on the spawn point; the other rooms grow outward from it', () => {
@@ -131,14 +134,15 @@ test('nursery gate: past the threshold, no births without a built nursery', () =
   assert.ok(eggsLaid > 0, 'a built nursery lets the colony grow again (via eggs)');
 });
 
-test('builders dig a room: an ant at a wall site raises soil there', () => {
-  const g = colony(freshApi(), 6);
+test('builders dig a room: a builder at a wall site raises soil there', () => {
+  const g = colony(freshApi(), 6);   // at the build threshold, so digging is allowed
   g.planNest(false);
   g.rebuildEnvGrid();
   const entry = g.rooms.find(r => r.type === 'entry');
   const site = entry.sites[0];
+  // Put one builder right on a wall site's approach point. Its five nestmates keep
+  // the colony at the threshold (building is gated below it) and only help dig.
   const a = g.ants[0];
-  g.ants = [a];   // isolate one builder (the cap would otherwise hand the slots to its nestmates)
   a.x = site.ax; a.y = site.ay; a.fullness = 100; a.hungerPoint = 40; a.carrying = null; a.wallCooldown = 0; a.age = 1e6;
   for (let i = 0; i < 120; i++) { g.updateAnts(); g.rebuildEnvGrid(); }   // travel + BUILD_TICKS
   assert.ok(g.environment.some(o => o.type === 'soil'), 'a soil wall block was raised');

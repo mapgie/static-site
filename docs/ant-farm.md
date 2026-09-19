@@ -65,13 +65,18 @@ sugar pile needs three trips and a fruit pile five. Protein is a single heavy dr
 one trip — but a delivered protein feeds *two* nestmates. A number on a loose pile
 shows how many trips it has left.
 
-Once a colony has built a **pantry**, foragers carry food **to the pantry**. Because a
-sealed nest's pantry doorway faces inward, a carrier first heads for the **entry**
-(the one outward-facing door), threads in, and its load is stored in the pantry,
-packed against what's already there. A carrier that can't find its way in after a
-long spell logs its load to the pantry anyway rather than circling forever. Until a
-pantry exists, food piles at the nest as before. (An ant that dies mid-haul drops its
-load where it falls.)
+In World Building Mode the nest is **planned from the very start** — its rooms,
+including the **pantry**, exist as a hidden layout before the colony is large enough
+to dig them out. So foragers carry food **to the pantry** right away: even while the
+walls are still an unbuilt blueprint, a carrier heads for the pantry spot rather than
+dropping its load on the bare spawn point, and the store grows exactly where the
+pantry will be. Once the pantry's walls are up, the sealed nest's doorway faces
+inward, so a carrier first heads for the **entry** (the one outward-facing door),
+threads in along the corridors, and packs its load against what's already stored. A
+carrier that can't find its way in after a long spell logs its load to the pantry
+anyway rather than circling forever. (In the classic sandbox, with no nest, food
+piles at the spawn point as before; an ant that dies mid-haul drops its load where it
+falls.)
 
 A **carcass** works the same way: once enough haulers gather, the team drags it to the
 nest entrance and it's stored; if the team jams against a wall for too long it lets
@@ -253,12 +258,16 @@ soil the colony builds is recognised as a room wall (painted walls can extend
 structures ad hoc). Soil can be mined anywhere. **Auto food never lands on soil,
 walls, water, or a queen.**
 
-**Auto-built sealed nest.** Once the colony is a handful of ants strong, it digs a
-**sealed nest**: a connected tree of rooms, grown from the spawn, where the only
-opening to the outside is the **entry**. Rooms are joined by **corridors** — two soil
+**Auto-built sealed nest.** The nest layout is **planned from the start** as a
+**sealed** connected tree of rooms grown from the spawn, where the only opening to
+the outside is the **entry** — but it stays **hidden and unbuilt** until the colony
+is a handful of ants strong, at which point the plan appears and idle ants dig it
+out. (Keeping the plan around from the beginning is what lets foragers stock the
+pantry before a single wall is up.) Rooms are joined by **corridors** — two soil
 **side-walls** running room-to-room with a dark, walkable **channel** between them —
 and each room's ring has a real **doorway gap** exactly as wide as the channel, so the
-corridor walls meet the ring with no gap at either mouth. Ants **can't cross walls or water** — they navigate by
+corridor walls meet the ring with no gap at either mouth. The entry's outward door is
+a genuine opening, so ants come and go through it. Ants **can't cross walls or water** — they navigate by
 **following walls** to the gaps — so they come and go only through the entry. The
 nest **grows toward open space** (the board's middle) rather than off the nearest
 edge, so a spawn tucked in a corner still spreads inward instead of cramming its

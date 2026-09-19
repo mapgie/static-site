@@ -317,6 +317,85 @@ test('poison: spoiled only rots to poison under Sadist, and Sadist seeds it only
   assert.ok(seeded, 'Sadist seeds poison when a sustained queen is over-happy');
 });
 
+// A sealed nest's ENTRY must keep a real hole to the outside. The outer door is
+// stored as innerAngle + PI, which can exceed 2*PI; a modulo bug once left those
+// doorway blocks in place, sealing the entry. Check the doorway stays clear across
+// many spawn positions (so ants can come and go, and a bulldozed hole isn't needed).
+test('nest entry keeps an open outer doorway (no wall blocks across the gap)', () => {
+  const angDiff = (a, b) => { let d = (a - b) % (2 * Math.PI); if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI; return Math.abs(d); };
+  for (const [sx, sy, w, h] of [[500, 90, 1000, 600], [140, 90, 1000, 600], [860, 90, 1000, 600], [500, 300, 1000, 600], [380, 120, 760, 1400]]) {
+    const g = freshApi();
+    g.canvas = { width: w, height: h };
+    g.spawnPoints = { yellow: [{ x: sx, y: sy, r: 40 }], red: [{ x: w - sx, y: h - sy, r: 40 }] };
+    g.ants = []; for (let i = 0; i < 8; i++) g.ants.push(g.createAnt(false, false, sx, sy));
+    g.planNest(false);
+    const entry = g.rooms.find(r => r.type === 'entry' && r.team === false);
+    assert.ok(entry, `entry planned for spawn (${sx},${sy})`);
+    assert.ok(entry.gaps.length >= 2, 'entry has an inward and an outer doorway');
+    const arc = entry.gaps[entry.gaps.length - 1].arc;
+    const inDoor = entry.sites.filter(s => angDiff(Math.atan2(s.y - entry.y, s.x - entry.x), entry.gapAngle) < arc / 2);
+    assert.strictEqual(inDoor.length, 0, `no wall blocks inside the outer doorway for spawn (${sx},${sy})`);
+  }
+});
+
+// World-building: a carrier's load is routed to the PANTRY from the very start —
+// the nest is planned (hidden, unbuilt) before the colony can dig it, so early food
+// piles at the pantry spot, never on the bare spawn point.
+test('carried food is routed to the planned pantry, not the spawn point', () => {
+  const g = freshApi();
+  g.canvas = { width: 1000, height: 600 };
+  g.spawnPoints = { yellow: [{ x: 500, y: 90, r: 40 }], red: [{ x: 500, y: 510, r: 40 }] };
+  g.worldBuilding = true;
+  g.ants = []; for (let i = 0; i < 3; i++) g.ants.push(g.createAnt(false, false, 500, 100)); // below the build threshold
+  g.planNest(false);
+  const pantry = g.rooms.find(r => r.type === 'pantry' && r.team === false);
+  assert.ok(pantry && !pantry.built, 'pantry is planned but not yet built');
+  const ant = g.ants[0]; ant.carrying = { type: 'sugar' }; ant.x = 480; ant.y = 300;
+  const t = g.dropTarget(ant);
+  const spawn = g.spawnPoints.yellow[0];
+  const toPantry = Math.hypot(t.x - pantry.x, t.y - pantry.y);
+  const toSpawn = Math.hypot(t.x - spawn.x, t.y - spawn.y);
+  assert.ok(toPantry < toSpawn, `drop target sits at the pantry (${toPantry|0}) not the spawn (${toSpawn|0})`);
+  assert.ok(toPantry <= pantry.r, 'drop target is inside the pantry footprint');
+});
+
+// Wiring a hand-placed room into an already-built nest must NOT re-dig the room it
+// connects to. Regenerating the ring once reset every block to undone, so adding a
+// room sent the whole colony back to re-lay a standing wall (and left a block stuck
+// in the fresh doorway). Progress is now carried over; only the new work remains.
+test('adding a room keeps the connected room built (no full re-dig, doorway clear)', () => {
+  const g = freshApi();
+  g.canvas = { width: 1000, height: 700 };
+  g.spawnPoints = { yellow: [{ x: 500, y: 200, r: 40 }], red: [{ x: 500, y: 600, r: 40 }] };
+  g.worldBuilding = true;
+  g.ants = []; for (let i = 0; i < 10; i++) g.ants.push(g.createAnt(false, false, 500, 210));
+  g.planNest(false);
+  // Force the whole starting nest up.
+  for (const room of g.rooms) {
+    for (const s of room.sites) { g.digSoil(s.x, s.y, true); s.done = true; }
+    for (const s of (room.tunnelSites || [])) { g.digSoil(s.x, s.y, true); s.done = true; }
+    g.refreshBuilt(room);
+  }
+  g.rebuildEnvGrid();
+
+  const parent = g.nearestConnectable(false, 'empty', 600, 330);
+  assert.ok(parent && parent.built, 'the connect target is a finished room');
+  g.buildRoomAt(false, 'empty', 600, 330, true);
+
+  const doneNow = parent.sites.filter(s => s.done).length;
+  assert.ok(doneNow >= parent.sites.length - 1, 'the connected room keeps its dug ring (only its new corridor is left)');
+
+  const angDiff = (a, b) => { let d = (a - b) % (2 * Math.PI); if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI; return Math.abs(d); };
+  const door = parent.gaps[parent.gaps.length - 1];
+  const stuck = g.environment.filter(o => o.type === 'soil' && o.room &&
+    Math.abs(Math.hypot(o.x - parent.x, o.y - parent.y) - parent.r) < 8 &&
+    angDiff(Math.atan2(o.y - parent.y, o.x - parent.x), door.angle) < door.arc / 2);
+  assert.strictEqual(stuck.length, 0, 'no wall block is left wedged in the new doorway');
+
+  const fresh = g.rooms.find(r => !r.built && r.sites.every(s => !s.done));
+  assert.ok(fresh, 'the newly added room still needs digging (it is the new work)');
+});
+
 // The food-placement rule and mating apply in BOTH modes.
 for (const mode of [true, false]) {
   test(`both modes (worldBuilding=${mode}): food avoids terrain and mating still gated`, () => {

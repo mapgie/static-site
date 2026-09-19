@@ -51,6 +51,10 @@ function strokeWall(sites) {
 function drawRooms() {
   if (!worldBuilding) return;
   ctx.save();
+  // The nest exists as a plan from the start, but stays hidden until the colony is
+  // large enough to build it (matching buildTaskFor) — so an empty board shows no
+  // ghost rooms. A hand-placed room is the player's own doing and always shows.
+  const shown = room => room.manual || (room.team ? countRedAnts() : countWhiteAnts()) >= MIN_BUILD_ANTS;
   // Pass 0: a faint "blueprint" line down each planned corridor, shown until BOTH of
   // its rooms are built. Digging a corridor takes a while, and until it lands the two
   // side-walls are just stubs poking out of each room — which reads as unconnected
@@ -62,6 +66,7 @@ function drawRooms() {
   ctx.lineWidth = 1;
   ctx.strokeStyle = 'rgba(201,138,55,0.28)';
   for (const room of rooms) {
+    if (!shown(room)) continue;
     for (const id of room.links) {
       const key = room.id < id ? room.id + '-' + id : id + '-' + room.id;
       if (linked.has(key)) continue;
@@ -80,6 +85,7 @@ function drawRooms() {
   // symbol. Drawn first, so the soil walls (rings AND corridor side-walls) stroke
   // cleanly OVER every disc in pass 2 and tuck into the rooms they join.
   for (const room of rooms) {
+    if (!shown(room)) continue;
     const spec = ROOM_SPECS[room.type];
     const col = (spec && spec.color) || '#c9a227';
     ctx.beginPath();
@@ -101,6 +107,7 @@ function drawRooms() {
   // not a solid plug. The ring and the corridor walls are the same soil, stroked
   // smoothly, so they read as one continuous nest wall with a doorway at each mouth.
   for (const room of rooms) {
+    if (!shown(room)) continue;
     const spec = ROOM_SPECS[room.type];
     const col = (spec && spec.color) || '#c9a227';
     ctx.lineWidth = room.breached ? 2.5 : 1.5;
