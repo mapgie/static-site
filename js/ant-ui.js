@@ -7,6 +7,11 @@
 window.addEventListener('DOMContentLoaded', () => {
   canvas = $('antCanvas');
   ctx    = canvas.getContext('2d');
+  // The board is a fixed logical size, set once. It never changes again, so
+  // world coordinates are stable across every screen — resizing only rescales
+  // how the fixed bitmap is drawn, it never moves an ant or a spawn point.
+  canvas.width  = WORLD_W;
+  canvas.height = WORLD_H;
   // On phones the controls start as a closed drawer so the map gets the full
   // width; on wider screens they sit inline and this class is a no-op.
   if (window.matchMedia('(max-width: 767px)').matches) {
@@ -145,6 +150,16 @@ function setupCollapsibleCards() {
     head.setAttribute('role', 'button');
     head.setAttribute('tabindex', '0');
     const key = 'antfarm-collapsed-' + (head.textContent.trim() || idx);
+    // A card's "more info" button (the little "i") rides in the heading, so every
+    // card exposes its extra detail the same way. It keeps its own click (reveal a
+    // legend, open a modal…) and must not fold the card, so swallow the bubble.
+    // Moved after the storage key is derived, so the appended "i" never taints it.
+    const info = sec.querySelector('.card-info');
+    if (info) {
+      head.appendChild(info);
+      info.addEventListener('click', e => e.stopPropagation());
+      info.addEventListener('keydown', e => e.stopPropagation());
+    }
     const apply = collapsed => {
       sec.classList.toggle('collapsed', collapsed);
       head.setAttribute('aria-expanded', String(!collapsed));
@@ -190,27 +205,92 @@ function setHudHidden(hidden) {
     btn.setAttribute('aria-label', label + ' overlay');
   }
   try { localStorage.setItem(HUD_HIDE_KEY, hidden ? '1' : '0'); } catch (e) { /* private mode */ }
+  if (typeof resizeCanvas === 'function') resizeCanvas();   // the strip freed/took space; refit the board
 }
 
+// ---------------------------------------------------------------------------
+// Map view: pan & zoom. The world is the size of the canvas bitmap, so at scale
+// 1 the board fills the view exactly; zooming in lets you inspect a crowd, and
+// panning (two-finger drag, middle-drag, or the wheel) moves within the bounds.
+// ---------------------------------------------------------------------------
+const MAX_ZOOM = 5;
+
+function applyViewTransform() {
+  ctx.setTransform(view.scale, 0, 0, view.scale, view.x, view.y);
+}
+
+// Keep the whole board covering the viewport: never zoom out past a full fit,
+// and never pan the edge of the world inside the frame.
+function clampView() {
+  const W = canvas.width, H = canvas.height;
+  view.scale = clamp(view.scale, 1, MAX_ZOOM);
+  view.x = clamp(view.x, W * (1 - view.scale), 0);
+  view.y = clamp(view.y, H * (1 - view.scale), 0);
+}
+
+// Zoom by `factor` while pinning the world point under (bx, by) — bitmap
+// coordinates — so the spot beneath the fingers / cursor stays put.
+function zoomAt(bx, by, factor) {
+  const prev = view.scale;
+  const next = clamp(prev * factor, 1, MAX_ZOOM);
+  if (next === prev) return;
+  view.x = bx - (bx - view.x) * (next / prev);
+  view.y = by - (by - view.y) * (next / prev);
+  view.scale = next;
+  clampView();
+}
+
+function zoomByButton(factor) {
+  zoomAt(canvas.width / 2, canvas.height / 2, factor);
+  refreshViewControls();
+}
+
+function resetView() {
+  view.scale = 1; view.x = 0; view.y = 0;
+  refreshViewControls();
+}
+
+// Reveal the reset button only when zoomed, and grey out a zoom button that
+// can't do anything more.
+function refreshViewControls() {
+  const zoomed = view.scale > 1.001;
+  const wrap = canvas && canvas.parentElement;
+  if (wrap) wrap.classList.toggle('view-zoomed', zoomed);
+  const zi = $('zoom-in'), zo = $('zoom-out');
+  if (zo) zo.disabled = !zoomed;
+  if (zi) zi.disabled = view.scale >= MAX_ZOOM - 0.001;
+}
+
+// Fit the fixed board into the available space (contain) and let CSS scale the
+// pixels. The bitmap — and therefore every world coordinate — is left untouched,
+// so nothing shifts when the display size changes.
 function resizeCanvas() {
-  const container = canvas.parentElement;
+  const container = canvas.closest('.canvas-container');
+  if (!container) return;
+  // The board shares the column with the HUD strip above it and the quick bar
+  // below it. On desktop the bar is in normal flow (reserve its height in the
+  // column); on phones it's fixed to the screen bottom, so pad the container by
+  // its (variable, wrapping) height to keep the board clear of it.
+  const bar = $('mobile-bar');
+  const barFixed = bar && getComputedStyle(bar).position === 'fixed';
+  container.style.paddingBottom = barFixed ? (bar.offsetHeight + 8) + 'px' : '';
+
   const cs = getComputedStyle(container);
   const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
   const padY = parseFloat(cs.paddingTop)  + parseFloat(cs.paddingBottom);
   const headerH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 80;
-  const borderX = canvas.offsetWidth  - canvas.clientWidth;   // canvas border, so the
-  const borderY = canvas.offsetHeight - canvas.clientHeight;  // bitmap is never scaled
-  const width  = clamp(Math.floor(container.clientWidth - padX - borderX), 160, 1000);
-  const height = clamp(Math.floor(window.innerHeight - headerH - padY - borderY), 240, 900);
-  if (canvas.width === width && canvas.height === height) return;
-  canvas.width  = width;
-  canvas.height = height;
-  // keep everything on the board
-  for (const a of ants) { a.x = clamp(a.x, 0, width); a.y = clamp(a.y, 0, height); }
-  for (const q of [queens.white, queens.red]) if (q) { q.x = clamp(q.x, 0, width); q.y = clamp(q.y, 0, height); }
-  for (const list of [spawnPoints.yellow, spawnPoints.red]) {
-    for (const s of list) { s.x = clamp(s.x, 0, width); s.y = clamp(s.y, 0, height); }
-  }
+  const gap = parseFloat(cs.rowGap) || 0;
+  let reserve = 0;
+  const hud = $('hud');
+  if (hud && getComputedStyle(hud).display !== 'none') reserve += hud.offsetHeight + gap;
+  if (bar && !barFixed) reserve += bar.offsetHeight + gap;
+  const availW = Math.max(80, container.clientWidth - padX);
+  const availH = Math.max(80, window.innerHeight - headerH - padY - reserve);
+  const scale  = Math.min(availW / WORLD_W, availH / WORLD_H);
+  canvas.style.width  = Math.round(WORLD_W * scale) + 'px';
+  canvas.style.height = Math.round(WORLD_H * scale) + 'px';
+  clampView();
+  refreshViewControls();
 }
 
 function readSettingsFromControls() {
@@ -224,6 +304,7 @@ function readSettingsFromControls() {
   redAggressionLevel = +$('red-aggression-slider').value;
   penWidth           = +$('thickness-slider').value;
   foodDecayRate      = +$('decay-slider').value;
+  if ($('food-rate-slider')) foodDropRate = +$('food-rate-slider').value;
   showSpawnPoints    = $('show-spawn-points').checked;
   if ($('auto-food')) autoFood = $('auto-food').checked;
   if ($('world-building')) worldBuilding = $('world-building').checked;
@@ -233,6 +314,7 @@ function readSettingsFromControls() {
 function updateReadouts() {
   const set = (id, text) => { const el = $(id); if (el) el.textContent = text; };
   set('decay-readout',        `~${Math.round(decayStageMs() / 1000)}s per stage`);
+  set('food-rate-readout',    `${(clamp(foodDropRate / 25, 0.2, 6)).toFixed(1)}×`);
   set('speed-readout-normal', normalAntSpeed.toFixed(2));
   set('speed-readout-red',    redAntSpeed.toFixed(2));
 }
@@ -249,6 +331,7 @@ function writeSettingsToControls() {
   $('thickness-slider').value       = penWidth;
   if ($('mbar-brush')) $('mbar-brush').value = penWidth;
   $('decay-slider').value           = foodDecayRate;
+  if ($('food-rate-slider')) $('food-rate-slider').value = foodDropRate;
   $('show-spawn-points').checked    = showSpawnPoints;
   if ($('auto-food')) $('auto-food').checked = autoFood;
   if ($('world-building')) $('world-building').checked = worldBuilding;
@@ -371,22 +454,30 @@ function setupUI() {
   on('mbar-add-red', 'click', () => $('add-red-ant').click());
   on('mbar-pause',   'click', () => { animationPaused = !animationPaused; syncPauseLabels(); });
 
-  // The bar's food and tool pickers mirror the panel selects both ways, so the
-  // two stay in step whichever one you use.
+  // The bar's food picker mirrors the panel select both ways, so the two stay in
+  // step whichever one you use. The environment-tool select is the source of
+  // truth; the quick bar's tool BUTTONS set it and highlight the active one.
   const mirror = (from, to) => { const s = $(to); if (s) s.value = $(from).value; };
+  const toolBtns = [...document.querySelectorAll('#mbar-tool [data-tool]')];
+  const currentTool = () => ($('environment-tool') ? $('environment-tool').value : 'none');
   // The food picker only makes sense while a food tool is active (tap-to-drop or
   // paint food); the brush size only while painting, not tapping.
   const syncMbarTool = () => {
-    const tool = $('mbar-tool') ? $('mbar-tool').value : 'none';
+    const tool = currentTool();
     const food = $('mbar-food-wrap') || $('mbar-food');
     const brush = $('mbar-brush-wrap');
     if (food)  food.style.display  = (tool === 'none' || tool === 'food') ? '' : 'none';
     if (brush) brush.style.display = (tool === 'none') ? 'none' : '';
+    for (const b of toolBtns) b.classList.toggle('active', b.dataset.tool === tool);
+    if (typeof resizeCanvas === 'function') resizeCanvas();   // bar height may have changed
   };
+  for (const b of toolBtns) b.addEventListener('click', () => {
+    const sel = $('environment-tool'); if (sel) sel.value = b.dataset.tool;
+    syncMbarTool();
+  });
   on('mbar-food',        'change', () => mirror('mbar-food', 'food-type'));
   on('food-type',        'change', () => mirror('food-type', 'mbar-food'));
-  on('mbar-tool',        'change', () => { mirror('mbar-tool', 'environment-tool'); syncMbarTool(); });
-  on('environment-tool', 'change', () => { mirror('environment-tool', 'mbar-tool'); syncMbarTool(); });
+  on('environment-tool', 'change', () => syncMbarTool());
   on('mbar-brush',       'input',  e => { penWidth = +e.target.value; const t = $('thickness-slider'); if (t) t.value = penWidth; });
   syncMbarTool();
 
@@ -401,6 +492,7 @@ function setupUI() {
   on('speed-slider-red',    'input', e => { redAntSpeed    = (+e.target.value) / 100; updateReadouts(); saveFarm(); });
   on('red-aggression-slider', 'input', e => { redAggressionLevel = +e.target.value; saveFarm(); });
   on('decay-slider', 'input', e => { foodDecayRate = +e.target.value; updateReadouts(); saveFarm(); });
+  on('food-rate-slider', 'input', e => { foodDropRate = +e.target.value; updateReadouts(); saveFarm(); });
   on('auto-food', 'change', e => { autoFood = e.target.checked; saveFarm(); });
   on('world-building', 'change', e => { worldBuilding = e.target.checked; saveFarm(); });
 
@@ -439,6 +531,7 @@ function setupUI() {
   const endDraw   = () => { if (placingRoom || maintenance) return maintPointerUp(); lastX = lastY = lastFoodX = lastFoodY = null; };
 
   canvas.addEventListener('mousedown', e => {
+    if (e.button === 1) { startPan(e); e.preventDefault(); return; }   // middle button pans
     if (e.button !== 0) return;
     startDraw(e);
     canvas.addEventListener('mousemove', handleDraw);
@@ -447,13 +540,70 @@ function setupUI() {
     endDraw();
     canvas.removeEventListener('mousemove', handleDraw);
   }));
+
+  // --- Map navigation: wheel to zoom, middle-drag / two-finger to pan ---------
+  let panning = null;   // active middle-button pan { x, y } in client px
+  const startPan = e => { panning = { x: e.clientX, y: e.clientY }; canvas.classList.add('panning'); };
+  window.addEventListener('mousemove', e => {
+    if (!panning) return;
+    const r = canvas.getBoundingClientRect();
+    view.x += (e.clientX - panning.x) * (canvas.width  / r.width);
+    view.y += (e.clientY - panning.y) * (canvas.height / r.height);
+    panning = { x: e.clientX, y: e.clientY };
+    clampView(); refreshViewControls();
+  });
+  window.addEventListener('mouseup', () => { if (panning) { panning = null; canvas.classList.remove('panning'); } });
+
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const p = eventBitmapCoords(e);
+    zoomAt(p.x, p.y, Math.exp(-e.deltaY * 0.0015));
+    refreshViewControls();
+  }, { passive: false });
+
+  on('zoom-in',    'click', () => zoomByButton(1.4));
+  on('zoom-out',   'click', () => zoomByButton(1 / 1.4));
+  on('zoom-reset', 'click', resetView);
+
+  // A pinch is measured in bitmap coordinates: the two touches' midpoint (to pan)
+  // and the distance between them (to scale).
+  const pinchState = e => {
+    const r = canvas.getBoundingClientRect();
+    const sx = canvas.width / r.width, sy = canvas.height / r.height;
+    const ax = (e.touches[0].clientX - r.left) * sx, ay = (e.touches[0].clientY - r.top) * sy;
+    const bx = (e.touches[1].clientX - r.left) * sx, by = (e.touches[1].clientY - r.top) * sy;
+    return { cx: (ax + bx) / 2, cy: (ay + by) / 2, d: Math.hypot(bx - ax, by - ay) };
+  };
+  let pinch = null, touchDrawing = false;
+
   canvas.addEventListener('touchstart', e => {
+    if (e.touches.length >= 2) {                 // two fingers: pan / zoom the map
+      if (touchDrawing) { endDraw(); canvas.removeEventListener('touchmove', handleDraw); touchDrawing = false; }
+      e.preventDefault();
+      pinch = pinchState(e);
+      return;
+    }
+    touchDrawing = true;
     startDraw(e);
     canvas.addEventListener('touchmove', handleDraw, { passive: false });
   }, { passive: false });
-  ['touchend', 'touchcancel'].forEach(evt => canvas.addEventListener(evt, () => {
+
+  canvas.addEventListener('touchmove', e => {
+    if (!pinch || e.touches.length < 2) return;
+    e.preventDefault();
+    const now = pinchState(e);
+    view.x += now.cx - pinch.cx;                 // follow the fingers (pan)
+    view.y += now.cy - pinch.cy;
+    if (pinch.d > 0 && now.d > 0) zoomAt(now.cx, now.cy, now.d / pinch.d);   // spread / squeeze (zoom)
+    clampView(); refreshViewControls();
+    pinch = now;
+  }, { passive: false });
+
+  ['touchend', 'touchcancel'].forEach(evt => canvas.addEventListener(evt, e => {
+    if (pinch) { if (e.touches.length < 2) pinch = null; return; }
     endDraw();
     canvas.removeEventListener('touchmove', handleDraw);
+    touchDrawing = false;
   }));
 }
 

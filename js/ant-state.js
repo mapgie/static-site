@@ -44,6 +44,7 @@ let redAntLifespan     = 120000;
 let normalAntSpeed     = 1.1;    // px per tick; sliders hold hundredths
 let redAntSpeed        = 1.05;
 let foodDecayRate      = 25;     // 1..100, slider; see decayStageMs()
+let foodDropRate       = 25;     // 1..100, slider; auto-food frequency (25 = 1×)
 
 let totalBornWhite = 0, totalDeadWhite = 0;
 let totalBornRed   = 0, totalDeadRed   = 0;
@@ -63,4 +64,9 @@ let worldBuilding  = true;   // World Building Mode: ants dig soil and build roo
 let envGrid   = new Map();
 let envDirty  = true;
 let statsTimer = 0;
+
+// Map view transform for pan / zoom. Screen(bitmap) = world * scale + offset.
+// scale 1 with a zero offset shows the whole board; higher zooms in and the
+// offset pans within bounds so the world always fills the view.
+let view = { scale: 1, x: 0, y: 0 };
 

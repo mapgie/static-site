@@ -356,9 +356,8 @@ function makeRoom(team, type, cx, cy, manual = false) {
 // wiring a new room into a FINISHED one asks only for the new work, never a full
 // re-dig of the standing ring (which sent builders frantic). The wall soil that
 // used to sit where the doorway now opens is cleared, so the door isn't left blocked.
-function addGap(room, angle) {
+function addGap(room, angle, arc = gapArcFor(room.r)) {
   if (!room.gaps.length) room.gapAngle = angle;   // the first opening is the "primary" (barricade target)
-  const arc = gapArcFor(room.r);
   room.gaps.push({ angle, arc });
   const prev = room.sites || [];
   room.sites = roomWallSites(room.x, room.y, room.r, room.gaps);
@@ -408,7 +407,10 @@ function refreshBuilt(room) {
 // gap, dug at top priority to seal the colony in.
 function barricadeRoom(room) {
   if (room.barricadeSites || !room.gaps.length) return;
-  const arc = room.gaps[0].arc, sites = [];
+  // Seal the doorway the barricade targets (its own gap's width) — the entry's is a
+  // wide mouth, so pull its real arc, not the first door's.
+  const g = room.gaps.find(gp => Math.abs(angleDiff(gp.angle, room.gapAngle)) < 0.01) || room.gaps[0];
+  const arc = g.arc, sites = [];
   const n = Math.max(3, Math.round(arc * room.r / ROOM_SITE_STEP) + 1);
   const ar = room.r + SOIL_R + 8;
   for (let k = 0; k <= n; k++) {
@@ -518,7 +520,7 @@ function growNest(team) {
   const entry = rooms.find(r => r.team === team && r.type === 'entry');
   if (entry && entry.gaps.length) {
     const outer = entry.gaps[0].angle + Math.PI;
-    addGap(entry, outer);
+    addGap(entry, outer, ENTRY_MOUTH_ARC);   // a wide, outward-facing mouth, not a ring
     entry.gapAngle = outer;   // the outer door is the breach/barricade point
   }
 }
@@ -725,8 +727,21 @@ function aimToRoom(ant, room, inner) {
   return routeAim(ant, room, inner);
 }
 
+// Steer an ant from OUTSIDE the nest in through the entry mouth. Line up on the
+// outer door first; once there, aim at the room's inner side so the ant actually
+// crosses the threshold instead of hovering just outside it (which left carriers
+// stuck at the door, unable to bring food home).
+function entryDoorAim(ant, entry) {
+  const dx = Math.cos(entry.gapAngle), dy = Math.sin(entry.gapAngle);   // outward
+  const door = { x: entry.x + dx * (entry.r + SOIL_R + 14),
+                 y: entry.y + dy * (entry.r + SOIL_R + 14) };
+  if (dist2(ant.x, ant.y, door.x, door.y) < 26 * 26)
+    return { x: entry.x - dx * entry.r * 0.5, y: entry.y - dy * entry.r * 0.5 };  // step in through the mouth
+  return door;
+}
+
 // Where a single carrier should steer to bring food home. From outside the sealed
-// nest it heads for the entry's outer door; once inside it routes through the
+// nest it heads in through the entry mouth; once inside it routes through the
 // corridors to the pantry.
 function carryHomeAim(ant) {
   const store = builtRoom(ant.isRed, 'pantry') || plannedRoom(ant.isRed, 'pantry');
@@ -734,11 +749,7 @@ function carryHomeAim(ant) {
   // nest has no walls, so a carrier just walks straight to the pantry spot.
   if (!inNestZone(ant.x, ant.y)) {
     const entry = builtRoom(ant.isRed, 'entry');
-    if (entry) {
-      const o = SOIL_R + 12;
-      return { x: entry.x + Math.cos(entry.gapAngle) * (entry.r + o),
-               y: entry.y + Math.sin(entry.gapAngle) * (entry.r + o) };
-    }
+    if (entry) return entryDoorAim(ant, entry);
   }
   // A built pantry is reached through the corridors; an unbuilt (planned) one has
   // no walls yet, so head straight for its centre.

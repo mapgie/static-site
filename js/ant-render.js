@@ -328,37 +328,9 @@ function updateHappinessBars() {
   setBar('antagonist-bar', r, '#3cb399', '#7d6f9e', !!queens.red);
 }
 
-function updateStats() {
-  const el = $('stats');
-  if (!el) return;
-  const w = countWhiteAnts(), r = countRedAnts();
-  const atNest = foods.reduce((n, f) => n + (f.delivered ? 1 : 0), 0);
-  el.innerHTML =
-    `Total Alive: ${ants.length}<br>` +
-    `Yellow Ants: Alive ${w} | Born ${totalBornWhite} | Dead ${totalDeadWhite} (${killedWhite} killed)<br>` +
-    `Rival Ants: Alive ${r} | Born ${totalBornRed} | Dead ${totalDeadRed} (${killedRed} killed)<br>` +
-    `Food: ${foods.length} (${atNest} at nest) | Happiness: ${w > 0 ? Math.round(whiteHappiness) : '—'} | Rival: ${r > 0 ? Math.round(redHappiness) : '—'}`;
-
-  const hud = $('hud-stats');
-  if (hud) {
-    const wOther = Math.max(0, totalDeadWhite - killedWhite);
-    const rOther = Math.max(0, totalDeadRed - killedRed);
-    let html = `<span class="yellow">🐜 <b>${w}</b> · born ${matedWhite} · spawned ${spawnedWhite} · killed ${killedWhite} · died ${wOther}</span>`;
-    if (r > 0 || totalBornRed > 0) {
-      html += `<br><span class="rival">✦ <b>${r}</b> · born ${matedRed} · spawned ${spawnedRed} · killed ${killedRed} · died ${rOther}</span>`;
-    }
-    hud.innerHTML = html;
-  }
-  updateBreakdown();
-}
-
-// Per-colony figures, to make the source of a happiness gap visible: average
-// mood and fullness, how many are hungry / poisoned / hauling, and the size of
-// each colony's own store. `main unattacked` shows whether the survival lift is
-// currently running (it pauses whenever a main ant is killed).
-function updateBreakdown() {
-  const el = $('breakdown');
-  if (!el) return;
+// Per-colony tallies, gathered once and shared by the summary, the on-canvas HUD
+// and the detailed breakdown.
+function colonyStats() {
   const g = () => ({ n: 0, h: 0, f: 0, hungry: 0, pois: 0, carry: 0 });
   const w = g(), r = g();
   for (const a of ants) {
@@ -370,7 +342,49 @@ function updateBreakdown() {
   }
   let wStore = 0, rStore = 0;
   for (const f of foods) if (f.delivered) { if (f.team) rStore++; else wStore++; }
-  const avg = (s, n) => (n ? Math.round(s / n) : '—');
+  return { w, r, wStore, rStore };
+}
+
+// The on-canvas HUD readout beside the mood bars: population per colony (hungry
+// count only when it matters) and the food on the board. Mood is deliberately
+// left OUT — the happiness bars alongside already show it.
+function statsSummaryHTML(s) {
+  const line = (cls, sym, c) =>
+    `<span class="${cls}">${sym} <b>${c.n}</b>${c.hungry > 0 ? ` · ${c.hungry} hungry` : ''}</span>`;
+  let html = line('yellow', '🐜', s.w);
+  if (s.r.n > 0 || totalBornRed > 0) html += '<br>' + line('rival', '✦', s.r);
+  const atNest = s.wStore + s.rStore;
+  html += `<br><span class="food">🍎 <b>${foods.length}</b>${atNest ? ` · ${atNest} stored` : ''}</span>`;
+  return html;
+}
+
+function updateStats() {
+  const s = colonyStats();
+  const hud = $('hud-stats');
+  if (hud) hud.innerHTML = statsSummaryHTML(s);
+
+  const el = $('stats');
+  if (el) {
+    const w = s.w.n, r = s.r.n;
+    const atNest = s.wStore + s.rStore;
+    el.innerHTML =
+      `Total Alive: ${ants.length}<br>` +
+      `Yellow Ants: Alive ${w} | Born ${totalBornWhite} | Dead ${totalDeadWhite} (${killedWhite} killed)<br>` +
+      `Rival Ants: Alive ${r} | Born ${totalBornRed} | Dead ${totalDeadRed} (${killedRed} killed)<br>` +
+      `Food: ${foods.length} (${atNest} at nest) | Happiness: ${w > 0 ? Math.round(whiteHappiness) : '—'} | Rival: ${r > 0 ? Math.round(redHappiness) : '—'}`;
+  }
+  updateBreakdown(s);
+}
+
+// Per-colony figures, to make the source of a happiness gap visible: average
+// mood and fullness, how many are hungry / poisoned / hauling, and the size of
+// each colony's own store. `main unattacked` shows whether the survival lift is
+// currently running (it pauses whenever a main ant is killed).
+function updateBreakdown(s = colonyStats()) {
+  const el = $('breakdown');
+  if (!el) return;
+  const { w, r, wStore, rStore } = s;
+  const avg = (sum, n) => (n ? Math.round(sum / n) : '—');
   const block = (label, c, store, queen) =>
     `<b>${label}</b>${queen ? ' + queen' : ''}<br>` +
     `ants ${c.n} · mood ${avg(c.h, c.n)} · full ${avg(c.f, c.n)}<br>` +

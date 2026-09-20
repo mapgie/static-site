@@ -128,12 +128,20 @@ function markEnvDirty() { envDirty = true; }
 
 // Convert a mouse/touch event into canvas bitmap coordinates, taking CSS
 // scaling into account so drawing lands where the pointer is.
-function getCanvasCoords(e) {
+function eventBitmapCoords(e) {
   const r  = canvas.getBoundingClientRect();
   const t  = e.touches && e.touches[0] ? e.touches[0] : e;
   const sx = canvas.width  / r.width;
   const sy = canvas.height / r.height;
   return { x: (t.clientX - r.left) * sx, y: (t.clientY - r.top) * sy };
+}
+
+// ...and on into world coordinates, undoing the pan/zoom view transform, so a
+// tap lands on the ant under the finger no matter how the map is zoomed.
+function getCanvasCoords(e) {
+  const p = eventBitmapCoords(e);
+  const v = (typeof view !== 'undefined' && view) ? view : { scale: 1, x: 0, y: 0 };
+  return { x: (p.x - v.x) / v.scale, y: (p.y - v.y) / v.scale };
 }
 
 function interpolate(x0, y0, x1, y1, fn) {

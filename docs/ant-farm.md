@@ -103,9 +103,9 @@ insect** as a rare treat (poison and spoiled never fall on their own). The rain
 **scales with colony size** — a bigger colony gets more frequent, bigger drops — and
 most of it lands **within foraging range of a nest** so the ants can actually reach
 it, rather than starving beside food scattered clear across the board. (A very large
-colony still settles toward the carrying capacity its food supports.) Turn it off
-with the **Auto food drops** checkbox in the Food panel to hand-feed the colony
-yourself.
+colony still settles toward the carrying capacity its food supports.) The **Auto food
+drops** checkbox and a **Food drop speed** dial (0.2×–6×) live under **Tuning** — turn
+it off to hand-feed the colony yourself, or speed it up for a feast.
 
 ### Trails, scent, and wandering
 
@@ -267,8 +267,10 @@ pantry before a single wall is up.) Rooms are joined by **corridors** — two so
 **side-walls** running room-to-room with a dark, walkable **channel** between them —
 and each room's ring has a real **doorway gap** exactly as wide as the channel, so the
 corridor walls meet the ring with no gap at either mouth. The entry's outward door is
-a genuine opening, so ants come and go through it. Ants **can't cross walls or water** — they navigate by
-**following walls** to the gaps — so they come and go only through the entry. The
+a **wide, outward-facing mouth** (not a near-closed ring), so a returning forager
+walks straight in instead of orbiting a circle hunting for a small gap. Ants **can't
+cross walls or water** — they navigate by **following walls** to the gaps — so they
+come and go only through the entry. The
 nest **grows toward open space** (the board's middle) rather than off the nearest
 edge, so a spawn tucked in a corner still spreads inward instead of cramming its
 rooms and entry against the wall. Every unfinished room is dug **in parallel** (each
@@ -335,11 +337,32 @@ Both modes are covered by the test suite (`npm test`).
 ## Controls
 
 The control panel is a column of **collapsible cards** — click a card's heading to
-fold it away; each card remembers whether you left it open.
+fold it away (buttons and all); each card remembers whether you left it open. A card
+with extra detail carries a small round **"i"** at the right of its heading — the same
+affordance everywhere: **Food**'s reveals its legend inline, **Tuning**'s opens the
+value guide.
 
-An **eye toggle** in the top-right corner of the map folds the on-canvas overlay
-(the happiness bars and the population readout) away for a clean view, and back;
-your choice is remembered.
+A **quick bar** holds the buttons you reach for most — add an ant or a rival, pause,
+the tool buttons (each tool is its own button) and the food / brush pickers — so you
+rarely need the full panel open. On desktop it sits right beneath the board; on a
+phone it's fixed to the bottom of the screen and gains a **Menu** button that opens
+the controls drawer (on desktop the panel is always there, so Menu is dropped).
+
+The board is a **fixed size**, independent of the screen it's drawn on: a world keeps
+its exact layout whether you're on a phone or a desktop, and switching between them
+never nudges an ant, a spawn point or a wall. The display just scales the same board
+to fit — on a small screen the whole board is shown scaled down, and you zoom in for
+detail.
+
+The map can be **panned and zoomed**: **pinch** and **two-finger drag** on a
+touchscreen, the **wheel** (zoom) and **middle-drag** (pan) on a desktop, or the
+**＋ / − / reset** buttons stacked under the eye toggle. Zooming never pulls the board
+edge into view, so the whole world stays reachable.
+
+A **HUD strip** above the board shows the mood bars and an at-a-glance readout — each
+colony's population (and how many are hungry, when any are) and the food on the board.
+Mood is left to the bars beside it. An **eye toggle** in the board's top-right corner
+folds the HUD away for a clean view, and back; your choice is remembered.
 
 - **Ant Controls** — add ants, open the spawn-point maintenance view, and set mating
   conditions, lifespan, and speed for the main colony.
@@ -354,7 +377,8 @@ your choice is remembered.
   without opening the side menu.
 - **Rival Ant Controls** — add rival ants; set their lifespan, speed, breeding,
   aggression, and **Sadist mode**.
-- **Food** — pick a food type, see what each does, and set the decay rate.
+- **Food** — pick a food type, see what each does, and set the decay rate. (The auto
+  food drops and their speed moved to **Tuning**.)
 - **Environment Tools** — paint Food, Water, a grey **Wall** or a brown **Soil wall**,
   or **Bulldoze**; set brush thickness; undo or clear structures. **Walls, soil and
   water all block ants** — an ant that meets one **follows along it** (tracing round an
@@ -364,19 +388,20 @@ too (ants don't wrap around it), and an ant left circling a corner or dead-end k
 itself off in a new direction rather than looping forever. The **Bulldozer** clears terrain and
   loose food, and it **breaches nest walls** — a hole ants pour through that stays
   open until you hit **Repair nest** (in the World Building card).
-- **Danger Zone** — kill the rivals, kill everything, **Destroy Nest** (removes the
-  rooms and their walls but leaves ants, food, water and painted walls), or **Destroy
-  World** (wipes everything).
-- **Stats** — live counts and each colony's happiness. Deaths are split into
-  **killed** (by a rival) and **died** (hunger, age, or poison), for each colony.
-- **Breakdown** — per-colony figures for spotting imbalance: average mood and
-  fullness, how many ants are hungry, poisoned, or hauling, each colony's stored
-  food, and how long the main colony has gone unattacked.
-- **Tuning** — live sliders for the balance numbers (happiness gains and losses,
+- **Colony** — the stats and breakdown in one card: the full counts — deaths split
+  into **killed** (by a rival) and **died** (hunger, age, or poison) — and the
+  per-colony breakdown: average mood and fullness, how many ants are hungry, poisoned,
+  or hauling, each colony's stored food, and how long the main colony has gone
+  unattacked. (The at-a-glance version lives on the HUD strip above the board.)
+- **Tuning** — the **Auto food drops** toggle and a **Food drop speed** dial
+  (0.2×–6×), plus live sliders for the balance numbers (happiness gains and losses,
   fullness, breeding, queen thresholds, and more). Changes apply instantly and are
-  saved; **Reset tuning** restores the defaults. Values marked `*` only affect
+  saved; **Reset tuning** restores the slider defaults. Values marked `*` only affect
   newly born ants. Starts folded.
 - **Configurations** — save, load, export and compare named setups (see below).
+- **Danger Zone** — the last card: kill the rivals, kill everything, **Destroy Nest**
+  (removes the rooms and their walls but leaves ants, food, water and painted walls),
+  or **Destroy World** (wipes everything).
 
 ## Configurations
 

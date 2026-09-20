@@ -6,7 +6,9 @@
 // ---------------------------------------------------------------------------
 function animate() {
   if (envDirty) rebuildEnvGrid();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);          // clear in screen space
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  applyViewTransform();                        // then draw the world through the pan/zoom
   drawRooms();
   drawEnvironment();
   drawEggs();
@@ -31,6 +33,8 @@ function animate() {
   if (queens.white) drawAnt(queens.white);
   if (queens.red)   drawAnt(queens.red);
   for (const a of ants) drawAnt(a);
+
+  ctx.setTransform(1, 0, 0, 1, 0, 0);          // chrome sits over the map, unscaled
   if (maintenance) drawMaintenanceBanner();
 
   if ((statsTimer += TICK_MS) >= 250) { statsTimer = 0; updateStats(); }
@@ -60,7 +64,8 @@ function autoDropFood() {
   // sparse drip. (The loose-food cap in addFood still bounds the clutter.)
   const pop = ants.length;
   const rate = clamp(pop / 10, 1, 12);                       // up to 12× more often
-  autoFoodNext = (AUTO_FOOD_MS / rate) * (0.6 + Math.random() * 0.8);
+  const speed = clamp(foodDropRate / 25, 0.2, 6);            // player dial: 25 = 1×
+  autoFoodNext = (AUTO_FOOD_MS / rate / speed) * (0.6 + Math.random() * 0.8);
   if (!canvas) return;
   const batch = clamp(Math.round(pop / 12), 1, 12);          // and up to a dozen pieces at once
   const spots = [...spawnPoints.yellow, ...spawnPoints.red];
@@ -670,8 +675,7 @@ function updateAnts() {
         let aim = feed;
         const e = builtRoom(a.isRed, 'entry');
         if (!inNestZone(a.x, a.y) && e) {
-          const o = SOIL_R + 12;
-          aim = { x: e.x + Math.cos(e.gapAngle) * (e.r + o), y: e.y + Math.sin(e.gapAngle) * (e.r + o) };
+          aim = entryDoorAim(a, e);
         } else if (store) {
           aim = aimToRoom(a, store, feed);
         }

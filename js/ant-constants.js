@@ -10,6 +10,16 @@
 'use strict';
 
 const SAVE_KEY       = 'antFarmSave';
+// The simulation runs on a FIXED logical board, independent of how big the
+// canvas is drawn on screen. Everything (ant positions, spawn points, nest
+// rooms, walls) lives in these coordinates and is stored in them, so a world
+// looks the same and keeps its layout on every device — resizing the display
+// only rescales the picture, it never moves anything. The canvas bitmap is set
+// to this size once and never changed; CSS scales it to fit the viewport, and a
+// view transform handles pan/zoom. 1000x900 covers the largest board the old
+// responsive canvas ever produced, so existing saves load without shifting.
+const WORLD_W        = 1000;
+const WORLD_H        = 900;
 const MAX_WHITE_ANTS = 500;
 const MAX_RED_ANTS   = 500;
 const MAX_FOOD       = 300;
@@ -133,6 +143,10 @@ const DIG_REACH      = 13;    // how close to a block's open-side approach point
 const TUNNEL_LEN     = 52;    // corridor length between the junction and a room
 const TUNNEL_HALF_W  = 15;    // half-width of the walkable channel (ants ~4px pass comfortably)
 const DOORWAY_HALF   = TUNNEL_HALF_W + 3;  // half-width of a room's doorway opening
+// The entry's OUTER opening is a wide, outward-facing mouth rather than a near-closed
+// ring, so a returning forager can walk straight in instead of orbiting a circle
+// looking for a small gap.
+const ENTRY_MOUTH_ARC = 2.6;   // ~150° of the entry ring left open toward the outside
 
 // Burrowing out: an ant sealed inside a room that can't find a way past the walls
 // will, after a spell of getting nowhere, dig a single hole to escape.
