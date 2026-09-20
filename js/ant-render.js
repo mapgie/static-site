@@ -345,35 +345,23 @@ function colonyStats() {
   return { w, r, wStore, rStore };
 }
 
-// A face for the colony's mood at a glance.
-function moodFace(h) { return h >= 66 ? '😀' : h >= 40 ? '🙂' : '😣'; }
-
-// The compact, emoji summary shared by the on-canvas HUD and the side panel's
-// always-visible top line: count + mood per colony, hungry when it matters, and
-// the food on the board.
+// The on-canvas HUD readout beside the mood bars: population per colony (hungry
+// count only when it matters) and the food on the board. Mood is deliberately
+// left OUT — the happiness bars alongside already show it.
 function statsSummaryHTML(s) {
-  const wm = s.w.n > 0 ? Math.round(whiteHappiness) : null;
-  const rm = s.r.n > 0 ? Math.round(redHappiness)   : null;
-  const line = (cls, sym, c, mood) => {
-    let t = `<span class="${cls}">${sym} <b>${c.n}</b>`;
-    if (mood !== null) t += ` · ${moodFace(mood)} ${mood}`;
-    if (c.hungry > 0) t += ` · 🍽 ${c.hungry}`;
-    return t + '</span>';
-  };
-  let html = line('yellow', '🐜', s.w, wm);
-  if (s.r.n > 0 || totalBornRed > 0) html += '<br>' + line('rival', '✦', s.r, rm);
+  const line = (cls, sym, c) =>
+    `<span class="${cls}">${sym} <b>${c.n}</b>${c.hungry > 0 ? ` · ${c.hungry} hungry` : ''}</span>`;
+  let html = line('yellow', '🐜', s.w);
+  if (s.r.n > 0 || totalBornRed > 0) html += '<br>' + line('rival', '✦', s.r);
   const atNest = s.wStore + s.rStore;
-  html += `<br><span class="food">🍎 ${foods.length}${atNest ? ` · 🏠 ${atNest}` : ''}</span>`;
+  html += `<br><span class="food">🍎 <b>${foods.length}</b>${atNest ? ` · ${atNest} stored` : ''}</span>`;
   return html;
 }
 
 function updateStats() {
   const s = colonyStats();
-  const summary = statsSummaryHTML(s);
   const hud = $('hud-stats');
-  if (hud) hud.innerHTML = summary;
-  const sum = $('stats-summary');
-  if (sum) sum.innerHTML = summary;
+  if (hud) hud.innerHTML = statsSummaryHTML(s);
 
   const el = $('stats');
   if (el) {

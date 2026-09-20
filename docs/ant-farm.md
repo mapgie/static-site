@@ -359,10 +359,10 @@ touchscreen, the **wheel** (zoom) and **middle-drag** (pan) on a desktop, or the
 **＋ / − / reset** buttons stacked under the eye toggle. Zooming never pulls the board
 edge into view, so the whole world stays reachable.
 
-A **HUD strip** above the board shows the mood bars and an at-a-glance readout — per
-colony, its count, a mood face and how many are hungry, plus the food on the board.
-An **eye toggle** in the board's top-right corner folds the HUD away for a clean view,
-and back; your choice is remembered.
+A **HUD strip** above the board shows the mood bars and an at-a-glance readout — each
+colony's population (and how many are hungry, when any are) and the food on the board.
+Mood is left to the bars beside it. An **eye toggle** in the board's top-right corner
+folds the HUD away for a clean view, and back; your choice is remembered.
 
 - **Ant Controls** — add ants, open the spawn-point maintenance view, and set mating
   conditions, lifespan, and speed for the main colony.
@@ -388,12 +388,11 @@ too (ants don't wrap around it), and an ant left circling a corner or dead-end k
 itself off in a new direction rather than looping forever. The **Bulldozer** clears terrain and
   loose food, and it **breaches nest walls** — a hole ants pour through that stays
   open until you hit **Repair nest** (in the World Building card).
-- **Colony** — the stats and breakdown in one card. A compact summary line (count,
-  mood and hungry per colony, plus food on the board) stays visible even when the card
-  is folded; expanding it reveals the full counts — deaths split into **killed** (by a
-  rival) and **died** (hunger, age, or poison) — and the per-colony breakdown: average
-  mood and fullness, how many ants are hungry, poisoned, or hauling, each colony's
-  stored food, and how long the main colony has gone unattacked.
+- **Colony** — the stats and breakdown in one card: the full counts — deaths split
+  into **killed** (by a rival) and **died** (hunger, age, or poison) — and the
+  per-colony breakdown: average mood and fullness, how many ants are hungry, poisoned,
+  or hauling, each colony's stored food, and how long the main colony has gone
+  unattacked. (The at-a-glance version lives on the HUD strip above the board.)
 - **Tuning** — the **Auto food drops** toggle and a **Food drop speed** dial
   (0.2×–6×), plus live sliders for the balance numbers (happiness gains and losses,
   fullness, breeding, queen thresholds, and more). Changes apply instantly and are
