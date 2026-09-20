@@ -143,6 +143,10 @@ const DIG_REACH      = 13;    // how close to a block's open-side approach point
 const TUNNEL_LEN     = 52;    // corridor length between the junction and a room
 const TUNNEL_HALF_W  = 15;    // half-width of the walkable channel (ants ~4px pass comfortably)
 const DOORWAY_HALF   = TUNNEL_HALF_W + 3;  // half-width of a room's doorway opening
+// The entry's OUTER opening is a wide, outward-facing mouth rather than a near-closed
+// ring, so a returning forager can walk straight in instead of orbiting a circle
+// looking for a small gap.
+const ENTRY_MOUTH_ARC = 2.6;   // ~150° of the entry ring left open toward the outside
 
 // Burrowing out: an ant sealed inside a room that can't find a way past the walls
 // will, after a spell of getting nowhere, dig a single hole to escape.

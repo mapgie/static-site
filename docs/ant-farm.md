@@ -267,8 +267,10 @@ pantry before a single wall is up.) Rooms are joined by **corridors** — two so
 **side-walls** running room-to-room with a dark, walkable **channel** between them —
 and each room's ring has a real **doorway gap** exactly as wide as the channel, so the
 corridor walls meet the ring with no gap at either mouth. The entry's outward door is
-a genuine opening, so ants come and go through it. Ants **can't cross walls or water** — they navigate by
-**following walls** to the gaps — so they come and go only through the entry. The
+a **wide, outward-facing mouth** (not a near-closed ring), so a returning forager
+walks straight in instead of orbiting a circle hunting for a small gap. Ants **can't
+cross walls or water** — they navigate by **following walls** to the gaps — so they
+come and go only through the entry. The
 nest **grows toward open space** (the board's middle) rather than off the nearest
 edge, so a spawn tucked in a corner still spreads inward instead of cramming its
 rooms and entry against the wall. Every unfinished room is dug **in parallel** (each

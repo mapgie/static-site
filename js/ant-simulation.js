@@ -675,8 +675,7 @@ function updateAnts() {
         let aim = feed;
         const e = builtRoom(a.isRed, 'entry');
         if (!inNestZone(a.x, a.y) && e) {
-          const o = SOIL_R + 12;
-          aim = { x: e.x + Math.cos(e.gapAngle) * (e.r + o), y: e.y + Math.sin(e.gapAngle) * (e.r + o) };
+          aim = entryDoorAim(a, e);
         } else if (store) {
           aim = aimToRoom(a, store, feed);
         }
