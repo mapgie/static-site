@@ -205,6 +205,7 @@ function setHudHidden(hidden) {
     btn.setAttribute('aria-label', label + ' overlay');
   }
   try { localStorage.setItem(HUD_HIDE_KEY, hidden ? '1' : '0'); } catch (e) { /* private mode */ }
+  if (typeof resizeCanvas === 'function') resizeCanvas();   // the strip freed/took space; refit the board
 }
 
 // ---------------------------------------------------------------------------
@@ -266,12 +267,25 @@ function refreshViewControls() {
 function resizeCanvas() {
   const container = canvas.closest('.canvas-container');
   if (!container) return;
+  // The board shares the column with the HUD strip above it and the quick bar
+  // below it. On desktop the bar is in normal flow (reserve its height in the
+  // column); on phones it's fixed to the screen bottom, so pad the container by
+  // its (variable, wrapping) height to keep the board clear of it.
+  const bar = $('mobile-bar');
+  const barFixed = bar && getComputedStyle(bar).position === 'fixed';
+  container.style.paddingBottom = barFixed ? (bar.offsetHeight + 8) + 'px' : '';
+
   const cs = getComputedStyle(container);
   const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
   const padY = parseFloat(cs.paddingTop)  + parseFloat(cs.paddingBottom);
   const headerH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 80;
+  const gap = parseFloat(cs.rowGap) || 0;
+  let reserve = 0;
+  const hud = $('hud');
+  if (hud && getComputedStyle(hud).display !== 'none') reserve += hud.offsetHeight + gap;
+  if (bar && !barFixed) reserve += bar.offsetHeight + gap;
   const availW = Math.max(80, container.clientWidth - padX);
-  const availH = Math.max(80, window.innerHeight - headerH - padY);
+  const availH = Math.max(80, window.innerHeight - headerH - padY - reserve);
   const scale  = Math.min(availW / WORLD_W, availH / WORLD_H);
   canvas.style.width  = Math.round(WORLD_W * scale) + 'px';
   canvas.style.height = Math.round(WORLD_H * scale) + 'px';
@@ -437,22 +451,30 @@ function setupUI() {
   on('mbar-add-red', 'click', () => $('add-red-ant').click());
   on('mbar-pause',   'click', () => { animationPaused = !animationPaused; syncPauseLabels(); });
 
-  // The bar's food and tool pickers mirror the panel selects both ways, so the
-  // two stay in step whichever one you use.
+  // The bar's food picker mirrors the panel select both ways, so the two stay in
+  // step whichever one you use. The environment-tool select is the source of
+  // truth; the quick bar's tool BUTTONS set it and highlight the active one.
   const mirror = (from, to) => { const s = $(to); if (s) s.value = $(from).value; };
+  const toolBtns = [...document.querySelectorAll('#mbar-tool [data-tool]')];
+  const currentTool = () => ($('environment-tool') ? $('environment-tool').value : 'none');
   // The food picker only makes sense while a food tool is active (tap-to-drop or
   // paint food); the brush size only while painting, not tapping.
   const syncMbarTool = () => {
-    const tool = $('mbar-tool') ? $('mbar-tool').value : 'none';
+    const tool = currentTool();
     const food = $('mbar-food-wrap') || $('mbar-food');
     const brush = $('mbar-brush-wrap');
     if (food)  food.style.display  = (tool === 'none' || tool === 'food') ? '' : 'none';
     if (brush) brush.style.display = (tool === 'none') ? 'none' : '';
+    for (const b of toolBtns) b.classList.toggle('active', b.dataset.tool === tool);
+    if (typeof resizeCanvas === 'function') resizeCanvas();   // bar height may have changed
   };
+  for (const b of toolBtns) b.addEventListener('click', () => {
+    const sel = $('environment-tool'); if (sel) sel.value = b.dataset.tool;
+    syncMbarTool();
+  });
   on('mbar-food',        'change', () => mirror('mbar-food', 'food-type'));
   on('food-type',        'change', () => mirror('food-type', 'mbar-food'));
-  on('mbar-tool',        'change', () => { mirror('mbar-tool', 'environment-tool'); syncMbarTool(); });
-  on('environment-tool', 'change', () => { mirror('environment-tool', 'mbar-tool'); syncMbarTool(); });
+  on('environment-tool', 'change', () => syncMbarTool());
   on('mbar-brush',       'input',  e => { penWidth = +e.target.value; const t = $('thickness-slider'); if (t) t.value = penWidth; });
   syncMbarTool();
 

@@ -66,23 +66,21 @@ main {
 /* Dim backdrop behind the open drawer (shown only on small screens). */
 #controls-backdrop { display: none; }
 
-/* Quick action bar — a persistent strip of the main buttons. On desktop it docks
-   below the map, clear of the always-open panel; on phones it spans the full
-   width in two rows (see the media query). The redundant Menu button only shows
-   on phones, where the panel is a drawer. */
+/* Quick action bar — a persistent strip of the main buttons. On desktop it sits
+   right beneath the board (in the canvas column); on phones it becomes a
+   full-width bar fixed to the bottom, in two rows (see the media query). The
+   redundant Menu button only shows on phones, where the panel is a drawer. */
 #mobile-bar {
-  position: fixed;
-  left: var(--controls-w);
-  right: 0;
-  bottom: 0;
-  z-index: 15;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem 0.9rem;
-  padding: 0.45rem 0.75rem;
+  max-width: 100%;
+  padding: 0.45rem 0.6rem;
   background: #1c1c1c;
-  border-top: 1px solid #333;
+  border: 1px solid #333;
+  border-radius: 8px;
 }
 #mobile-bar .mbar-row { display: flex; align-items: center; gap: 0.5rem; }
 #mobile-bar button,
@@ -113,8 +111,10 @@ main {
 #mbar-brush-wrap .mbar-brush-icon { color: #aaa; font-size: 1.05rem; line-height: 1; }
 #mbar-brush { width: 7rem; margin: 0; }
 
-/* Leave room under the map for the docked quick bar. */
-main .canvas-container { padding-bottom: 4.4rem; }
+/* Tool picker: individual buttons instead of a dropdown; the active tool lights up. */
+.mbar-tools { flex-wrap: wrap; }
+#mbar-tool button.active { background: #00b4d8; color: #fff; }
+#mbar-tool button.active:hover { background: #0098b6; }
 
 /* --- Phones: the map gets the full width; controls slide in as a drawer --- */
 @media (max-width: 767px) {
@@ -134,26 +134,30 @@ main .canvas-container { padding-bottom: 4.4rem; }
     left: 0;
     right: 0;
     bottom: 0;
+    max-width: none;
     z-index: 20;                    /* under the backdrop, so opening the drawer dims it */
     padding: 0.4rem;
     background: #1c1c1c;
+    border: none;
     border-top: 1px solid #333;
+    border-radius: 0;
   }
-  .mbar-row { display: flex; gap: 0.4rem; }
+  /* Buttons size to their labels (and wrap if they must) rather than being
+     squeezed into equal cells, so the text always fits. */
+  .mbar-row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
   #mobile-bar button,
   #mobile-bar select {
-    flex: 1 1 0;
-    min-width: 0;
-    padding: 0.6rem 0.3rem;
+    flex: 1 1 auto;
+    padding: 0.6rem 0.7rem;
     border: none;
     border-radius: 6px;
     background: #333;
     color: #eee;
-    font-size: 0.82rem;
+    font-size: 0.85rem;
     white-space: nowrap;
     cursor: pointer;
   }
-  #mobile-bar select { border: 1px solid #555; padding: 0.55rem 0.4rem; }
+  #mobile-bar select { border: 1px solid #555; padding: 0.55rem 0.5rem; }
   /* The panel is a drawer here, so the Menu button earns its place. */
   #mobile-bar #mbar-menu { display: block; background: #00b4d8; color: #fff; }
   /* Brush size: an icon + slider sharing one flex cell alongside the selects. */
@@ -335,8 +339,10 @@ button#delete-structures:hover {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 0.6rem;
   padding: var(--canvas-pad);
 }
 
@@ -358,18 +364,26 @@ button#delete-structures:hover {
   cursor: crosshair;
 }
 
-#happiness-bar-container {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  width: 30%;
-  max-width: 200px;
-  height: 12px;
+/* Colony HUD strip — sits above the board (not over the play area). */
+.hud {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.8rem;
+  max-width: 100%;
+}
+.hud-bars { display: flex; flex-direction: column; gap: 4px; }
+
+#happiness-bar-container,
+#antagonist-bar-container {
+  width: 150px;
+  max-width: 42vw;
+  height: 11px;
   background: #444;
   border: 1px solid #222;
   border-radius: 4px;
   overflow: hidden;
-  z-index: 10;
 }
 
 #happiness-bar {
@@ -377,20 +391,6 @@ button#delete-structures:hover {
   width: 0;
   background: lime;
   transition: width 0.2s, background 0.2s;
-}
-
-#antagonist-bar-container {
-  position: absolute;
-  top: 28px;
-  left: 10px;
-  width: 30%;
-  max-width: 200px;
-  height: 12px;
-  background: #444;
-  border: 1px solid #222;
-  border-radius: 4px;
-  overflow: hidden;
-  z-index: 10;
 }
 
 #antagonist-bar {
@@ -402,21 +402,30 @@ button#delete-structures:hover {
 
 /* Live population readout, tucked under the bars over the map. */
 #hud-stats {
-  position: absolute;
-  top: 46px;
-  left: 10px;
-  z-index: 10;
   pointer-events: none;
-  font-size: 11px;
-  line-height: 1.5;
+  font-size: 12px;
+  line-height: 1.45;
   font-variant-numeric: tabular-nums;
   color: #cfcfcf;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.9);
   white-space: nowrap;
 }
-#hud-stats .yellow { color: #fff0b3; }
-#hud-stats .rival  { color: #3cb399; }
+#hud-stats .yellow, .stats-summary .yellow { color: #fff0b3; }
+#hud-stats .rival,  .stats-summary .rival  { color: #3cb399; }
+#hud-stats .food,   .stats-summary .food   { color: #ffcf7a; }
 #hud-stats b { color: #fff; font-weight: 600; }
+
+/* Merged Colony panel: a compact summary that stays put when the card folds,
+   with the full counts + breakdown tucked into the collapsible details. */
+.stats-summary {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+}
+.stats-summary b { color: #fff; font-weight: 600; }
+.controls-section.collapsed > .stats-summary { display: block; }   /* keep the glance visible */
+.stats-details { margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid #3a3a3a; }
+#stats { font-size: 0.85rem; line-height: 1.5; }
+#stats-details .breakdown { margin-top: 0.6rem; }
 
 #nest-actions { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
 #nest-actions button { flex: 1 1 auto; }
@@ -473,9 +482,7 @@ button#delete-structures:hover {
 #hud-toggle .eye-shut { display: none; }
 .canvas-container.hud-hidden #hud-toggle .eye-open { display: none; }
 .canvas-container.hud-hidden #hud-toggle .eye-shut { display: inline; }
-.canvas-container.hud-hidden #hud-stats,
-.canvas-container.hud-hidden #happiness-bar-container,
-.canvas-container.hud-hidden #antagonist-bar-container { display: none; }
+.canvas-container.hud-hidden #hud { display: none; }
 
 /* --- Map zoom controls (sit under the eye toggle, top-right) --- */
 #view-controls {
@@ -673,9 +680,7 @@ main.spawn-mode #antCanvas.grabbing {
 
 /* Keep the edit view uncluttered: the mood bars and population HUD step aside
    while spawn points are being arranged. */
-main.spawn-mode #happiness-bar-container,
-main.spawn-mode #antagonist-bar-container,
-main.spawn-mode #hud-stats { display: none; }
+main.spawn-mode #hud { display: none; }
 
 /* --- On-canvas spawn editing (works with the side menu closed) --- */
 #spawn-quickbar {

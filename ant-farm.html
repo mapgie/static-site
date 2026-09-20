@@ -95,15 +95,13 @@
         <button id="destroy-nest" class="kill-all">Destroy Nest</button>
         <button id="destroy-world" class="kill-all">Destroy World</button>
       </div>
-      <div id="stats" class="controls-section">
-        Total Alive: 0<br>
-        Yellow Ants: Alive 0 | Born 0 | Dead 0<br>
-        Rival Ants: Alive 0 | Born 0 | Dead 0<br>
-        Food: 0 | Happiness: 50
-      </div>
-      <div class="controls-section">
-        <h2>Breakdown</h2>
-        <div id="breakdown" class="breakdown"></div>
+      <div class="controls-section" id="stats-card">
+        <h2>Colony</h2>
+        <div id="stats-summary" class="stats-summary">🐜 0</div>
+        <div id="stats-details" class="stats-details">
+          <div id="stats"></div>
+          <div id="breakdown" class="breakdown"></div>
+        </div>
       </div>
       <div class="controls-section" data-collapsed="true">
         <h2>Tuning</h2>
@@ -149,17 +147,18 @@
     <div id="controls-backdrop"></div>
     <button id="toggle-controls" type="button" aria-label="Show controls" aria-expanded="false" title="Show controls">&#9776;</button>
     <div class="canvas-container">
-      <!-- The stage shrink-wraps the board so every overlay (mood bars, HUD,
-           zoom + eye toggles, spawn strip) anchors to the canvas itself, however
-           the canvas is scaled to fit the viewport. -->
+      <!-- Colony HUD: the mood bars and the at-a-glance readout, in a strip above
+           the board (out of the play area). The eye toggle folds it away. -->
+      <div id="hud" class="hud">
+        <div class="hud-bars">
+          <div id="happiness-bar-container" title="Colony happiness"><div id="happiness-bar"></div></div>
+          <div id="antagonist-bar-container" title="Antagonist happiness"><div id="antagonist-bar"></div></div>
+        </div>
+        <div id="hud-stats" aria-hidden="true"></div>
+      </div>
+      <!-- The stage shrink-wraps the board so the on-board overlays (zoom + eye
+           toggles, spawn strip) anchor to the canvas itself, at any scale. -->
       <div class="canvas-stage">
-      <div id="happiness-bar-container" title="Colony happiness">
-        <div id="happiness-bar"></div>
-      </div>
-      <div id="antagonist-bar-container" title="Antagonist happiness">
-        <div id="antagonist-bar"></div>
-      </div>
-      <div id="hud-stats" aria-hidden="true"></div>
       <div id="room-place-bar" hidden>
         <span id="room-place-label">Drag to place</span>
         <button id="room-place-ok" type="button">Place here</button>
@@ -191,23 +190,22 @@
       </div>
       <canvas id="antCanvas" width="1000" height="900" aria-label="Ant farm"></canvas>
       </div>
-    </div>
-    <div id="mobile-bar" aria-label="Quick controls">
+      <div id="mobile-bar" aria-label="Quick controls">
       <div class="mbar-row">
         <button id="mbar-menu" type="button" title="Open all controls">&#9776; Menu</button>
         <button id="mbar-add" type="button" title="Add an ant">+ Ant</button>
         <button id="mbar-add-red" type="button" title="Add a rival ant">+ Rival</button>
         <button id="mbar-pause" type="button" title="Pause or resume">Pause</button>
       </div>
+      <div class="mbar-row mbar-tools" id="mbar-tool" role="group" aria-label="Tool">
+        <button type="button" data-tool="none" title="Tap the map to drop food">Tap: food</button>
+        <button type="button" data-tool="food" title="Drag to paint food">Paint food</button>
+        <button type="button" data-tool="water" title="Paint water">Water</button>
+        <button type="button" data-tool="wall" title="Paint a wall">Wall</button>
+        <button type="button" data-tool="soil" title="Paint a soil wall">Soil wall</button>
+        <button type="button" data-tool="bulldozer" title="Bulldoze terrain">Bulldozer</button>
+      </div>
       <div class="mbar-row">
-        <select id="mbar-tool" aria-label="Tool" title="Tap-to-drop food, or drag to paint">
-          <option value="none">Tap: food</option>
-          <option value="food">Paint food</option>
-          <option value="water">Water</option>
-          <option value="wall">Wall</option>
-          <option value="soil">Soil wall</option>
-          <option value="bulldozer">Bulldozer</option>
-        </select>
         <select id="mbar-food" aria-label="Food type" title="Food to drop">
           <option value="sugar">Sugar</option>
           <option value="fruit">Fruit</option>
@@ -220,6 +218,7 @@
           <span class="mbar-brush-icon" aria-hidden="true">◍</span>
           <input type="range" id="mbar-brush" min="1" max="20" value="4" aria-label="Brush size">
         </label>
+      </div>
       </div>
     </div>
     <div id="config-compare-modal" role="dialog" aria-modal="true" aria-label="Compare configurations">

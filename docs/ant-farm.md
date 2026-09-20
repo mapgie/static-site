@@ -340,11 +340,11 @@ with extra detail carries a small round **"i"** at the right of its heading — 
 affordance everywhere: **Food**'s reveals its legend inline, **Tuning**'s opens the
 value guide.
 
-A **quick bar** stays docked below the map with the buttons you reach for most — add
-an ant or a rival, pause, and the tool / food / brush pickers — so you rarely need the
-full panel open. On a phone it spans the bottom in two rows and gains a **Menu** button
-that opens the controls drawer; on desktop the panel is always there, so the Menu
-button is dropped.
+A **quick bar** holds the buttons you reach for most — add an ant or a rival, pause,
+the tool buttons (each tool is its own button) and the food / brush pickers — so you
+rarely need the full panel open. On desktop it sits right beneath the board; on a
+phone it's fixed to the bottom of the screen and gains a **Menu** button that opens
+the controls drawer (on desktop the panel is always there, so Menu is dropped).
 
 The board is a **fixed size**, independent of the screen it's drawn on: a world keeps
 its exact layout whether you're on a phone or a desktop, and switching between them
@@ -357,9 +357,10 @@ touchscreen, the **wheel** (zoom) and **middle-drag** (pan) on a desktop, or the
 **＋ / − / reset** buttons stacked under the eye toggle. Zooming never pulls the board
 edge into view, so the whole world stays reachable.
 
-An **eye toggle** in the top-right corner of the map folds the on-canvas overlay
-(the happiness bars and the population readout) away for a clean view, and back;
-your choice is remembered.
+A **HUD strip** above the board shows the mood bars and an at-a-glance readout — per
+colony, its count, a mood face and how many are hungry, plus the food on the board.
+An **eye toggle** in the board's top-right corner folds the HUD away for a clean view,
+and back; your choice is remembered.
 
 - **Ant Controls** — add ants, open the spawn-point maintenance view, and set mating
   conditions, lifespan, and speed for the main colony.
@@ -387,11 +388,12 @@ itself off in a new direction rather than looping forever. The **Bulldozer** cle
 - **Danger Zone** — kill the rivals, kill everything, **Destroy Nest** (removes the
   rooms and their walls but leaves ants, food, water and painted walls), or **Destroy
   World** (wipes everything).
-- **Stats** — live counts and each colony's happiness. Deaths are split into
-  **killed** (by a rival) and **died** (hunger, age, or poison), for each colony.
-- **Breakdown** — per-colony figures for spotting imbalance: average mood and
-  fullness, how many ants are hungry, poisoned, or hauling, each colony's stored
-  food, and how long the main colony has gone unattacked.
+- **Colony** — the stats and breakdown in one card. A compact summary line (count,
+  mood and hungry per colony, plus food on the board) stays visible even when the card
+  is folded; expanding it reveals the full counts — deaths split into **killed** (by a
+  rival) and **died** (hunger, age, or poison) — and the per-colony breakdown: average
+  mood and fullness, how many ants are hungry, poisoned, or hauling, each colony's
+  stored food, and how long the main colony has gone unattacked.
 - **Tuning** — live sliders for the balance numbers (happiness gains and losses,
   fullness, breeding, queen thresholds, and more). Changes apply instantly and are
   saved; **Reset tuning** restores the defaults. Values marked `*` only affect
