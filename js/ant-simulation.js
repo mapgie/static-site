@@ -64,7 +64,8 @@ function autoDropFood() {
   // sparse drip. (The loose-food cap in addFood still bounds the clutter.)
   const pop = ants.length;
   const rate = clamp(pop / 10, 1, 12);                       // up to 12× more often
-  autoFoodNext = (AUTO_FOOD_MS / rate) * (0.6 + Math.random() * 0.8);
+  const speed = clamp(foodDropRate / 25, 0.2, 6);            // player dial: 25 = 1×
+  autoFoodNext = (AUTO_FOOD_MS / rate / speed) * (0.6 + Math.random() * 0.8);
   if (!canvas) return;
   const batch = clamp(Math.round(pop / 12), 1, 12);          // and up to a dozen pieces at once
   const spots = [...spawnPoints.yellow, ...spawnPoints.red];

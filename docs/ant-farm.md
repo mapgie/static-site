@@ -103,9 +103,9 @@ insect** as a rare treat (poison and spoiled never fall on their own). The rain
 **scales with colony size** — a bigger colony gets more frequent, bigger drops — and
 most of it lands **within foraging range of a nest** so the ants can actually reach
 it, rather than starving beside food scattered clear across the board. (A very large
-colony still settles toward the carrying capacity its food supports.) Turn it off
-with the **Auto food drops** checkbox in the Food panel to hand-feed the colony
-yourself.
+colony still settles toward the carrying capacity its food supports.) The **Auto food
+drops** checkbox and a **Food drop speed** dial (0.2×–6×) live under **Tuning** — turn
+it off to hand-feed the colony yourself, or speed it up for a feast.
 
 ### Trails, scent, and wandering
 
@@ -375,7 +375,8 @@ and back; your choice is remembered.
   without opening the side menu.
 - **Rival Ant Controls** — add rival ants; set their lifespan, speed, breeding,
   aggression, and **Sadist mode**.
-- **Food** — pick a food type, see what each does, and set the decay rate.
+- **Food** — pick a food type, see what each does, and set the decay rate. (The auto
+  food drops and their speed moved to **Tuning**.)
 - **Environment Tools** — paint Food, Water, a grey **Wall** or a brown **Soil wall**,
   or **Bulldoze**; set brush thickness; undo or clear structures. **Walls, soil and
   water all block ants** — an ant that meets one **follows along it** (tracing round an
@@ -385,20 +386,21 @@ too (ants don't wrap around it), and an ant left circling a corner or dead-end k
 itself off in a new direction rather than looping forever. The **Bulldozer** clears terrain and
   loose food, and it **breaches nest walls** — a hole ants pour through that stays
   open until you hit **Repair nest** (in the World Building card).
-- **Danger Zone** — kill the rivals, kill everything, **Destroy Nest** (removes the
-  rooms and their walls but leaves ants, food, water and painted walls), or **Destroy
-  World** (wipes everything).
 - **Colony** — the stats and breakdown in one card. A compact summary line (count,
   mood and hungry per colony, plus food on the board) stays visible even when the card
   is folded; expanding it reveals the full counts — deaths split into **killed** (by a
   rival) and **died** (hunger, age, or poison) — and the per-colony breakdown: average
   mood and fullness, how many ants are hungry, poisoned, or hauling, each colony's
   stored food, and how long the main colony has gone unattacked.
-- **Tuning** — live sliders for the balance numbers (happiness gains and losses,
+- **Tuning** — the **Auto food drops** toggle and a **Food drop speed** dial
+  (0.2×–6×), plus live sliders for the balance numbers (happiness gains and losses,
   fullness, breeding, queen thresholds, and more). Changes apply instantly and are
-  saved; **Reset tuning** restores the defaults. Values marked `*` only affect
+  saved; **Reset tuning** restores the slider defaults. Values marked `*` only affect
   newly born ants. Starts folded.
 - **Configurations** — save, load, export and compare named setups (see below).
+- **Danger Zone** — the last card: kill the rivals, kill everything, **Destroy Nest**
+  (removes the rooms and their walls but leaves ants, food, water and painted walls),
+  or **Destroy World** (wipes everything).
 
 ## Configurations
 

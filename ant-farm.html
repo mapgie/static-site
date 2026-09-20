@@ -57,8 +57,7 @@
         </ul>
         <label for="decay-slider">Food Decay Rate (<span id="decay-readout" class="readout"></span>):</label>
         <input type="range" id="decay-slider" min="1" max="100" value="25">
-        <label title="Food rains at random, weighted by rarity: sugar often, protein seldom, a dead insect a rare treat."><input type="checkbox" id="auto-food" checked> Auto food drops</label>
-        <p class="hint">Click the canvas to drop food, or pick a tool and drag to draw. Ants carry food they find back to the nest ring around their nearest spawn point. Once dropped off, only another ant can eat it.</p>
+        <p class="hint">Click the canvas to drop food, or pick a tool and drag to draw. Ants carry food they find back to the nest ring around their nearest spawn point. Once dropped off, only another ant can eat it. Auto food drops and their speed live under <b>Tuning</b>.</p>
       </div>
       <div class="controls-section">
         <h2>Environment Tools</h2>
@@ -88,13 +87,6 @@
           <button id="repair-nest" type="button" title="Send ants to rebuild any knocked-out nest walls">Repair nest</button>
         </div>
       </div>
-      <div class="controls-section danger-zone">
-        <h2 style="color:red;">Danger Zone</h2>
-        <button id="kill-red-ants" class="kill-all">Kill All Rival Ants</button>
-        <button id="kill-all-ants" class="kill-all">Kill All Ants</button>
-        <button id="destroy-nest" class="kill-all">Destroy Nest</button>
-        <button id="destroy-world" class="kill-all">Destroy World</button>
-      </div>
       <div class="controls-section" id="stats-card">
         <h2>Colony</h2>
         <div id="stats-summary" class="stats-summary">🐜 0</div>
@@ -107,6 +99,11 @@
         <h2>Tuning</h2>
         <p class="hint">Live balance knobs — changes apply instantly and are saved. A <b>*</b> marks values that only affect newly born ants.</p>
         <button id="tuning-info" class="info-btn card-info" type="button" aria-haspopup="dialog" title="What each value does" aria-label="What each value does">i</button>
+        <div class="tune-food">
+          <label title="Food rains at random, weighted by rarity: sugar often, protein seldom, a dead insect a rare treat."><input type="checkbox" id="auto-food" checked> Auto food drops</label>
+          <label for="food-rate-slider">Food drop speed (<span id="food-rate-readout" class="readout"></span>):</label>
+          <input type="range" id="food-rate-slider" min="1" max="100" value="25">
+        </div>
         <div id="tuning"></div>
         <div class="tune-actions">
           <button id="tuning-reset">Reset tuning</button>
@@ -126,6 +123,13 @@
       <div class="controls-section">
         <h2>User Controls</h2>
         <button id="pause-resume">Pause</button>
+      </div>
+      <div class="controls-section danger-zone">
+        <h2 style="color:red;">Danger Zone</h2>
+        <button id="kill-red-ants" class="kill-all">Kill All Rival Ants</button>
+        <button id="kill-all-ants" class="kill-all">Kill All Ants</button>
+        <button id="destroy-nest" class="kill-all">Destroy Nest</button>
+        <button id="destroy-world" class="kill-all">Destroy World</button>
       </div>
       <div id="spawn-panel" class="controls-section" hidden>
         <h2>Spawn Points</h2>

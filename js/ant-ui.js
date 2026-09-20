@@ -304,6 +304,7 @@ function readSettingsFromControls() {
   redAggressionLevel = +$('red-aggression-slider').value;
   penWidth           = +$('thickness-slider').value;
   foodDecayRate      = +$('decay-slider').value;
+  if ($('food-rate-slider')) foodDropRate = +$('food-rate-slider').value;
   showSpawnPoints    = $('show-spawn-points').checked;
   if ($('auto-food')) autoFood = $('auto-food').checked;
   if ($('world-building')) worldBuilding = $('world-building').checked;
@@ -313,6 +314,7 @@ function readSettingsFromControls() {
 function updateReadouts() {
   const set = (id, text) => { const el = $(id); if (el) el.textContent = text; };
   set('decay-readout',        `~${Math.round(decayStageMs() / 1000)}s per stage`);
+  set('food-rate-readout',    `${(clamp(foodDropRate / 25, 0.2, 6)).toFixed(1)}×`);
   set('speed-readout-normal', normalAntSpeed.toFixed(2));
   set('speed-readout-red',    redAntSpeed.toFixed(2));
 }
@@ -329,6 +331,7 @@ function writeSettingsToControls() {
   $('thickness-slider').value       = penWidth;
   if ($('mbar-brush')) $('mbar-brush').value = penWidth;
   $('decay-slider').value           = foodDecayRate;
+  if ($('food-rate-slider')) $('food-rate-slider').value = foodDropRate;
   $('show-spawn-points').checked    = showSpawnPoints;
   if ($('auto-food')) $('auto-food').checked = autoFood;
   if ($('world-building')) $('world-building').checked = worldBuilding;
@@ -489,6 +492,7 @@ function setupUI() {
   on('speed-slider-red',    'input', e => { redAntSpeed    = (+e.target.value) / 100; updateReadouts(); saveFarm(); });
   on('red-aggression-slider', 'input', e => { redAggressionLevel = +e.target.value; saveFarm(); });
   on('decay-slider', 'input', e => { foodDecayRate = +e.target.value; updateReadouts(); saveFarm(); });
+  on('food-rate-slider', 'input', e => { foodDropRate = +e.target.value; updateReadouts(); saveFarm(); });
   on('auto-food', 'change', e => { autoFood = e.target.checked; saveFarm(); });
   on('world-building', 'change', e => { worldBuilding = e.target.checked; saveFarm(); });
 

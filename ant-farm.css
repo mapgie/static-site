@@ -627,6 +627,8 @@ main.spawn-mode #view-controls { display: none; }           /* the map is paused
 .breakdown b { color: #00b4d8; }
 .breakdown .hint { display: block; margin-top: 0.35rem; }
 
+/* Food-drop controls live at the top of Tuning, set off from the sliders below. */
+.tune-food { margin: 0.2rem 0 0.6rem; padding-bottom: 0.6rem; border-bottom: 1px solid #3a3a3a; }
 #tuning { max-height: 340px; overflow-y: auto; padding-right: 0.3rem; }
 .tune-group {
   color: #00b4d8;
